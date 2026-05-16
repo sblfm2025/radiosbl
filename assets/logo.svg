@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120" viewBox="0 0 600 120">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#0f172a" rx="8"/>
+  <g transform="translate(24,18)">
+    <circle cx="42" cy="42" r="36" fill="url(#g)"/>
+    <path d="M24 42 L48 28 L48 56 Z" fill="#fff" opacity="0.95"/>
+    <text x="96" y="58" font-family="Segoe UI, Roboto, Helvetica, Arial" font-size="34" fill="#fff">RADIO-SBL</text>
+    <text x="96" y="84" font-family="Segoe UI, Roboto" font-size="12" fill="#cbd5e1">Streaming & Broadcast Dashboard</text>
+  </g>
+</svg>

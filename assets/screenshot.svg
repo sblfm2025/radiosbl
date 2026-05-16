@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="100%" height="100%" fill="#0b1220"/>
+  <g transform="translate(28,28)">
+    <rect width="904" height="484" rx="8" fill="#071025" stroke="#203040"/>
+    <rect x="20" y="20" width="220" height="420" rx="6" fill="#0f1724"/>
+    <rect x="260" y="20" width="624" height="120" rx="6" fill="#07172a"/>
+    <rect x="260" y="156" width="624" height="284" rx="6" fill="#081822"/>
+    <text x="36" y="52" fill="#9fb6d8" font-size="14">Menu</text>
+    <text x="280" y="56" fill="#cfe7ff" font-size="20">Live Broadcast</text>
+    <text x="280" y="92" fill="#9fb6d8" font-size="12">Now playing: Example Show — Host Name</text>
+    <rect x="300" y="200" width="520" height="24" rx="12" fill="#0b2a3a"/>
+    <rect x="300" y="200" width="260" height="24" rx="12" fill="#06b6d4"/>
+    <text x="300" y="244" fill="#9fb6d8" font-size="12">Queue: Song 1 • Song 2 • Song 3</text>
+  </g>
+</svg>

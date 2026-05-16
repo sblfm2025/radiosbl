@@ -1,5 +1,6 @@
-RADIO-SBL
-==========
+![RADIO-SBL logo](assets/logo.svg)
+
+# RADIO-SBL
 
 Project RADIO-SBL — frontend and Cloud Functions for the RADIO-SBL application.
 
@@ -26,6 +27,11 @@ Repository
 ----------
 
 This repository was pushed to https://github.com/sblfm2025/radiosbl
+
+Snapshot
+--------
+
+![Screenshot](assets/screenshot.svg)
 # LPPL Radio Suara Bumi Lasinrang Management System
 
 **Tagline:** "Suara Pinrang, Suara Kita"
