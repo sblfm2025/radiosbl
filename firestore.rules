@@ -1,0 +1,611 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && exists(userPath());
+    }
+
+    function currentUser() {
+      return get(userPath()).data;
+    }
+
+    function isActiveUser() {
+      return hasUserProfile() && currentUser().active == true;
+    }
+
+    function currentRole() {
+      return isActiveUser() ? currentUser().role : 'public';
+    }
+
+    function isRole(roles) {
+      return signedIn() && currentRole() in roles;
+    }
+
+    function isSuperAdmin() {
+      return isRole(['super_admin']) || request.auth.token.email == 'sblfm2025@gmail.com' || request.auth.token.email == 'sablfm2025@gmail.com';
+    }
+
+    function isAdmin() {
+      return isRole(['super_admin', 'admin']);
+    }
+
+    function isLeader() {
+      return isRole(['super_admin', 'admin', 'leader']);
+    }
+
+    function canManageSchedule() {
+      return isRole(['super_admin', 'admin']);
+    }
+
+    function canManageLiveOb() {
+      return isRole(['super_admin', 'admin', 'leader', 'operator']);
+    }
+
+    function canManageCoverage() {
+      return isRole(['super_admin', 'admin', 'leader', 'reporter']);
+    }
+
+    function canManageComplaints() {
+      return isRole(['super_admin', 'admin', 'leader']);
+    }
+
+    function canUseAi() {
+      return isRole(['super_admin', 'admin', 'leader', 'announcer', 'reporter']);
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function ownsAnnouncer(announcerId) {
+      return isActiveUser()
+        && (
+          currentUser().announcerId == announcerId
+          || currentUser().employeeId == announcerId
+        );
+    }
+
+    function hasOnly(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasAll(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(fields);
+    }
+
+    function validStatus(value, statuses) {
+      return value in statuses;
+    }
+
+    function validUserPayload() {
+      return hasOnly([
+        'email',
+        'displayName',
+        'airName',
+        'announcerNames',
+        'role',
+        'employeeId',
+        'announcerId',
+        'photoUrl',
+        'whatsapp',
+        'active',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['email', 'displayName', 'role', 'active'])
+      && validStatus(request.resource.data.role, [
+        'super_admin',
+        'admin',
+        'leader',
+        'announcer',
+        'reporter',
+        'operator',
+        'employee',
+        'public'
+      ]);
+    }
+
+    function userEmailMatchesAuth() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.resource.data.email == request.auth.token.email;
+    }
+
+    function staffProfilePath() {
+      return /databases/$(database)/documents/users/$(('wa-' + request.resource.data.whatsapp));
+    }
+
+    function hasMatchingStaffProfile() {
+      return userEmailMatchesAuth()
+        && request.resource.data.whatsapp is string
+        && exists(staffProfilePath())
+        && get(staffProfilePath()).data.email == request.auth.token.email
+        && get(staffProfilePath()).data.role == request.resource.data.role
+        && get(staffProfilePath()).data.active == true;
+    }
+
+    function isSelfPublicCreate(userId) {
+      return isOwner(userId)
+        && validUserPayload()
+        && userEmailMatchesAuth()
+        && request.resource.data.role == 'public'
+        && request.resource.data.active == true;
+    }
+
+    function isSelfStaffClaim(userId) {
+      return isOwner(userId)
+        && validUserPayload()
+        && hasMatchingStaffProfile();
+    }
+
+    function isSelfProfileUpdate(userId) {
+      return isOwner(userId)
+        && validUserPayload()
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.active == resource.data.active
+        && changedOnly([
+          'displayName',
+          'airName',
+          'announcerNames',
+          'employeeId',
+          'announcerId',
+          'photoUrl',
+          'whatsapp',
+          'updatedAt'
+        ]);
+    }
+
+    function validAnnouncerPayload() {
+      return hasOnly([
+        'fullName',
+        'airName',
+        'scheduleNames',
+        'photoUrl',
+        'decreeOrder',
+        'active',
+        'totalDays',
+        'totalHours',
+        'note',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['fullName', 'airName', 'scheduleNames', 'decreeOrder', 'active']);
+    }
+
+    function validProgramPayload() {
+      return hasOnly([
+        'id',
+        'title',
+        'description',
+        'defaultDurationMinutes',
+        'category',
+        'active',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['id', 'title', 'description', 'defaultDurationMinutes', 'active'])
+      && (!('category' in request.resource.data)
+        || request.resource.data.category in ['main', 'insert', 'playlist']);
+    }
+
+    function validSchedulePayload() {
+      return hasOnly([
+        'id',
+        'programId',
+        'announcerId',
+        'announcerIds',
+        'externalPic',
+        'day',
+        'timeLabel',
+        'operatorId',
+        'startsAt',
+        'endsAt',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['id', 'programId', 'startsAt', 'endsAt', 'status'])
+      && validStatus(request.resource.data.status, [
+        'draft',
+        'ready',
+        'live',
+        'completed',
+        'cancelled'
+      ]);
+    }
+
+    function validCustomScheduleSlotPayload() {
+      return hasOnly([
+        'day',
+        'time',
+        'program',
+        'description',
+        'announcer',
+        'sourceDay',
+        'sourceTime',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['day', 'time', 'program', 'description', 'announcer', 'sourceDay', 'sourceTime']);
+    }
+
+    function validAttendancePayload() {
+      return hasOnly([
+        'userId',
+        'displayName',
+        'airName',
+        'checkInAt',
+        'checkOutAt',
+        'latitude',
+        'longitude',
+        'selfieDriveFileId',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['userId', 'checkInAt', 'latitude', 'longitude', 'selfieDriveFileId', 'status'])
+      && validStatus(request.resource.data.status, ['present', 'late', 'outside_radius']);
+    }
+
+    function validSwapPayload() {
+      return hasOnly([
+        'scheduleId',
+        'requesterId',
+        'targetAnnouncerId',
+        'reason',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['scheduleId', 'requesterId', 'targetAnnouncerId', 'reason', 'status'])
+      && validStatus(request.resource.data.status, [
+        'pending_target',
+        'pending_admin',
+        'approved',
+        'rejected'
+      ]);
+    }
+
+    function validComplaintPayload() {
+      return hasOnly([
+        'reporterName',
+        'category',
+        'message',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['reporterName', 'category', 'message', 'status'])
+      && request.resource.data.category in [
+        'Teknis',
+        'Program',
+        'Informasi Publik',
+        'Lainnya'
+      ]
+      && request.resource.data.status in [
+        'Baru',
+        'Terverifikasi',
+        'Diproses',
+        'Selesai'
+      ];
+    }
+
+    function validSongRequestPayload() {
+      return hasOnly([
+        'requesterName',
+        'requesterWhatsapp',
+        'artist',
+        'title',
+        'message',
+        'announcerName',
+        'announcerWhatsapp',
+        'status',
+        'createdAt',
+        'updatedAt',
+        'notificationText',
+        'whatsappUrl'
+      ])
+      && hasAll(['requesterName', 'title', 'status', 'notificationText', 'createdAt'])
+      && validStatus(request.resource.data.status, [
+        'new',
+        'notified',
+        'queued',
+        'played',
+        'rejected'
+      ]);
+    }
+
+    function validProgramScriptDraftPayload() {
+      return hasOnly([
+        'programTitle',
+        'scheduleTime',
+        'day',
+        'announcerName',
+        'description',
+        'provider',
+        'tone',
+        'durationMinutes',
+        'intervention',
+        'content',
+        'status',
+        'createdBy',
+        'createdByName',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll([
+        'programTitle',
+        'scheduleTime',
+        'day',
+        'announcerName',
+        'provider',
+        'tone',
+        'durationMinutes',
+        'content',
+        'status',
+        'createdBy',
+        'createdByName',
+        'createdAt'
+      ])
+      && request.resource.data.provider in ['openai', 'gemini', 'demo']
+      && validStatus(request.resource.data.status, ['draft', 'approved', 'used']);
+    }
+
+    function validDriveFilePayload() {
+      return hasOnly([
+        'driveFileId',
+        'name',
+        'mimeType',
+        'size',
+        'webViewLink',
+        'module',
+        'ownerId',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['driveFileId', 'name', 'mimeType', 'size', 'webViewLink', 'module', 'ownerId']);
+    }
+
+    function validLiveEventPayload() {
+      return hasOnly([
+        'title',
+        'location',
+        'startsAt',
+        'youtubeUrl',
+        'discordRoomUrl',
+        'crewIds',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['title', 'location', 'startsAt', 'crewIds', 'status'])
+      && validStatus(request.resource.data.status, [
+        'draft',
+        'ready',
+        'live',
+        'completed'
+      ]);
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin()
+        || isOwner(userId)
+        || (signedIn() && resource.data.email == request.auth.token.email);
+      allow create: if (isAdmin() && validUserPayload())
+        || isSelfPublicCreate(userId)
+        || isSelfStaffClaim(userId);
+      allow update: if (isAdmin() && validUserPayload())
+        || isSelfProfileUpdate(userId)
+        || (resource.data.role == 'public' && isSelfStaffClaim(userId));
+      allow delete: if isSuperAdmin() && !isOwner(userId);
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isLeader() || isRole(['announcer', 'reporter', 'operator', 'employee']);
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /announcers/{announcerId} {
+      allow read: if signedIn();
+      allow create, update: if canManageSchedule() && validAnnouncerPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /attendanceRecords/{recordId} {
+      allow read: if isLeader() || isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId) && validAttendancePayload();
+      allow update: if (
+        (isLeader() && validAttendancePayload())
+        || (
+          isOwner(resource.data.userId)
+          && request.resource.data.userId == resource.data.userId
+          && validAttendancePayload()
+          && changedOnly(['checkOutAt', 'updatedAt'])
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /broadcastPrograms/{programId} {
+      allow read: if signedIn();
+      allow create, update: if canManageSchedule()
+        && request.resource.data.id == programId
+        && validProgramPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /broadcastSchedules/{scheduleId} {
+      allow read: if signedIn();
+      allow create, update: if canManageSchedule()
+        && request.resource.data.id == scheduleId
+        && validSchedulePayload();
+      allow delete: if isAdmin();
+    }
+
+    match /customScheduleSlots/{slotId} {
+      allow read: if signedIn();
+      allow create, update: if canManageSchedule() && validCustomScheduleSlotPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /schedule_swaps/{requestId} {
+      allow read: if isLeader()
+        || isOwner(resource.data.requesterId)
+        || ownsAnnouncer(resource.data.targetAnnouncerId);
+      allow create: if isOwner(request.resource.data.requesterId)
+        && validSwapPayload()
+        && request.resource.data.status == 'pending_target';
+      allow update: if validSwapPayload()
+        && (
+          isLeader()
+          || (
+            ownsAnnouncer(resource.data.targetAnnouncerId)
+            && request.resource.data.requesterId == resource.data.requesterId
+            && request.resource.data.targetAnnouncerId == resource.data.targetAnnouncerId
+            && changedOnly(['status', 'updatedAt'])
+            && request.resource.data.status in ['pending_admin', 'rejected']
+          )
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /coverageAssignments/{assignmentId} {
+      allow read: if isLeader() || isRole(['reporter']);
+      allow create, update: if isLeader();
+      allow delete: if isAdmin();
+    }
+
+    match /coverageReports/{reportId} {
+      allow read: if isLeader() || isOwner(resource.data.reporterId);
+      allow create: if canManageCoverage()
+        && isOwner(request.resource.data.reporterId);
+      allow update: if isLeader()
+        || (
+          isOwner(resource.data.reporterId)
+          && request.resource.data.reporterId == resource.data.reporterId
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /liveEvents/{eventId} {
+      allow read: if signedIn();
+      allow create, update: if canManageLiveOb() && validLiveEventPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /obChecklists/{itemId} {
+      allow read: if signedIn();
+      allow create, update: if canManageLiveOb();
+      allow delete: if isAdmin();
+    }
+
+    match /youtubeLives/{liveId} {
+      allow read: if signedIn();
+      allow create, update: if canManageLiveOb();
+      allow delete: if isAdmin();
+    }
+
+    match /discordRooms/{roomId} {
+      allow read: if signedIn();
+      allow create, update: if canManageLiveOb();
+      allow delete: if isAdmin();
+    }
+
+    match /streamingSettings/{settingId} {
+      allow read: if true;
+      allow create, update: if isAdmin() || isRole(['operator']);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if canManageComplaints();
+      allow create: if validComplaintPayload()
+        && request.resource.data.status == 'Baru';
+      allow update: if canManageComplaints() && validComplaintPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /songRequests/{requestId} {
+      allow read: if signedIn();
+      allow create: if validSongRequestPayload()
+        && request.resource.data.status in ['new', 'notified'];
+      allow update: if isRole(['super_admin', 'admin', 'leader', 'announcer', 'operator'])
+        && validSongRequestPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /programScriptDrafts/{draftId} {
+      allow read: if canUseAi();
+      allow create: if canUseAi()
+        && isOwner(request.resource.data.createdBy)
+        && validProgramScriptDraftPayload();
+      allow update: if canUseAi() && validProgramScriptDraftPayload();
+      allow delete: if isAdmin();
+    }
+
+    match /driveFiles/{fileId} {
+      allow read: if isLeader() || isOwner(resource.data.ownerId);
+      allow create: if isOwner(request.resource.data.ownerId) && validDriveFilePayload();
+      allow update: if validDriveFilePayload()
+        && (
+          isLeader()
+          || (
+            isOwner(resource.data.ownerId)
+            && request.resource.data.ownerId == resource.data.ownerId
+            && changedOnly(['name', 'webViewLink', 'updatedAt'])
+          )
+        );
+      allow delete: if isLeader() || isOwner(resource.data.ownerId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isOwner(resource.data.userId) || isLeader();
+      allow create, update, delete: if isLeader();
+    }
+
+    match /aiLogs/{logId} {
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      allow create: if canUseAi()
+        && isOwner(request.resource.data.userId)
+        && hasOnly([
+          'userId',
+          'prompt',
+          'response',
+          'module',
+          'createdAt',
+          'updatedAt'
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /appSettings/{settingId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

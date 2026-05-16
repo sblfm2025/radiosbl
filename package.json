@@ -1,0 +1,47 @@
+{
+  "name": "radio-sbl-management-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "seed:export": "node scripts/export-firestore-seed.mjs",
+    "seed:import": "node scripts/import-firestore-seed.mjs",
+    "seed:import:write": "node scripts/import-firestore-seed.mjs --write",
+    "seed:import:write:cli": "node scripts/import-firestore-seed-cli.mjs",
+    "proxy:notifications": "node scripts/notification-proxy-server.mjs",
+    "functions:lint": "npm --prefix functions run lint",
+    "functions:deploy": "firebase deploy --only functions:notificationProxy --project radiosbl",
+    "drive:auth": "node scripts/google-drive-auth.mjs",
+    "drive:server": "node scripts/google-drive-upload-server.mjs",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@vitejs/plugin-react": "^5.0.0",
+    "firebase": "^12.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@playwright/test": "^1.60.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.0.0"
+  }
+}

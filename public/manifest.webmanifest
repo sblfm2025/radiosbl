@@ -1,0 +1,19 @@
+{
+  "name": "LPPL Radio Suara Bumi Lasinrang Management System",
+  "short_name": "Radio SBL",
+  "description": "PWA operasional radio untuk absensi, siaran, liputan, OB, streaming, dan pengaduan.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#1677ed",
+  "icons": [
+    {
+      "src": "/iconSBL.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
