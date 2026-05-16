@@ -1,3 +1,31 @@
+RADIO-SBL
+==========
+
+Project RADIO-SBL — frontend and Cloud Functions for the RADIO-SBL application.
+
+Quick start
+-----------
+
+Prerequisites: Node.js, npm/yarn, Firebase CLI (for functions).
+
+Install and run (frontend):
+
+1. Install deps
+
+```bash
+npm install
+```
+
+2. Start dev server
+
+```bash
+npm run dev
+```
+
+Repository
+----------
+
+This repository was pushed to https://github.com/sblfm2025/radiosbl
 # LPPL Radio Suara Bumi Lasinrang Management System
 
 **Tagline:** "Suara Pinrang, Suara Kita"
