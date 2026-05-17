@@ -205,11 +205,19 @@ export function subscribeToSession(
         return;
       }
       try {
+        let whatsappFallback = firebaseUser.phoneNumber ?? undefined;
+        if (!whatsappFallback && firebaseUser.email && firebaseUser.email.endsWith("@radiosbl.com")) {
+          const part = firebaseUser.email.split("@")[0];
+          if (/^\d+$/.test(part)) {
+            whatsappFallback = part;
+          }
+        }
+
         const user = await getUserProfile(firebaseUser.uid, {
           email: firebaseUser.email ?? "user@radiosbl.go.id",
           displayName: firebaseUser.displayName ?? "Pengguna Radio SBL",
           photoUrl: firebaseUser.photoURL ?? undefined,
-          whatsapp: firebaseUser.phoneNumber ?? undefined
+          whatsapp: whatsappFallback
         });
         onSession({ user, provider: "firebase" });
       } catch (err) {

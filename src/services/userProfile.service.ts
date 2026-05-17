@@ -155,7 +155,7 @@ export async function getUserProfile(
         try {
           const linkedData = toWritableUserProfile({
             ...staffProfile,
-            email: staffProfile.email || fallback.email,
+            email: fallback.email,
             updatedAt: new Date()
           });
           await upsertDocument("users", uid, linkedData);

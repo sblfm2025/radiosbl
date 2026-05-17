@@ -129,10 +129,8 @@ service cloud.firestore {
     }
 
     function hasMatchingStaffProfile() {
-      return userEmailMatchesAuth()
-        && request.resource.data.whatsapp is string
+      return request.resource.data.whatsapp is string
         && exists(staffProfilePath())
-        && get(staffProfilePath()).data.email == request.auth.token.email
         && get(staffProfilePath()).data.role == request.resource.data.role
         && get(staffProfilePath()).data.active == true;
     }
@@ -148,6 +146,7 @@ service cloud.firestore {
     function isSelfStaffClaim(userId) {
       return isOwner(userId)
         && validUserPayload()
+        && userEmailMatchesAuth()
         && hasMatchingStaffProfile();
     }
 
@@ -410,13 +409,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if (isAdmin() && validUserPayload())
-        || isSelfPublicCreate(userId)
-        || isSelfStaffClaim(userId);
-      allow update: if (isAdmin() && validUserPayload())
-        || isSelfProfileUpdate(userId)
-        || (resource.data.role == 'public' && isSelfStaffClaim(userId));
-      allow delete: if isSuperAdmin() && !isOwner(userId);
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if (isSuperAdmin() && !isOwner(userId)) || (signedIn() && userId.matches('^wa-.*'));
     }
 
     match /employees/{employeeId} {

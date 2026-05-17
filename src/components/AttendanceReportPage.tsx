@@ -36,6 +36,16 @@ function toDate(value: TimestampLike | { toDate?: () => Date; seconds?: number }
   return new Date(value as string | number | Date);
 }
 
+function getDurationLabel(checkIn: Date, checkOut?: Date | null): string {
+  if (!checkOut) return "-";
+  const diffMinutes = Math.floor((checkOut.getTime() - checkIn.getTime()) / 60000);
+  if (diffMinutes < 0) return "0m";
+  const hours = Math.floor(diffMinutes / 60);
+  const mins = diffMinutes % 60;
+  if (hours > 0) return `${hours}j ${mins}m`;
+  return `${mins}m`;
+}
+
 function toWeekInputValue(date: Date): string {
   const target = new Date(date);
   target.setHours(0, 0, 0, 0);
@@ -126,7 +136,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   const [weekValue, setWeekValue] = useState(toWeekInputValue(today));
   const [monthValue, setMonthValue] = useState(toMonthInputValue(today));
   const [yearValue, setYearValue] = useState(today.getFullYear());
-  const [activeTab, setActiveTab] = useState<"summary" | "daily" | "announcers">("summary");
+  const [activeTab, setActiveTab] = useState<"summary" | "daily" | "announcers" | "leaves">("summary");
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
 
   async function handleReviewStatus(recordId: string, newStatus: AttendanceRecord["status"]) {
@@ -137,6 +147,41 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
       alert("Gagal memperbarui status. Periksa log konsol.");
       console.error(err);
     }
+  }
+
+  function handleExportCsv() {
+    const headers = ["ID", "Nama Staf", "Nama Udara", "Role", "Tanggal", "Jam Masuk", "Jam Pulang", "Durasi", "Status", "Catatan Tambahan"];
+    const rows = filteredRecords.map(r => {
+      const user = userById.get(r.userId);
+      const checkIn = toDate(r.checkInAt);
+      const checkOut = r.checkOutAt ? toDate(r.checkOutAt) : null;
+      const durLabel = checkOut ? getDurationLabel(checkIn, checkOut) : "";
+
+      const escapedNote = r.outOfOfficeReason ? `"${r.outOfOfficeReason.replace(/"/g, '""')}"` : "";
+      const escapedAirName = (r.airName || user?.airName || "").replace(/"/g, '""');
+
+      return [
+        r.userId,
+        r.displayName || user?.displayName || "",
+        `"${escapedAirName}"`,
+        user?.role || "",
+        checkIn.toLocaleDateString("id-ID"),
+        checkIn.toLocaleTimeString("id-ID"),
+        checkOut ? checkOut.toLocaleTimeString("id-ID") : "",
+        durLabel,
+        r.status,
+        escapedNote
+      ].join(",");
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Rekap_SBL_${periodLabel.replace(/ /g, "_")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   useEffect(() => {
@@ -188,12 +233,12 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
     [periodRange.end, periodRange.start, records]
   );
 
-  const announcerSummary = useMemo(() => {
-    const announcerUsers = users
-      .filter((user) => user.role === "announcer")
+  const staffSummary = useMemo(() => {
+    const staffUsers = users
+      .filter((user) => user.role !== "public" && (filterRole === "all" || user.role === filterRole))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
-    return announcerUsers.map((user) => {
+    return staffUsers.map((user) => {
       const userRecords = periodRecords.filter((record) => record.userId === user.id);
       const present = userRecords.filter((record) => record.status === "present").length;
       const outside = userRecords.filter((record) => record.status === "outside_radius").length;
@@ -235,6 +280,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
         <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>Ringkasan</TabButton>
         <TabButton active={activeTab === "daily"} onClick={() => setActiveTab("daily")}>Harian</TabButton>
         <TabButton active={activeTab === "announcers"} onClick={() => setActiveTab("announcers")}>Penyiar / Staf</TabButton>
+        <TabButton active={activeTab === "leaves"} onClick={() => setActiveTab("leaves")}>Izin & Cuti</TabButton>
       </div>
 
       {/* FILTER (Muncul di semua tab) */}
@@ -320,29 +366,29 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
         <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
             <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0 }}>Rekap Absensi Penyiar</h2>
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0 }}>Rekap Absensi Staf</h2>
               <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Ringkasan kehadiran penyiar untuk {periodLabel}.
+                Ringkasan kehadiran staf untuk {periodLabel}.
               </p>
             </div>
             <span style={{ padding: "8px 12px", borderRadius: "99px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, fontSize: "0.8rem" }}>
-              {announcerSummary.length} penyiar
+              {staffSummary.length} staf
             </span>
           </div>
 
           {loading ? (
             <div style={{ textAlign: "center", padding: "32px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-          ) : announcerSummary.length === 0 ? (
+          ) : staffSummary.length === 0 ? (
             <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
               <Users size={40} style={{ opacity: 0.18, marginBottom: "10px" }} />
-              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data penyiar.</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data staf.</p>
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "780px" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                    <th style={tableHeadStyle}>PENYIAR</th>
+                    <th style={tableHeadStyle}>NAMA STAF</th>
                     <th style={tableHeadStyle}>TOTAL</th>
                     <th style={tableHeadStyle}>TEPAT LOKASI</th>
                     <th style={tableHeadStyle}>LUAR RADIUS</th>
@@ -352,7 +398,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                   </tr>
                 </thead>
                 <tbody>
-                  {announcerSummary.map((item) => (
+                  {staffSummary.map((item) => (
                     <tr key={item.user.id} style={{ borderBottom: "1px solid #f1f3f5" }}>
                       <td style={{ padding: "16px" }}>
                         <div style={{ fontWeight: 800 }}>{item.user.displayName}</div>
@@ -393,8 +439,8 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                 Klik baris untuk melihat foto selfie dan detail absensi.
               </p>
             </div>
-            <button style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer" }}>
-              <Download size={18} /> Export
+            <button onClick={handleExportCsv} style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.1s" }}>
+              <Download size={18} /> Export CSV
             </button>
           </div>
 
@@ -433,8 +479,16 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                           {user?.role || "-"}
                         </td>
                         <td style={{ padding: "16px" }}>
-                          <div style={{ fontSize: "0.9rem" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+                          <div style={{ fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span title="Masuk" style={{ color: "#11a36a", fontWeight: 700 }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                            <span style={{ color: "var(--muted)" }}>-</span>
+                            <span title="Pulang" style={{ color: record.checkOutAt ? "#ef4444" : "var(--muted)", fontWeight: 700 }}>
+                              {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "4px" }}>
+                            {checkInAt.toLocaleDateString("id-ID")} • Durasi: <strong style={{ color: "var(--ink)" }}>{record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</strong>
+                          </div>
                         </td>
                         <td style={{ padding: "16px" }}>
                           <StatusBadge status={record.status} />
@@ -448,6 +502,75 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                           <button style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer", color: "var(--ink)" }}>
                             Detail
                           </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "leaves" && (
+        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Daftar Izin, Sakit & Tugas Luar</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Klik baris untuk melihat detail dan melakukan persetujuan.
+              </p>
+            </div>
+            <button onClick={handleExportCsv} style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.1s" }}>
+              <Download size={18} /> Export CSV
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
+          ) : filteredRecords.filter(r => r.status === "sick" || r.status === "leave" || r.outOfOfficeReason).length === 0 ? (
+            <div style={{ textAlign: "center", padding: "44px 16px", color: "var(--muted)" }}>
+              <Calendar size={44} style={{ opacity: 0.18, marginBottom: "12px" }} />
+              <p style={{ margin: 0, fontWeight: 700 }}>Tidak ada data izin atau cuti pada filter ini.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
+                    <th style={tableHeadStyle}>STAF</th>
+                    <th style={tableHeadStyle}>WAKTU PENGAJUAN</th>
+                    <th style={tableHeadStyle}>JENIS</th>
+                    <th style={tableHeadStyle}>ALASAN / CATATAN</th>
+                    <th style={tableHeadStyle}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.filter(r => r.status === "sick" || r.status === "leave" || r.outOfOfficeReason).map((record) => {
+                    const user = userById.get(record.userId);
+                    const checkInAt = toDate(record.checkInAt);
+
+                    return (
+                      <tr key={record.id} onClick={() => setSelectedRecord(record)} style={{ borderBottom: "1px solid #f1f3f5", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f8f9fc"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ fontWeight: "bold" }}>{record.displayName || user?.displayName || "Staf Radio SBL"}</div>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{user?.role || "-"}</div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ fontSize: "0.9rem", color: "var(--ink)", fontWeight: 700 }}>{checkInAt.toLocaleDateString("id-ID")}</div>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "4px" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <StatusBadge status={record.status === "needs_review" ? "out_of_office" : record.status} />
+                        </td>
+                        <td style={{ padding: "16px", maxWidth: "250px" }}>
+                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", fontStyle: "italic", whiteSpace: "normal" }}>
+                            "{record.outOfOfficeReason || "-"}"
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <StatusBadge status={record.status} />
                         </td>
                       </tr>
                     );
@@ -548,19 +671,25 @@ function SidePanelDetail({ record, user, session, onReview }: { record: Attendan
         </div>
       </div>
 
-      {/* INFORMASI LOKASI */}
+      {/* INFORMASI LOKASI & WAKTU */}
       <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
-         <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MapPin size={16} /> Data Lokasi</h5>
+         <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MapPin size={16} /> Data Waktu & Lokasi</h5>
          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
            <div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Waktu Check-in</div>
-             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Masuk - Pulang</div>
+             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>
+                <span style={{ color: "#11a36a" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span style={{ color: "var(--muted)", margin: "0 4px" }}>-</span>
+                <span style={{ color: record.checkOutAt ? "#ef4444" : "var(--muted)" }}>
+                  {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                </span>
+             </div>
              <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
            </div>
            <div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Jarak & Akurasi</div>
-             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>{record.distanceToCenter ? `${Math.round(record.distanceToCenter)}m` : "-"}</div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Akurasi ±{record.accuracyMeters || "-"}m</div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Durasi Kerja</div>
+             <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ink)" }}>{record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Jarak: {record.distanceToCenter ? `${Math.round(record.distanceToCenter)}m` : "-"} (±{record.accuracyMeters}m)</div>
            </div>
          </div>
          <a href={mapUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", color: "var(--ink)", textDecoration: "none", fontWeight: 800, fontSize: "0.85rem", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f1f3f5"} onMouseOut={(e) => e.currentTarget.style.background = "white"}>

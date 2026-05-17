@@ -71,12 +71,7 @@ export function BroadcastSchedulePage({
         if (!isMounted) return;
 
         const filtered = users.filter((user) => {
-          const isAnnouncer =
-            user.role === "announcer" ||
-            Boolean(user.airName) ||
-            (Array.isArray(user.announcerNames) && user.announcerNames.length > 0);
-
-          return isAnnouncer && user.id !== session.user.id && user.active;
+          return user.role === "announcer" && user.id !== session.user.id && user.active;
         });
 
         if (filtered.length > 0) {
