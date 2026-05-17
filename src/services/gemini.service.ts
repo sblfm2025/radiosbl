@@ -28,7 +28,7 @@ function buildLocalDraft(request: GeminiDraftRequest): string {
   ].filter(Boolean).join("\n");
 }
 
-export async function analyzeAttendancePhoto(imageBlob: Blob, displayName: string = "Penyiar"): Promise<{ isValid: boolean; reason: string; description: string; greeting: string }> {
+export async function analyzeAttendancePhoto(imageBlob: Blob, displayName: string = "Penyiar", attendanceType: string = "present"): Promise<{ isValid: boolean; reason: string; description: string; greeting: string }> {
   const genAI = getGenAIClient();
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Menggunakan Gemini 2.5 Flash sesuai standar SBL
   
@@ -47,19 +47,25 @@ export async function analyzeAttendancePhoto(imageBlob: Blob, displayName: strin
 
   const prompt = `
     Analisis foto selfie absensi staf radio ini. Nama penyiar/staf: Kak ${displayName}. Waktu saat ini: ${timeOfDay} (${timeString}).
+    Tipe kehadiran yang dilaporkan: "${attendanceType}".
     
     Tugasmu:
     1. Pastikan ada wajah manusia yang jelas.
     2. Berikan "description" objektif tentang foto (misal: "Pria kacamata mengenakan headset") untuk direkap HRD.
     3. Jika foto tidak layak (gelap, bukan orang, menutupi kamera), berikan isValid: false dan isi "reason".
-    4. Buat "greeting" (sapaan) yang personal, interaktif, menyenangkan, sangat kekinian, dan sedikit memuji paras atau gaya berpakaian penyiar di dalam foto secara spesifik. Pastikan menyebut "Kak [Nama]".
+    4. Buat "greeting" (sapaan UI) yang personal, penuh empati, namun cerdas, ramah, dan SEDIKIT CENTIL ala teman penyiar radio yang seru. Wajib menyelipkan kearifan lokal Kabupaten Pinrang atau kosakata khas suku Bugis (seperti: Aga kareba, Kurusumange', Macca', Salama', dsb) agar terasa sangat dekat secara emosional.
+       - Jika tipe "present": beri sapaan ceria, interaktif, centil, dan bakar semangat siaran/kerja. Wajib memuji paras, senyum, atau gaya berpakaiannya secara lebay sedikit. (misal: "Aga kareba Kak [Nama]! Cakep banget hari ini...")
+       - Jika tipe "sick": Dilarang keras menyuruh kerja! Tunjukkan empati yang mendalam tapi tetap manis (misal: "Aduh Kak [Nama] pucat banget, istirahat total ya sayang... Kurusumange' ki', semoga lekas sembuh!").
+       - Jika tipe "leave": Ucapkan selamat beristirahat, liburan, atau semoga urusannya dilancarkan dengan nada riang dan selipkan doa Salama'.
+       - Jika tipe "out_of_office": Beri sapaan centil menyemangati tugas di luar kantor Pinrang, ingatkan untuk jangan lupa makan dan hati-hati di jalan.
+       Pastikan selalu memanggil nama dengan sapaan "Kak [Nama]".
     
     Format respon harus JSON murni tanpa markdown formatting:
     {
       "isValid": boolean,
       "reason": "alasan tolakan, atau kosong",
       "description": "deskripsi objektif untuk admin",
-      "greeting": "sapaan manis untuk UI penyiar"
+      "greeting": "sapaan untuk UI penyiar"
     }
   `;
 

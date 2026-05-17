@@ -4,9 +4,10 @@ import { bottomNav, primaryNav, type PageKey } from "../data/radioData";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import type { AuthSession } from "../services/auth.service";
 import { canUser, getRoleLabel } from "../utils/rbac";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { getFirebaseFirestore } from "../lib/firebase";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
+import { getScheduleSwapQueryAliasesForUser } from "../services/scheduleSwap.service";
 
 type ShellProps = {
   activePage: PageKey;
@@ -55,7 +56,7 @@ export function Shell({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousNotificationCount = useRef(0);
   const hasInitializedNotification = useRef(false);
-  const { playing, togglePlayback } = useGlobalAudio();
+  const { togglePlayback } = useGlobalAudio();
   const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(false);
   const allowedNavItems = primaryNav.filter(
@@ -96,18 +97,68 @@ export function Shell({
     if (!session || session.provider !== "firebase") return;
     
     const db = getFirebaseFirestore();
-    const q = query(
-      collection(db, "schedule_swaps"),
-      where("targetAnnouncerId", "==", session.user.id),
-      where("status", "==", "pending_target")
-    );
+    const aliases = getScheduleSwapQueryAliasesForUser(session.user).slice(0, 8);
+    const counts = new Map<string, number>();
+    let isMounted = true;
 
-    const unsub = onSnapshot(q, (snap) => {
-      setPendingSwaps(snap.size);
+    const refreshLegacyRequests = async () => {
+      const legacySnaps = await Promise.allSettled(
+        aliases.map((alias) =>
+          getDocs(query(
+            collection(db, "schedule_swaps"),
+            where("targetAnnouncerId", "==", alias)
+          ))
+        )
+      );
+
+      if (!isMounted) return;
+
+      legacySnaps.forEach((result) => {
+        if (result.status !== "fulfilled") {
+          console.warn("Gagal memuat notifikasi tukar jadwal lama:", result.reason);
+          return;
+        }
+
+        result.value.forEach((item) => {
+          if (item.data().status === "pending_target") {
+            counts.set(item.id, 1);
+          }
+        });
+      });
+
+      setPendingSwaps(counts.size);
+    };
+
+    const unsubscribers = aliases.map((alias) => {
+      const q = query(
+        collection(db, "schedule_swaps"),
+        where("targetAnnouncerAliases", "array-contains", alias)
+      );
+
+      return onSnapshot(
+        q,
+        (snap) => {
+          snap.docChanges().forEach((change) => {
+            const status = change.doc.data().status;
+            if (change.type === "removed" || status !== "pending_target") {
+              counts.delete(change.doc.id);
+            } else {
+              counts.set(change.doc.id, 1);
+            }
+          });
+          setPendingSwaps(counts.size);
+        },
+        (err) => {
+          console.warn("Gagal memuat notifikasi tukar jadwal:", err);
+        }
+      );
     });
 
+    void refreshLegacyRequests();
+
     return () => {
-      unsub();
+      isMounted = false;
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
   }, [session]);
 
@@ -255,18 +306,18 @@ export function Shell({
             bottom: hasMiniPlayer ? "140px" : "80px",
             left: "50%",
             transform: "translateX(-50%)",
-            width: "calc(100% - 32px)",
-            maxWidth: "400px",
-            background: "rgba(22, 119, 237, 0.95)",
+            width: "calc(100% - 40px)",
+            maxWidth: "320px",
+            background: "rgba(22, 119, 237, 0.8)",
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",
             color: "white",
-            padding: "16px",
-            borderRadius: "20px",
-            boxShadow: "0 12px 32px rgba(22, 119, 237, 0.4)",
+            padding: "12px 16px",
+            borderRadius: "16px",
+            boxShadow: "0 12px 24px rgba(22, 119, 237, 0.25)",
             display: "flex",
             alignItems: "center",
-            gap: "14px",
+            gap: "12px",
             zIndex: 100,
             animation: "slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
           }}>
@@ -278,27 +329,27 @@ export function Shell({
                 }
               `}
             </style>
-            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "14px", padding: "12px", display: "flex", flexShrink: 0 }}>
-              <Volume2 size={24} color="white" />
+            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "12px", padding: "10px", display: "flex", flexShrink: 0 }}>
+              <Volume2 size={20} color="white" />
             </div>
             <div style={{ flex: 1 }}>
-              <strong style={{ display: "block", fontSize: "0.95rem", marginBottom: "4px" }}>Izinkan Suara Sistem</strong>
-              <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.9, lineHeight: 1.4 }}>
-                Aktifkan audio untuk mendengar notifikasi pertukaran jadwal siaran.
+              <strong style={{ display: "block", fontSize: "0.85rem", marginBottom: "2px" }}>Izinkan Suara</strong>
+              <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.9, lineHeight: 1.3 }}>
+                Aktifkan audio untuk mendengar notifikasi.
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", flexShrink: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", flexShrink: 0 }}>
               <button 
                 type="button" 
                 onClick={handleAllowAudio}
-                style={{ background: "white", color: "var(--blue)", border: "none", padding: "8px 16px", borderRadius: "12px", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}
+                style={{ background: "white", color: "var(--blue)", border: "none", padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
               >
                 Izinkan
               </button>
               <button
                 type="button"
                 onClick={() => setShowAudioPrompt(false)}
-                style={{ background: "transparent", color: "rgba(255,255,255,0.8)", border: "none", fontSize: "0.75rem", cursor: "pointer", padding: "4px 8px" }}
+                style={{ background: "transparent", color: "white", border: "1px solid rgba(255,255,255,0.4)", padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
               >
                 Nanti
               </button>

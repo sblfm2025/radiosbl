@@ -4,6 +4,8 @@ import { getCurrentPosition, distanceInMeters, type GeoPoint } from "../utils/ge
 import { validateFile, moduleFileRules } from "../utils/fileValidation";
 import type { AuthSession } from "../services/auth.service";
 import {
+  ATTENDANCE_SELFIE_UPLOAD_EVENT,
+  type AttendanceSelfieUploadEventDetail,
   buildAttendanceRecordDraft,
   checkInWithSelfie,
   getTodayAttendance,
@@ -30,6 +32,8 @@ export function AttendancePage({
   const [position, setPosition] = useState<GeoPoint | null>(null);
   const [recordStatus, setRecordStatus] = useState("");
   const [selfieDriveFileId, setSelfieDriveFileId] = useState("");
+  const [selfieUploadStatus, setSelfieUploadStatus] = useState<"idle" | "pending" | "uploaded" | "failed">("idle");
+  const [uploadNotice, setUploadNotice] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<{ isValid: boolean; description: string; greeting?: string } | null>(null);
   
   const [attendanceType, setAttendanceType] = useState<"present" | "sick" | "leave" | "out_of_office">("present");
@@ -49,10 +53,59 @@ export function AttendancePage({
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAttendanceRecordIdRef = useRef<string | null>(null);
   
   const currentSlot = useCurrentBroadcastSlot(); // Mengambil info siaran saat ini
 
   const distance = position ? distanceInMeters(position, officeCenter) : null;
+
+  useEffect(() => {
+    notificationAudioRef.current = new Audio("/notifikasi.mp3");
+    notificationAudioRef.current.preload = "auto";
+  }, []);
+
+  useEffect(() => {
+    function handleSelfieUpload(event: Event) {
+      const detail = (event as CustomEvent<AttendanceSelfieUploadEventDetail>).detail;
+      if (!detail || detail.attendanceRecordId !== activeAttendanceRecordIdRef.current) {
+        return;
+      }
+
+      setSelfieUploadStatus(detail.selfieUploadStatus);
+      setSelfieDriveFileId(detail.selfieDriveFileId);
+      setTodayRecord((current) =>
+        current
+          ? {
+              ...current,
+              selfieDriveFileId: detail.selfieDriveFileId,
+              selfieUploadStatus: detail.selfieUploadStatus,
+              selfieUploadError: detail.selfieUploadError || ""
+            }
+          : current
+      );
+
+      if (detail.selfieUploadStatus === "uploaded") {
+        setUploadNotice("Bukti selfie berhasil tersimpan. Sisa menunggu absen pulang.");
+        void notificationAudioRef.current?.play().catch(() => {});
+      } else if (detail.selfieUploadStatus === "failed") {
+        setUploadNotice("Absensi sudah tercatat, tetapi bukti selfie belum berhasil tersimpan.");
+      }
+    }
+
+    window.addEventListener(ATTENDANCE_SELFIE_UPLOAD_EVENT, handleSelfieUpload);
+    return () => window.removeEventListener(ATTENDANCE_SELFIE_UPLOAD_EVENT, handleSelfieUpload);
+  }, []);
+
+  useEffect(() => {
+    activeAttendanceRecordIdRef.current = todayRecord?.id ?? null;
+    if (todayRecord?.selfieUploadStatus) {
+      setSelfieUploadStatus(todayRecord.selfieUploadStatus);
+    }
+    if (todayRecord?.selfieDriveFileId) {
+      setSelfieDriveFileId(todayRecord.selfieDriveFileId);
+    }
+  }, [todayRecord]);
 
   // Cleanup camera stream
   const stopCamera = useCallback(() => {
@@ -178,9 +231,12 @@ export function AttendancePage({
       // Step 2: AI Vision Validation
       const userId = session?.user.id ?? "demo-user";
       const displayName = session?.user.displayName ?? "Staf";
-      const airName = findAnnouncerProfile(displayName)?.airName;
+      const airName =
+        session?.user.airName ||
+        session?.user.announcerNames?.[0] ||
+        findAnnouncerProfile(displayName)?.airName;
       
-      const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName);
+      const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType);
       setAiAnalysis(aiResult);
 
       if (!aiResult.isValid && attendanceType === "present") {
@@ -196,7 +252,7 @@ export function AttendancePage({
         const isCurrentProgramActive = currentSlot.title !== "Playlist" && currentSlot.title !== "Offline";
         if (isCurrentProgramActive) {
           const isMyTurn = currentSlot.announcer.toLowerCase().includes(displayName.toLowerCase()) || 
-                           (airName && currentSlot.announcer.includes(airName));
+                           (airName && currentSlot.announcer.toLowerCase().includes(airName.toLowerCase()));
           if (isMyTurn) {
             console.log(`Penyiar ${displayName} absen untuk program ${currentSlot.title}`);
           }
@@ -224,16 +280,20 @@ export function AttendancePage({
       });
       const draft = buildAttendanceRecordDraft({
         ...payloadParams,
-        selfieDriveFileId: result.selfieDriveFileId
+        selfieDriveFileId: result.selfieDriveFileId,
+        selfieUploadStatus: result.selfieUploadStatus
       });
 
+      activeAttendanceRecordIdRef.current = result.attendanceRecordId;
       setSelfieDriveFileId(result.selfieDriveFileId);
+      setSelfieUploadStatus(result.selfieUploadStatus);
+      setUploadNotice("Absensi tercatat. Bukti selfie sedang diunggah di latar belakang.");
       const isRejected = draft.status === "rejected";
       const isOutside = draft.status === "outside_radius" || draft.status === "needs_review";
       
       setRecordStatus(
         draft.status === "present"
-          ? "Absensi valid berhasil dikonfirmasi ke pusat."
+          ? "Absensi valid berhasil dikonfirmasi. Bukti selfie sedang diunggah."
           : isRejected 
             ? "Foto Anda tidak valid, namun data telah diteruskan ke Admin."
             : isOutside
@@ -293,33 +353,33 @@ export function AttendancePage({
     <div className="schedule-page" style={{ paddingBottom: "100px" }}>
       {/* LOCATION PROMPT MODAL */}
       {showLocationPrompt && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-          <div style={{ background: "white", borderRadius: "24px", width: "100%", maxWidth: "340px", padding: "32px 24px", textAlign: "center", boxShadow: "0 24px 48px rgba(0,0,0,0.2)", animation: "fadeSlideUp 0.3s ease-out" }}>
-            <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "rgba(22, 119, 237, 0.1)", margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <MapPin size={40} color="var(--blue)" />
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderRadius: "20px", width: "100%", maxWidth: "300px", padding: "24px 20px", textAlign: "center", boxShadow: "0 16px 32px rgba(0,0,0,0.15)", animation: "fadeSlideUp 0.3s ease-out" }}>
+            <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(22, 119, 237, 0.1)", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MapPin size={30} color="var(--blue)" />
             </div>
-            <h3 style={{ margin: "0 0 12px", color: "var(--ink)", fontSize: "1.2rem", fontWeight: 800 }}>
+            <h3 style={{ margin: "0 0 10px", color: "var(--ink)", fontSize: "1.05rem", fontWeight: 800 }}>
               Sistem Membutuhkan Akses Lokasi Anda
             </h3>
-            <p style={{ margin: "0 0 24px", color: "var(--muted)", fontSize: "0.95rem", lineHeight: 1.5 }}>
-              Demi keamanan dan validitas kehadiran Staf Radio SBL, apakah Anda mengizinkan pemberian akses lokasi ke sistem absensi cerdas ini?
+            <p style={{ margin: "0 0 20px", color: "var(--muted)", fontSize: "0.85rem", lineHeight: 1.4 }}>
+              Demi keamanan dan validitas kehadiran Staf Radio SBL, izinkan akses lokasi ke sistem absensi cerdas ini.
             </p>
-            <div style={{ display: "flex", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "10px" }}>
               <button 
                 onClick={() => setShowLocationPrompt(false)}
-                style={{ flex: 1, padding: "14px", borderRadius: "99px", background: "white", border: "2px solid var(--blue)", color: "var(--blue)", fontWeight: 800, cursor: "pointer" }}
+                style={{ flex: 1, padding: "10px", borderRadius: "99px", background: "white", border: "1.5px solid var(--blue)", color: "var(--blue)", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}
               >
                 Tolak
               </button>
               <button 
                 onClick={handleAllowLocation}
-                style={{ flex: 1, padding: "14px", borderRadius: "99px", background: "var(--blue)", border: "2px solid var(--blue)", color: "white", fontWeight: 800, cursor: "pointer" }}
+                style={{ flex: 1, padding: "10px", borderRadius: "99px", background: "var(--blue)", border: "1.5px solid var(--blue)", color: "white", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}
               >
                 Izinkan
               </button>
             </div>
-            <p style={{ margin: "20px 0 0", color: "var(--muted)", fontSize: "0.8rem", lineHeight: 1.4 }}>
-              *Setelah menekan 'Izinkan', mohon berikan izin ('Allow') pada popup notifikasi bawaan browser Anda.
+            <p style={{ margin: "16px 0 0", color: "var(--muted)", fontSize: "0.75rem", lineHeight: 1.3 }}>
+              *Setelah menekan 'Izinkan', mohon berikan izin ('Allow') pada popup bawaan browser.
             </p>
           </div>
         </div>
@@ -379,17 +439,47 @@ export function AttendancePage({
           
           {todayRecord ? (
             todayRecord.checkOutAt ? (
-              <div style={{ background: "#ecfdf5", padding: "32px 24px", borderRadius: "20px", textAlign: "center", color: "#059669", border: "1px solid #a7f3d0" }}>
-                <CheckCircle2 size={48} style={{ margin: "0 auto 16px" }} />
-                <h3 style={{ margin: "0 0 8px", fontSize: "1.4rem", fontWeight: 900 }}>Absen Lengkap</h3>
-                <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>Terima kasih! Anda sudah Check-in dan Check-out hari ini.</p>
+              <div style={{ background: "#ecfdf5", padding: "32px 24px", borderRadius: "20px", textAlign: "center", color: "#059669", border: "1px solid #a7f3d0", animation: "fadeSlideUp 0.4s ease-out" }}>
+                <BadgeCheck size={56} style={{ margin: "0 auto 16px" }} />
+                <h3 style={{ margin: "0 0 8px", fontSize: "1.4rem", fontWeight: 900 }}>Tugas Selesai</h3>
+                <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>Terima kasih! Anda telah menyelesaikan Check-in dan Check-out hari ini.</p>
               </div>
             ) : (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <div style={{ background: "#eef5ff", color: "var(--blue)", padding: "16px", borderRadius: "16px", marginBottom: "24px", fontWeight: 800 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: "0.9rem", color: "var(--muted)" }}>Status Hari Ini</p>
-                  <p style={{ margin: 0, fontSize: "1.1rem" }}>✅ Sudah Check-in</p>
+              <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeSlideUp 0.4s ease-out" }}>
+                <div style={{ background: "rgba(17, 163, 106, 0.08)", border: "2px solid rgba(17, 163, 106, 0.2)", color: "#11a36a", padding: "24px", borderRadius: "24px", marginBottom: "24px", fontWeight: 800 }}>
+                  <CheckCircle2 size={48} color="#11a36a" style={{ margin: "0 auto 12px" }} />
+                  <h3 style={{ margin: "0 0 12px", fontSize: "1.4rem", fontWeight: 900, color: "var(--ink)" }}>Absensi Berhasil!</h3>
+                  <p style={{ margin: "0 0 16px", fontSize: "0.95rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                    Data kehadiran Anda telah tercatat dengan aman di server Radio SBL. Anda tidak perlu mengambil foto lagi.
+                  </p>
+                  {uploadNotice && (
+                    <div style={{ background: selfieUploadStatus === "failed" ? "#fff7ed" : "#eefdf7", color: selfieUploadStatus === "failed" ? "#c2410c" : "#047857", padding: "12px", borderRadius: "14px", marginBottom: "16px", fontSize: "0.85rem", lineHeight: 1.4 }}>
+                      {uploadNotice}
+                    </div>
+                  )}
+                  <div style={{ background: "white", padding: "16px", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "8px", textAlign: "left", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Status</span>
+                      <span style={{ fontSize: "0.85rem", color: "#11a36a", fontWeight: 900 }}>DITERIMA</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Jam Masuk</span>
+                      <span style={{ fontSize: "0.85rem", color: "var(--ink)", fontWeight: 900 }}>{new Date(todayRecord.checkInAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WITA</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Tipe</span>
+                      <span style={{ fontSize: "0.85rem", color: "var(--ink)", fontWeight: 900 }}>{todayRecord.status === "sick" ? "Sakit" : todayRecord.status === "leave" ? "Izin" : "Hadir"}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Bukti Selfie</span>
+                      <span style={{ fontSize: "0.85rem", color: selfieUploadStatus === "failed" ? "#ef4444" : selfieUploadStatus === "uploaded" ? "#11a36a" : "#f59e0b", fontWeight: 900 }}>
+                        {selfieUploadStatus === "uploaded" ? "TERSIMPAN" : selfieUploadStatus === "failed" ? "GAGAL UPLOAD" : "MENGUNGGAH"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                
+                <h4 style={{ margin: "0 0 12px", fontSize: "1rem", color: "var(--ink)" }}>Tugas Selesai?</h4>
                 <button 
                   onClick={handleCheckOut} 
                   disabled={checkingOut} 
@@ -537,7 +627,11 @@ export function AttendancePage({
             <div style={{ flex: 1 }}>
               <strong style={{ display: "block", color: "var(--ink)", fontSize: "1.05rem", marginBottom: "4px", fontWeight: 800 }}>Penyimpanan Eksternal</strong>
               <span style={{ color: "var(--muted)", fontSize: "0.9rem", wordBreak: "break-all" }}>
-                {selfieDriveFileId || "Menunggu foto tersimpan di sistem."}
+                {selfieUploadStatus === "pending"
+                  ? "Foto sedang diunggah. Absensi Anda sudah tercatat."
+                  : selfieUploadStatus === "failed"
+                    ? "Upload bukti belum berhasil. Admin tetap dapat melihat absensi Anda."
+                    : selfieDriveFileId || "Menunggu foto tersimpan di sistem."}
               </span>
             </div>
             <Cloud size={20} color="var(--muted)" />

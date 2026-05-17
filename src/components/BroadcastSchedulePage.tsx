@@ -2,18 +2,22 @@ import { useState, useEffect, type FormEvent } from "react";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, FileText, X, CalendarClock, Mic2 } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
-import { announcers, getProgramInfo, type BroadcastProgramSlot, type ProgramInfo } from "../data/radioData";
+import { announcers, getProgramInfo, type ProgramInfo } from "../data/radioData";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import {
+  formatScheduleDate,
+  getActualScheduleForDate,
+  getScheduleDayName,
+  getScheduleSlotId,
   mergeScheduleSlots,
-  mergeScheduleSlotsRemote,
-  saveCustomScheduleSlotRemote
+  parseScheduleDate,
+  saveScheduleOverrideRemote
 } from "../services/scheduleSlot.service";
-import { createSwapRequest } from "../services/scheduleSwap.service";
+import { getScheduleSwapAliasesForUser, submitSwapRequest } from "../services/scheduleSwap.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import { resolveAnnouncerText, type ResolvedAnnouncerPart } from "../utils/announcerResolver";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
-import type { AppUser } from "../types/domain";
+import type { AppUser, BroadcastProgramSlot } from "../types/domain";
 
 export function BroadcastSchedulePage({
   data,
@@ -25,10 +29,11 @@ export function BroadcastSchedulePage({
   onOpenAnnouncerProfile: (airName: string) => void;
 }) {
   const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
-  const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const today = new Date();
+  const todayDate = formatScheduleDate(today);
   const currentSlot = useCurrentBroadcastSlot();
-  const [activeDay, setActiveDay] = useState(days[todayIndex]);
-  const activeDayIndex = days.indexOf(activeDay);
+  const [selectedDate, setSelectedDate] = useState(todayDate);
+  const activeDay = getScheduleDayName(selectedDate);
   
   const [swapTarget, setSwapTarget] = useState<BroadcastProgramSlot | null>(null);
   const [swapReason, setSwapReason] = useState("");
@@ -51,7 +56,7 @@ export function BroadcastSchedulePage({
   useEffect(() => {
     let isMounted = true;
 
-    mergeScheduleSlotsRemote(data.weeklySchedule).then((slots: BroadcastProgramSlot[]) => {
+    getActualScheduleForDate(selectedDate, data.weeklySchedule as BroadcastProgramSlot[]).then((slots: BroadcastProgramSlot[]) => {
       if (isMounted) {
         setScheduleSlots(slots);
       }
@@ -60,7 +65,17 @@ export function BroadcastSchedulePage({
     return () => {
       isMounted = false;
     };
-  }, [data.weeklySchedule]);
+  }, [data.weeklySchedule, selectedDate]);
+
+  function setSelectedDayInCurrentWeek(day: string) {
+    const base = parseScheduleDate(selectedDate);
+    const currentMonday = new Date(base);
+    const currentDayIndex = currentMonday.getDay() === 0 ? 6 : currentMonday.getDay() - 1;
+    currentMonday.setDate(base.getDate() - currentDayIndex);
+    const nextDate = new Date(currentMonday);
+    nextDate.setDate(currentMonday.getDate() + days.indexOf(day));
+    setSelectedDate(formatScheduleDate(nextDate));
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -174,16 +189,27 @@ export function BroadcastSchedulePage({
     const targetDisplayName = targetAnnouncer?.airName || targetAnnouncer?.displayName || targetAnnouncerId;
 
     try {
-      await createSwapRequest({
+      const result = await submitSwapRequest({
         scheduleId: `${swapTarget.day}|${swapTarget.time}|${swapTarget.program}`,
+        targetDate: selectedDate,
         requesterId: session.user.id,
+        requesterAliases: getScheduleSwapAliasesForUser(session.user),
         targetAnnouncerId,
+        targetAnnouncerAliases: getScheduleSwapAliasesForUser(targetAnnouncer ?? targetAnnouncerId),
         reason: swapReason
+      }, {
+        requester: session.user,
+        targetAnnouncer
       });
 
       setScheduleNotice(
-        `Permintaan tukar jadwal ${swapTarget.program} (${swapTarget.day}, ${swapTarget.time}) ke ${targetDisplayName} dikirim ke admin.`
+        result.whatsappDelivered
+          ? `Permintaan tukar jadwal ${swapTarget.program} (${selectedDate}, ${swapTarget.time}) ke ${targetDisplayName} dikirim. Notifikasi WhatsApp terkirim.`
+          : `Permintaan tukar jadwal ${swapTarget.program} (${selectedDate}, ${swapTarget.time}) ke ${targetDisplayName} dikirim. Draft WhatsApp konfirmasi disiapkan.`
       );
+      if (!result.whatsappDelivered && result.whatsappUrl) {
+        window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
+      }
       setSwapTarget(null);
       setSwapReason("");
       setSwapAnnouncer("");
@@ -216,20 +242,34 @@ export function BroadcastSchedulePage({
       announcer: announcerName
     };
 
-    await saveCustomScheduleSlotRemote(nextSlot, editingSlot);
-    setScheduleSlots(await mergeScheduleSlotsRemote(data.weeklySchedule));
+    await saveScheduleOverrideRemote({
+      date: selectedDate,
+      slotId: editingSlot.id || getScheduleSlotId(editingSlot),
+      type: "replace",
+      newProgram: nextSlot.program,
+      newAnnouncer: nextSlot.announcer,
+      newTime: nextSlot.time,
+      description: nextSlot.description,
+      reason: "Edit jadwal dari halaman Jadwal Siaran",
+      createdBy: session?.user.id || "system"
+    });
+    setScheduleSlots(await getActualScheduleForDate(selectedDate, data.weeklySchedule as BroadcastProgramSlot[]));
     setEditingSlot(null);
-    setScheduleNotice(`Jadwal ${nextSlot.day}, ${nextSlot.time} diperbarui.`);
+    setScheduleNotice(`Jadwal aktual ${selectedDate}, ${nextSlot.time} diperbarui tanpa mengubah template mingguan.`);
   }
 
   const activeSlots = scheduleSlots.filter((slot: BroadcastProgramSlot) => slot.day === activeDay);
 
   function goToPreviousDay() {
-    setActiveDay(days[(activeDayIndex - 1 + days.length) % days.length]);
+    const date = parseScheduleDate(selectedDate);
+    date.setDate(date.getDate() - 1);
+    setSelectedDate(formatScheduleDate(date));
   }
 
   function goToNextDay() {
-    setActiveDay(days[(activeDayIndex + 1) % days.length]);
+    const date = parseScheduleDate(selectedDate);
+    date.setDate(date.getDate() + 1);
+    setSelectedDate(formatScheduleDate(date));
   }
 
   return (
@@ -256,7 +296,7 @@ export function BroadcastSchedulePage({
             {days.map((day) => (
               <button
                 key={day}
-                onClick={() => setActiveDay(day)}
+                onClick={() => setSelectedDayInCurrentWeek(day)}
                 className={activeDay === day ? "active" : ""}
                 type="button"
               >
@@ -273,6 +313,15 @@ export function BroadcastSchedulePage({
             <ChevronRight size={24} />
           </button>
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "var(--ink)" }}>
+          <CalendarClock size={18} color="var(--blue)" />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value || todayDate)}
+            style={{ border: "1px solid rgba(15,23,42,0.12)", borderRadius: "12px", padding: "10px 12px", fontWeight: 800, color: "var(--ink)", background: "white" }}
+          />
+        </label>
       </div>
 
       <div className="schedule-content">
@@ -281,7 +330,7 @@ export function BroadcastSchedulePage({
 
           <div className="schedule-slot-list">
             {activeSlots.map((slot: BroadcastProgramSlot) => {
-              const isCurrentlyPlaying = currentSlot.title === slot.program && days[todayIndex] === slot.day;
+              const isCurrentlyPlaying = selectedDate === todayDate && currentSlot.title === slot.program && getScheduleDayName(today) === slot.day;
               const announcerParts = resolveAnnouncerText(slot.announcer);
               const programInfo = getProgramInfo(slot.program);
 
@@ -311,6 +360,11 @@ export function BroadcastSchedulePage({
                           SEDANG SIARAN
                         </div>
                       )}
+                      {slot.source && slot.source !== "regular" && (
+                        <div className="schedule-live-badge" style={{ background: slot.isCancelled ? "#fee2e2" : "#eef5ff", color: slot.isCancelled ? "#dc2626" : "var(--blue)" }}>
+                          {slot.isCancelled ? "DIBATALKAN" : slot.source === "special" ? "KHUSUS" : "OVERRIDE"}
+                        </div>
+                      )}
                       <h3>{slot.program}</h3>
                       <div className="schedule-announcer">
                         <Mic2 size={14} color="#64748B" />
@@ -321,7 +375,14 @@ export function BroadcastSchedulePage({
                       <div className="schedule-time-pill">
                         <CalendarClock size={16} /> {slot.time} WITA
                       </div>
-                      <p className="schedule-slot-description">{programInfo.description}</p>
+                      <p className="schedule-slot-description">
+                        {slot.isCancelled ? `Slot dibatalkan. ${slot.reason || ""}` : programInfo.description}
+                      </p>
+                      {slot.originalAnnouncer && (
+                        <p className="schedule-slot-description" style={{ marginTop: 6 }}>
+                          Default: {slot.originalProgram || slot.program} - {slot.originalAnnouncer}
+                        </p>
+                      )}
                     </div>
 
                     <div className="schedule-slot-actions">
@@ -369,7 +430,7 @@ export function BroadcastSchedulePage({
             </div>
             <div className="schedule-modal-context">
               <strong>{swapTarget.program}</strong>
-              <span>{swapTarget.day}, {swapTarget.time}</span>
+              <span>{selectedDate}, {swapTarget.time}</span>
               <span>Penyiar Asli: {swapTarget.announcer}</span>
             </div>
             <form onSubmit={handleRequestSwap} className="schedule-modal-form">

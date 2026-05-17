@@ -1,12 +1,14 @@
-import type { AttendanceRecord } from "../types/domain";
+import type { AttendanceRecord, AttendanceSelfieUploadStatus } from "../types/domain";
 import { createDocument, listDocuments, queryDocuments, subscribeDocuments, updateDocument } from "./firestore.service";
 import { isWithinRadius, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { shouldUseLocalFallback } from "../lib/env";
 import { moduleFileRules, validateFile, type UploadCandidate } from "../utils/fileValidation";
-import { uploadAttendanceSelfieToStorage } from "./storage.service";
+import { uploadAttendanceSelfie } from "./googleDrive.service";
 
 const ATTENDANCE_CACHE_KEY = "radio-sbl-attendance-records";
 const MAX_LOCAL_ATTENDANCE = 50;
+const PENDING_SELFIE_UPLOAD_ID = "pending_upload";
+export const ATTENDANCE_SELFIE_UPLOAD_EVENT = "radio-sbl-attendance-selfie-upload";
 
 export type AttendanceCheckInInput = {
   userId: string;
@@ -22,6 +24,15 @@ export type AttendanceCheckInInput = {
   userAgent?: string;
   outOfOfficeReason?: string;
   attendanceType?: "present" | "sick" | "leave" | "out_of_office";
+  selfieUploadStatus?: AttendanceSelfieUploadStatus;
+  selfieUploadError?: string;
+};
+
+export type AttendanceSelfieUploadEventDetail = {
+  attendanceRecordId: string;
+  selfieDriveFileId: string;
+  selfieUploadStatus: AttendanceSelfieUploadStatus;
+  selfieUploadError?: string;
 };
 
 function getSafeLocalStorage(): Storage | null {
@@ -61,6 +72,26 @@ function writeLocalAttendanceRecord(record: AttendanceRecord) {
     ...readLocalAttendanceRecords().filter((item) => item.id !== record.id)
   ].slice(0, MAX_LOCAL_ATTENDANCE);
   storage.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(nextRecords));
+}
+
+function updateLocalAttendanceRecord(recordId: string, patch: Partial<AttendanceRecord>) {
+  const storage = getSafeLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  const nextRecords = readLocalAttendanceRecords().map((record) =>
+    record.id === recordId ? { ...record, ...patch } : record
+  );
+  storage.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(nextRecords));
+}
+
+function dispatchSelfieUploadEvent(detail: AttendanceSelfieUploadEventDetail) {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(ATTENDANCE_SELFIE_UPLOAD_EVENT, { detail }));
 }
 
 export function listLocalAttendanceRecords(): AttendanceRecord[] {
@@ -132,6 +163,8 @@ export function buildAttendanceRecordDraft(
     aiVerificationText: input.aiVerificationText || "",
     outOfOfficeReason: input.outOfOfficeReason || "",
     selfieDriveFileId: input.selfieDriveFileId || "",
+    selfieUploadStatus: input.selfieUploadStatus,
+    selfieUploadError: input.selfieUploadError || "",
     status
   };
 }
@@ -150,6 +183,7 @@ export async function checkIn(input: AttendanceCheckInInput): Promise<string> {
 export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Promise<{
   attendanceRecordId: string;
   selfieDriveFileId: string;
+  selfieUploadStatus: AttendanceSelfieUploadStatus;
 }> {
   const validation = validateFile(input.selfieFile, moduleFileRules.attendance);
 
@@ -164,7 +198,8 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     position: input.position,
     officeCenter: input.officeCenter,
     radiusMeters: input.radiusMeters,
-    selfieDriveFileId: "uploading...",
+    selfieDriveFileId: PENDING_SELFIE_UPLOAD_ID,
+    selfieUploadStatus: "pending",
     aiVerificationText: input.aiVerificationText,
     isAiValid: input.isAiValid,
     clientTime: input.clientTime,
@@ -180,23 +215,49 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     ...buildAttendanceRecordDraft(checkInInput)
   });
 
-  // Eksekusi upload di background agar tidak memblokir loading UI
-  uploadAttendanceSelfieToStorage(input.selfieFile, input.userId)
+  void uploadAttendanceSelfie(input.selfieFile, input.userId)
     .then((driveFile) => {
+      const patch: Partial<AttendanceRecord> = {
+        selfieDriveFileId: driveFile.driveFileId,
+        selfieUploadStatus: "uploaded",
+        selfieUploadError: ""
+      };
+      updateLocalAttendanceRecord(attendanceRecordId, patch);
+      dispatchSelfieUploadEvent({
+        attendanceRecordId,
+        selfieDriveFileId: driveFile.driveFileId,
+        selfieUploadStatus: "uploaded"
+      });
+
       if (!shouldUseLocalFallback()) {
-        updateDocument("attendanceRecords", attendanceRecordId, { selfieDriveFileId: driveFile.driveFileId }).catch(() => {});
+        return updateDocument("attendanceRecords", attendanceRecordId, patch).catch(() => undefined);
       }
+      return undefined;
     })
-    .catch((err) => {
-      console.error("Background upload gagal:", err);
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : "Upload bukti selfie gagal.";
+      const patch: Partial<AttendanceRecord> = {
+        selfieUploadStatus: "failed",
+        selfieUploadError: message
+      };
+      updateLocalAttendanceRecord(attendanceRecordId, patch);
+      dispatchSelfieUploadEvent({
+        attendanceRecordId,
+        selfieDriveFileId: PENDING_SELFIE_UPLOAD_ID,
+        selfieUploadStatus: "failed",
+        selfieUploadError: message
+      });
+
       if (!shouldUseLocalFallback()) {
-        updateDocument("attendanceRecords", attendanceRecordId, { selfieDriveFileId: "gagal_upload" }).catch(() => {});
+        return updateDocument("attendanceRecords", attendanceRecordId, patch).catch(() => undefined);
       }
+      return undefined;
     });
 
   return {
     attendanceRecordId,
-    selfieDriveFileId: "uploading..."
+    selfieDriveFileId: PENDING_SELFIE_UPLOAD_ID,
+    selfieUploadStatus: "pending"
   };
 }
 

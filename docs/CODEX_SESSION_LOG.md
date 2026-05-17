@@ -1824,7 +1824,7 @@ pm run typecheck\.
 ### Koreksi 17 Mei 2026 - Query Tukar Jadwal Tanpa Composite Index
 
 - Memperbaiki error Firestore di `ScheduleSwapPage`: query `schedule_swaps` tidak lagi menggabungkan `where(...)` dengan `orderBy("createdAt")`, sehingga tidak memicu kebutuhan composite index Firebase.
-- Urutan permintaan tukar jadwal sekarang dihitung di sisi aplikasi melalui helper `sortByNewest`, termasuk daftar user dan daftar admin `pending_admin`.
+- Urutan permintaan tukar jadwal sekarang dihitung di sisi aplikasi melalui helper `sortByNewest`.
 - Membersihkan beberapa warning di `ScheduleSwapPage`:
   - import ikon/type yang tidak dipakai dihapus;
   - `loadData` dibuat stabil dengan `useCallback`;
@@ -1991,6 +1991,173 @@ pm run typecheck\.
     - tombol tanpa label kosong: `0`.
   - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama `scratch/*.mjs`, unused import/variable, dan beberapa `any` di file non-perubahan.
 
+### Koreksi 17 Mei 2026 - Tukar Jadwal Tanpa Approval Admin
+
+- Menetapkan alur resmi pertukaran jadwal menjadi langsung antar penyiar:
+  - pemohon mengajukan permintaan dengan status `pending_target`;
+  - penyiar pengganti dapat menyetujui atau menolak;
+  - jika disetujui, override jadwal langsung dibuat dan status menjadi `approved`;
+  - jika ditolak, status menjadi `rejected`.
+- Membersihkan jalur lama approval admin:
+  - status `pending_admin` dihapus dari tipe domain dan Firestore rules;
+  - helper `getPendingSwapsForAdmin()` dihapus dari service tukar jadwal;
+  - komponen `AdminVerificationPage` dihapus karena tidak lagi menjadi bagian alur produk.
+- Merapikan label status pada halaman `Tukar Jadwal`:
+  - pemohon melihat `Menunggu rekan penyiar`;
+  - target pengganti melihat `Menunggu keputusan Anda`;
+  - status selesai menampilkan `Disetujui, jadwal diperbarui` atau `Ditolak`.
+- Verifikasi:
+  - `npx eslint src\components\ScheduleSwapPage.tsx src\services\scheduleSwap.service.ts src\types\domain.ts` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil.
+  - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama `scratch/*.mjs`, beberapa unused import/variable, dan beberapa `any` di file non-perubahan.
+
+### Koreksi 17 Mei 2026 - Hardening Tombol Tukar Jadwal
+
+- Memastikan ulang alur resmi tukar jadwal tetap tanpa antrean admin:
+  - pemohon mengajukan request;
+  - penyiar pengganti menyetujui atau menolak;
+  - approval langsung membuat override jadwal dan status menjadi `approved`.
+- Menambahkan fallback lokal di `scheduleSwap.service.ts` untuk mode test/demo atau saat Firestore belum siap/permission/offline:
+  - request tersimpan ke `localStorage`;
+  - riwayat tetap bisa dibaca oleh pemohon dan target;
+  - klik `Setujui` tetap mencatat override lokal agar UI tidak jatuh ke error.
+- Memperkuat resolve nama penyiar pengganti agar mode lokal langsung memakai katalog penyiar lokal, bukan memaksa baca Firestore.
+- Merapikan label form halaman `Tukar Jadwal` dengan `htmlFor`/`id` agar input tanggal, pilihan slot, pilihan penyiar, dan alasan bisa diakses aman oleh user maupun Playwright.
+- Menambahkan smoke test `src/e2e/schedule-swap.smoke.spec.ts`:
+  - seed sesi demo pemohon;
+  - kirim request tukar jadwal;
+  - ganti sesi ke penyiar pengganti;
+  - klik `Setujui`;
+  - validasi status `approved` dan override tercatat.
+- Verifikasi:
+  - `npx eslint src\e2e\schedule-swap.smoke.spec.ts src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 2 test mobile/desktop lulus.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 6 test lulus.
+
+### Koreksi 17 Mei 2026 - Notifikasi Target Tukar Jadwal
+
+- Memperbaiki kasus pengajuan sudah muncul di sisi pemohon, tetapi tidak muncul sebagai notifikasi/permintaan masuk di pihak penyiar pengganti.
+- Akar masalah:
+  - request bisa menyimpan `targetAnnouncerId` sebagai ID penyiar/WA seperti `wa-085...`, sementara akun login penyiar memakai UID Firebase berbeda;
+  - query lama hanya mencari `targetAnnouncerId == session.user.id`.
+- Perbaikan:
+  - `ScheduleSwapRequest` menambahkan metadata `requesterAliases` dan `targetAnnouncerAliases`;
+  - `createSwapRequest` mengisi alias dari UID, nomor WA, `wa-{nomor}`, `airName`, `displayName`, `employeeId`, dan `announcerNames`;
+  - `getMySwapRequests(session.user)` mencari berdasarkan UID, alias target, dan fallback kompatibel untuk request lama yang belum punya alias;
+  - label `PERMINTAAN MASUK` kini dihitung dengan helper `isIncomingScheduleSwap`, sehingga pemohon tidak salah dianggap target;
+  - badge notifikasi `Shell` mendengarkan beberapa alias target dan menghitung hanya status `pending_target`;
+  - alias disimpan dalam bentuk asli dan lowercase, sedangkan query produksi memakai alias yang bisa dibuktikan oleh rules (`uid`, WhatsApp, `wa-{nomor}`, nama udara, nama tampil, employeeId);
+  - listener notifikasi diberi error handler agar permission/index issue tidak memecah UI;
+  - Firestore rules mengizinkan read/update target berdasarkan alias penyiar.
+- Verifikasi:
+  - `npx eslint src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx src\components\BroadcastSchedulePage.tsx src\components\Shell.tsx src\e2e\schedule-swap.smoke.spec.ts src\types\domain.ts` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 2 test mobile/desktop lulus.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 6 test lulus.
+- Deploy produksi:
+  - `npx firebase-tools deploy --only firestore:rules --project radiosbl` berhasil.
+  - Ruleset Firestore: `projects/radiosbl/rulesets/04dd2099-8f27-44b7-ad50-d0a729f8534f`.
+  - `npx firebase-tools deploy --only hosting --project radiosbl` berhasil.
+  - Hosting version: `projects/671712527716/sites/radiosbl/versions/b6f33bd4656b2756`.
+  - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779024707949000`.
+  - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-alias-20260517` merespons HTTP 200 dan memuat bundle `index-WiyIZXia`.
+
+### Koreksi 17 Mei 2026 - Audit Lanjutan Tukar Jadwal Produksi
+
+- Audit lanjutan dilakukan setelah laporan pengguna bahwa alur masih belum berhasil.
+- Akar risiko produksi yang ditemukan:
+  - approval membuat schedule override dengan `createdBy` dari `targetAnnouncerId`, padahal rules mewajibkan `createdBy == request.auth.uid`;
+  - sebagian profil penyiar memakai UID Firebase berbeda dari ID WA/penyiar, sehingga target perlu dibuktikan lewat alias;
+  - query alias yang berjalan paralel bisa gagal total kalau satu query terkena `permission-denied`;
+  - badge notifikasi hanya mendengarkan `targetAnnouncerAliases`, sehingga request lama yang hanya punya `targetAnnouncerId` masih bisa luput.
+- Perbaikan:
+  - `updateSwapStatus` sekarang menerima aktor login dan approval menyimpan override dengan `createdBy` UID akun yang menyetujui;
+  - `ScheduleSwapPage` meneruskan `session.user` saat klik `Setujui` atau `Tolak`;
+  - query daftar permintaan memakai helper recoverable sehingga satu query alias yang gagal tidak menjatuhkan seluruh daftar;
+  - query alias resmi menambahkan `announcerNames` agar cocok dengan profil penyiar hasil sinkronisasi;
+  - badge notifikasi `Shell` ikut membaca request legacy berbasis `targetAnnouncerId`;
+  - Firestore rules diperkuat agar field opsional aman dicek dengan guard, menerima bukti `announcerNames`, dan approval target hanya valid dari status `pending_target`;
+  - jalur admin lama tetap tidak dipakai sebagai alur resmi.
+- Verifikasi:
+  - `npx eslint src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx src\components\BroadcastSchedulePage.tsx src\components\Shell.tsx src\e2e\schedule-swap.smoke.spec.ts src\types\domain.ts` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil dan menghasilkan bundle `index-B1MP49Pk.js`.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 2 test mobile/desktop lulus.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 6 test lulus.
+- Deploy produksi:
+  - `npx firebase-tools deploy --only firestore:rules --project radiosbl` berhasil.
+  - Ruleset Firestore: `projects/radiosbl/rulesets/9d8f86da-39af-4daa-8726-1ea28068bc80`.
+  - `npx firebase-tools deploy --only hosting --project radiosbl` berhasil.
+  - Hosting version: `projects/671712527716/sites/radiosbl/versions/9cc4e1064aa784ec`.
+  - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779026090645000`.
+  - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-direct-fix-20260517` merespons HTTP 200 dan memuat bundle `index-B1MP49Pk.js`.
+- Catatan operasional:
+  - Request yang dibuat sebelum patch alias mungkin perlu dikirim ulang jika dokumen lamanya tidak memiliki alias dan `targetAnnouncerId` tidak cocok dengan UID/WA target.
+  - Jika target masih tidak melihat permintaan baru, cek dokumen `users/{uid}` target: minimal `active: true`, role penyiar/admin, serta `whatsapp`, `airName`, atau `announcerNames` harus sesuai data penyiar.
+
+### Koreksi 17 Mei 2026 - Audit Tanggal Tukar Jadwal
+
+- Audit dilakukan karena alur lama pernah berhasil saat hanya memilih jadwal program, lalu rawan berubah setelah field `Tanggal Tukar` ditambahkan.
+- Perbaikan:
+  - `targetDate` sekarang wajib dinormalisasi di `scheduleSwap.service.ts` dengan format `YYYY-MM-DD`;
+  - request tanpa tanggal valid langsung gagal sebelum disimpan, sehingga tidak diam-diam memakai tanggal hari ini;
+  - approval jadwal memakai `targetDate` yang dipilih sebagai tanggal `scheduleOverrides.date`;
+  - Firestore rules mewajibkan `targetDate` pada payload `schedule_swaps`;
+  - smoke test Playwright diperketat untuk memverifikasi tanggal muncul di pemohon, muncul di target, tersimpan sebagai `swap.targetDate`, dan override memakai tanggal yang sama.
+- Simulasi mandiri:
+  - pemohon `Miah` memilih tanggal `2026-05-18`;
+  - memilih slot siaran pada hari Senin;
+  - mengirim ke `Amar`;
+  - sesi target `Amar` melihat permintaan masuk pada tanggal yang sama;
+  - target klik `Setujui`;
+  - test memastikan status `approved`, `override.date == 2026-05-18`, dan `createdBy` adalah UID target.
+- Verifikasi:
+  - `npx eslint src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx src\components\BroadcastSchedulePage.tsx src\components\Shell.tsx src\e2e\schedule-swap.smoke.spec.ts src\types\domain.ts` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 2 test mobile/desktop lulus.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-DfA9pxwY.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 6 test lulus.
+- Deploy produksi:
+  - Ruleset Firestore: `projects/radiosbl/rulesets/318ceb7d-9a79-489d-b95f-fc179ddd36fa`.
+  - Hosting version: `projects/671712527716/sites/radiosbl/versions/81eb98a19cbde785`.
+  - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779026626565000`.
+  - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-date-fix-20260517` merespons HTTP 200 dan memuat bundle `index-DfA9pxwY.js`.
+- Catatan operasional:
+  - request lama yang dibuat sebelum field tanggal diwajibkan sebaiknya dikirim ulang, karena approval baru sengaja tidak memakai fallback tanggal hari ini.
+
+### Koreksi 17 Mei 2026 - WhatsApp Konfirmasi Tukar Jadwal
+
+- Menambahkan notifikasi WhatsApp untuk penyiar pengganti saat request tukar jadwal dibuat.
+- Perbaikan:
+  - service tukar jadwal menambahkan `submitSwapRequest()` yang menyimpan request, membuat teks WA, membuat link konfirmasi, dan mencoba mengirim via `sendWhatsAppNotification`;
+  - isi pesan WA memuat pemohon, tanggal tukar, jadwal/program, alasan, dan link konfirmasi;
+  - link konfirmasi memakai `?page=scheduleSwap&swapId=...` agar penyiar pengganti diarahkan ke halaman Tukar Jadwal setelah login;
+  - jika proxy WhatsApp aktif, pesan dikirim otomatis;
+  - jika proxy belum aktif, UI membuka draft WhatsApp `wa.me/api.whatsapp.com` agar pemohon bisa mengirim manual;
+  - alur dari halaman `Tukar Jadwal` dan modal tukar di halaman `Jadwal` sama-sama memakai jalur baru ini.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx src\components\BroadcastSchedulePage.tsx src\e2e\schedule-swap.smoke.spec.ts src\services\whatsappNotification.service.ts` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-ZW2RNGDI.js`.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 2 test mobile/desktop lulus; test memastikan draft WhatsApp berisi nomor target, teks permintaan, dan `page=scheduleSwap`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 6 test lulus.
+- Deploy produksi:
+  - Hosting version: `projects/671712527716/sites/radiosbl/versions/ee8ccd9fa25ed8aa`.
+  - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779027381112000`.
+  - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-wa-link-20260517` merespons HTTP 200 dan memuat bundle `index-ZW2RNGDI.js`.
+- Catatan operasional:
+  - Pengiriman otomatis penuh membutuhkan `VITE_WHATSAPP_PROXY_ENDPOINT` mengarah ke proxy WhatsApp dan secret WhatsApp Cloud API aktif; tanpa itu, fallback draft WhatsApp tetap berjalan.
+
 ### Koreksi 17 Mei 2026 - Compact Konfigurasi Naskah AI
 
 - Menyesuaikan layout halaman `Buat Naskah AI`:
@@ -2009,3 +2176,33 @@ pm run typecheck\.
     - desktop 1440x900: panel konfigurasi `286px`, area hasil `756px`, editor `640px`;
     - teks `Gemini 2.5 Flash` tetap tidak muncul di UI.
   - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama `scratch/*.mjs`, unused import/variable, dan beberapa `any` di file non-perubahan.
+
+### Koreksi 17 Mei 2026 - Realtime Tukar Jadwal
+
+- Menjawab catatan pengguna bahwa permintaan/jawaban tukar jadwal sebelumnya sudah bekerja, tetapi perlu refresh untuk melihat notifikasi dan status.
+- Perbaikan:
+  - `scheduleSwap.service.ts` menambahkan `subscribeMySwapRequests()` berbasis Firestore `onSnapshot`;
+  - subscription membaca request sebagai pemohon, target UID, target alias, dan request legacy berbasis `targetAnnouncerId`;
+  - hasil beberapa listener digabung dan dideduplikasi agar daftar tidak dobel;
+  - error query alias yang recoverable tidak menjatuhkan seluruh halaman;
+  - mode lokal/demo memakai event `sbl_schedule_swaps_changed` dan `storage` agar dua tab Playwright bisa melihat perubahan tanpa reload;
+  - `ScheduleSwapPage` kini memakai subscription realtime, bukan memuat ulang manual setelah submit/approve;
+  - target melihat `Menunggu keputusan Anda` segera setelah pemohon mengirim;
+  - pemohon melihat `Disetujui, jadwal diperbarui` atau `Ditolak` segera setelah target menjawab.
+- Alur resmi tetap sama:
+  - pemohon -> penyiar pengganti setuju/tolak -> jika setuju jadwal langsung diperbarui;
+  - tidak ada antrean/approval admin.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\services\scheduleSwap.service.ts src\components\ScheduleSwapPage.tsx src\e2e\schedule-swap.smoke.spec.ts` berhasil.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus termasuk simulasi realtime tanpa refresh.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-DKEk9RuI.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 8 test lulus.
+- Deploy produksi:
+  - `npx firebase-tools deploy --only hosting --project radiosbl` berhasil.
+  - Hosting version: `projects/671712527716/sites/radiosbl/versions/15e9dd744eb09045`.
+  - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779028062546000`.
+  - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-realtime-20260517` merespons HTTP 200 dan memuat bundle `index-DKEk9RuI.js`.
+- Catatan:
+  - Firestore rules tidak dideploy ulang untuk perubahan realtime ini karena tidak ada perubahan rules setelah patch tanggal/alias terakhir.

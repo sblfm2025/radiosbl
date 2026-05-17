@@ -101,16 +101,19 @@ export function DashboardPage({
   onNavigate, 
   onLogout,
   onAirAnnouncer, 
+  onAirAnnouncers,
   attendanceRecords 
 }: { 
   session: AuthSession, 
   onNavigate: (page: PageKey) => void, 
   onLogout: () => void,
   onAirAnnouncer: string, 
+  onAirAnnouncers?: string[],
   attendanceRecords: AttendanceRecord[] 
 }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showAllMenu, setShowAllMenu] = useState(false);
+  const [activeAnnouncerIndex, setActiveAnnouncerIndex] = useState(0);
   const [scheduleSlots, setScheduleSlots] = useState<BroadcastProgramSlot[]>(weeklyBroadcastSchedule);
   const currentSlot = useCurrentBroadcastSlot();
   
@@ -138,10 +141,30 @@ export function DashboardPage({
     return findNextBroadcastProgram(new Date(), scheduleSlots);
   }, [currentSlot.time, scheduleSlots]);
 
-  const displayAnnouncer = useMemo(() => {
-    if (attendanceRecords.length === 0) return "";
-    return onAirAnnouncer;
-  }, [attendanceRecords, onAirAnnouncer]);
+  const playerAnnouncers = useMemo(() => {
+    const names = onAirAnnouncers && onAirAnnouncers.length > 0
+      ? onAirAnnouncers
+      : onAirAnnouncer.split(/\s+\/\s+/).filter(Boolean);
+    return names;
+  }, [onAirAnnouncer, onAirAnnouncers]);
+  const playerAnnouncerKey = playerAnnouncers.join("|");
+
+  useEffect(() => {
+    setActiveAnnouncerIndex(0);
+
+    if (playerAnnouncers.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveAnnouncerIndex((current) => (current + 1) % playerAnnouncers.length);
+    }, 4_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [playerAnnouncerKey, playerAnnouncers.length]);
+
+  const displayAnnouncer = playerAnnouncers[activeAnnouncerIndex % Math.max(playerAnnouncers.length, 1)] ?? "";
+  const displayAnnouncerTitle = playerAnnouncers.join(" / ");
   const hasTrackCoverArt = Boolean(metadata.albumArtUrl && !metadata.albumArtUrl.includes("LogoSBL"));
   const nextProgramInfo = nextSlot ? getProgramInfo(nextSlot.program) : null;
 
@@ -308,6 +331,7 @@ export function DashboardPage({
                       <Headphones size={14} strokeWidth={2.5} />
                       <button 
                         onClick={() => onNavigate("announcers")}
+                        title={displayAnnouncerTitle}
                         style={{ background: "transparent", border: "none", color: "inherit", padding: 0, font: "inherit", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
                       >
                         {displayAnnouncer}

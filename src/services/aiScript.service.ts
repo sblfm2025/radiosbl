@@ -40,21 +40,28 @@ function buildDemoScript(request: ProgramScriptRequest): string {
 
 function buildGeminiPrompt(request: ProgramScriptRequest): string {
   return [
-    "Susun naskah siaran radio profesional untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
-    "Gunakan bahasa Indonesia yang hangat, natural, singkat, dan siap dibaca penyiar.",
+    "Susun naskah siaran radio profesional, kekinian, dan adaptif untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
+    "Gunakan bahasa Indonesia yang hangat, natural, dan siap dibaca penyiar (spoken style).",
+    "",
+    "===== KEARIFAN LOKAL & IDENTITAS RADIO =====",
+    "- WAJIB gunakan sapaan khas pendengar: \"Sobat Bumi Lasinrang\".",
+    "- WAJIB selipkan tagline radio: \"Suara Pinrang, Suara Kita\".",
+    "- Selipkan pendekatan kearifan lokal Kabupaten Pinrang dan suku Bugis secara halus (misal menyapa 'Aga kareba', 'Salama', atau menyebut daerah-daerah di Pinrang jika relevan). Jangan terlalu kaku, buat terasa akrab dan merakyat.",
+    "",
+    "===== ATURAN PENULISAN =====",
     "ATURAN MUTLAK: JANGAN gunakan kalimat basa-basi pengantar (seperti 'Tentu, ini naskahnya'). JANGAN mencetak ulang Header/Metadata (seperti Judul Program, Nama Penyiar, Hari, Jam, Durasi).",
-    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang fakta spesifik di luar konteks. Jika butuh data riil, tulis placeholder yang mudah diisi penyiar.",
+    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang berita palsu. Jika butuh data riil (seperti nomor WA interaksi atau judul lagu), tulis placeholder dalam kurung siku yang mudah diisi penyiar.",
     "",
     `[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:`,
     `Program: ${request.programTitle}`,
     `Hari/Jam: ${request.day}, ${request.scheduleTime}`,
-    `Penyiar aktif: ${request.announcerName || "Belum terdeteksi"}`,
+    `Penyiar aktif: Kak ${request.announcerName || "Belum terdeteksi"}`,
     `Durasi target: ${request.durationMinutes} menit`,
-    `Gaya: ${request.tone}`,
+    `Gaya siaran: ${request.tone}`,
     `Deskripsi program: ${request.description || "-"}`,
     request.intervention ? `Arahan penyiar: ${request.intervention}` : "",
     "",
-    "Format teks langsung dimulai dengan bagian: Opening, Bridge/Isi, Cue Lagu/Interaksi, Closing."
+    "Format struktur teks dibagi menjadi: === OPENING ===, === SEGMENT/ISI ===, [CUE LAGU/IKLAN], === CLOSING ==="
   ].filter(Boolean).join("\n");
 }
 
@@ -107,4 +114,55 @@ export async function generateProgramScript(
       text: buildDemoScript(request)
     };
   }
+}
+
+export async function rewriteProgramScript(
+  currentText: string,
+  mode: "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional"
+): Promise<string> {
+  const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
+  
+  if (!keysString || import.meta.env.MODE === "test") {
+    throw new Error("Kunci API Gemini tidak ditemukan atau berjalan di mode lokal.");
+  }
+
+  const genAI = getGenAIClient();
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  let modeInstruction = "";
+  switch (mode) {
+    case "formal": modeInstruction = "Ubah menjadi sangat formal, baku, dan sopan."; break;
+    case "santai": modeInstruction = "Ubah menjadi santai, hangat, dan kasual ala ngobrol."; break;
+    case "singkat": modeInstruction = "Ringkas naskah ini agar jauh lebih pendek tanpa menghilangkan inti pesannya."; break;
+    case "energik": modeInstruction = "Ubah menjadi sangat bersemangat, menggebu-gebu, dan penuh energi positif."; break;
+    case "anak-muda": modeInstruction = "Ubah menggunakan gaya bahasa gaul anak muda Gen-Z kekinian namun tetap sopan."; break;
+    case "profesional": modeInstruction = "Ubah menjadi berkelas, elegan, dan profesional untuk target pendengar kelas atas."; break;
+  }
+
+  const prompt = `
+    Tugas Anda adalah menulis ulang (rewrite) naskah siaran radio berikut ini.
+    
+    Instruksi Spesifik: ${modeInstruction}
+    
+    ATURAN MUTLAK:
+    - JANGAN menambah kata pengantar (seperti "Ini hasil revisinya").
+    - JANGAN mengubah atau menghilangkan "Sobat Bumi Lasinrang" dan "Suara Pinrang, Suara Kita" jika ada.
+    - Pertahankan marka segmen (seperti === OPENING === atau [CUE LAGU]).
+    - LANGSUNG cetak teks hasil revisi.
+    
+    NASKAH ASLI:
+    """
+    ${currentText}
+    """
+  `;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+
+  if (!text) {
+    throw new Error("AI mengembalikan respon kosong.");
+  }
+
+  return text.trim();
 }

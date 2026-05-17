@@ -92,7 +92,8 @@ describe("attendance payload", () => {
       })
     ).resolves.toEqual({
       attendanceRecordId: "demo-attendance-user-1",
-      selfieDriveFileId: "demo-attendance-user-1-selfie"
+      selfieDriveFileId: "pending_upload",
+      selfieUploadStatus: "pending"
     });
   });
 
@@ -128,6 +129,11 @@ describe("attendance payload", () => {
       displayName: "Salmiah",
       airName: "Miah",
       status: "present"
+    });
+    await Promise.resolve();
+    expect(listLocalAttendanceRecords()[0]).toMatchObject({
+      selfieDriveFileId: "demo-attendance-user-3-selfie",
+      selfieUploadStatus: "uploaded"
     });
     await expect(listAttendanceRecords()).resolves.toHaveLength(1);
   });

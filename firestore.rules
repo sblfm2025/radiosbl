@@ -69,8 +69,26 @@ service cloud.firestore {
     function ownsAnnouncer(announcerId) {
       return isActiveUser()
         && (
-          currentUser().announcerId == announcerId
-          || currentUser().employeeId == announcerId
+          (('announcerId' in currentUser()) && currentUser().announcerId == announcerId)
+          || (('employeeId' in currentUser()) && currentUser().employeeId == announcerId)
+          || (('whatsapp' in currentUser()) && currentUser().whatsapp == announcerId)
+          || (('whatsapp' in currentUser()) && ('wa-' + currentUser().whatsapp) == announcerId)
+          || (('airName' in currentUser()) && currentUser().airName == announcerId)
+          || (('announcerNames' in currentUser()) && currentUser().announcerNames is list && currentUser().announcerNames.hasAny([announcerId]))
+        );
+    }
+
+    function hasAnnouncerAlias(aliases) {
+      return isActiveUser()
+        && aliases is list
+        && (
+          request.auth.uid in aliases
+          || (('whatsapp' in currentUser()) && currentUser().whatsapp in aliases)
+          || (('whatsapp' in currentUser()) && ('wa-' + currentUser().whatsapp) in aliases)
+          || (('airName' in currentUser()) && currentUser().airName in aliases)
+          || (('displayName' in currentUser()) && currentUser().displayName in aliases)
+          || (('employeeId' in currentUser()) && currentUser().employeeId in aliases)
+          || (('announcerNames' in currentUser()) && currentUser().announcerNames is list && currentUser().announcerNames.hasAny(aliases))
         );
     }
 
@@ -259,31 +277,84 @@ service cloud.firestore {
         'aiVerificationText',
         'outOfOfficeReason',
         'selfieDriveFileId',
+        'selfieUploadStatus',
+        'selfieUploadError',
         'status',
         'createdAt',
         'updatedAt'
       ])
       && hasAll(['userId', 'checkInAt', 'latitude', 'longitude', 'selfieDriveFileId', 'status'])
+      && (!('selfieUploadStatus' in request.resource.data)
+        || validStatus(request.resource.data.selfieUploadStatus, ['pending', 'uploaded', 'failed']))
       && validStatus(request.resource.data.status, ['present', 'late', 'outside_radius', 'sick', 'leave', 'needs_review', 'rejected', 'valid']);
     }
 
     function validSwapPayload() {
       return hasOnly([
         'scheduleId',
+        'targetDate',
         'requesterId',
         'targetAnnouncerId',
+        'requesterAliases',
+        'targetAnnouncerAliases',
         'reason',
         'status',
         'createdAt',
         'updatedAt'
       ])
-      && hasAll(['scheduleId', 'requesterId', 'targetAnnouncerId', 'reason', 'status'])
+      && hasAll(['scheduleId', 'targetDate', 'requesterId', 'targetAnnouncerId', 'reason', 'status'])
+      && request.resource.data.targetDate is string
       && validStatus(request.resource.data.status, [
         'pending_target',
-        'pending_admin',
         'approved',
         'rejected'
       ]);
+    }
+
+    function validScheduleOverridePayload() {
+      return hasOnly([
+        'date',
+        'slotId',
+        'type',
+        'newProgram',
+        'newAnnouncer',
+        'newTime',
+        'description',
+        'reason',
+        'sourceSwapId',
+        'createdBy',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['date', 'slotId', 'type', 'reason', 'createdBy'])
+      && validStatus(request.resource.data.type, [
+        'replace',
+        'add',
+        'cancel',
+        'reschedule',
+        'activate_optional'
+      ]);
+    }
+
+    function sourceSwapPath() {
+      return /databases/$(database)/documents/schedule_swaps/$(request.resource.data.sourceSwapId);
+    }
+
+    function canCreateOverrideFromPendingSwap() {
+      return signedIn()
+        && request.resource.data.sourceSwapId is string
+        && request.resource.data.createdBy == request.auth.uid
+        && exists(sourceSwapPath())
+        && (
+          get(sourceSwapPath()).data.targetAnnouncerId == request.auth.uid
+          || ownsAnnouncer(get(sourceSwapPath()).data.targetAnnouncerId)
+          || hasAnnouncerAlias(get(sourceSwapPath()).data.targetAnnouncerAliases)
+        )
+        && get(sourceSwapPath()).data.status == 'pending_target'
+        && (
+          !('targetDate' in get(sourceSwapPath()).data)
+          || request.resource.data.date == get(sourceSwapPath()).data.targetDate
+        );
     }
 
     function validComplaintPayload() {
@@ -434,7 +505,13 @@ service cloud.firestore {
           isOwner(resource.data.userId)
           && request.resource.data.userId == resource.data.userId
           && validAttendancePayload()
-          && changedOnly(['checkOutAt', 'updatedAt'])
+          && changedOnly([
+            'checkOutAt',
+            'selfieDriveFileId',
+            'selfieUploadStatus',
+            'selfieUploadError',
+            'updatedAt'
+          ])
         )
       );
       allow delete: if isAdmin();
@@ -462,19 +539,30 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /scheduleOverrides/{overrideId} {
+      allow read: if signedIn();
+      allow create: if validScheduleOverridePayload()
+        && (canManageSchedule() || canCreateOverrideFromPendingSwap());
+      allow update: if canManageSchedule() && validScheduleOverridePayload();
+      allow delete: if isAdmin();
+    }
+
     match /schedule_swaps/{requestId} {
       allow read: if isLeader()
         || isOwner(resource.data.requesterId)
         || isOwner(resource.data.targetAnnouncerId)
-        || ownsAnnouncer(resource.data.targetAnnouncerId);
+        || ownsAnnouncer(resource.data.targetAnnouncerId)
+        || hasAnnouncerAlias(resource.data.requesterAliases)
+        || hasAnnouncerAlias(resource.data.targetAnnouncerAliases);
       allow create: if isOwner(request.resource.data.requesterId)
         && validSwapPayload()
         && request.resource.data.status == 'pending_target';
       allow update: if validSwapPayload()
         && (
-          isLeader()
+          (canManageSchedule() && changedOnly(['status', 'updatedAt']))
           || (
-            (isOwner(resource.data.targetAnnouncerId) || ownsAnnouncer(resource.data.targetAnnouncerId))
+            (isOwner(resource.data.targetAnnouncerId) || ownsAnnouncer(resource.data.targetAnnouncerId) || hasAnnouncerAlias(resource.data.targetAnnouncerAliases))
+            && resource.data.status == 'pending_target'
             && request.resource.data.requesterId == resource.data.requesterId
             && request.resource.data.targetAnnouncerId == resource.data.targetAnnouncerId
             && changedOnly(['status', 'updatedAt'])

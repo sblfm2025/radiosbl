@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useState, useEffect, useMemo, useRef, type FormEvent } from "react";
 import { ChevronRight, Radio, Play, Pause, Volume2, ChevronLeft } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { SongRequest } from "../types/domain";
@@ -10,19 +10,30 @@ import { subscribeSongRequests, submitSongRequest } from "../services/songReques
 export function StreamingPage({
   data,
   onAirAnnouncer,
+  onAirAnnouncers,
   onExit
 }: {
   data: DashboardSnapshot;
   onAirAnnouncer: string;
+  onAirAnnouncers?: string[];
   onExit: () => void;
 }) {
   const currentSlot = useCurrentBroadcastSlot();
-  const currentAnnouncer = onAirAnnouncer;
+  const [activeAnnouncerIndex, setActiveAnnouncerIndex] = useState(0);
+  const presentAnnouncers = useMemo(() => {
+    const names = onAirAnnouncers && onAirAnnouncers.length > 0
+      ? onAirAnnouncers
+      : onAirAnnouncer.split(/\s+\/\s+/).filter(Boolean);
+    return names;
+  }, [onAirAnnouncer, onAirAnnouncers]);
+  const presentAnnouncerKey = presentAnnouncers.join("|");
+  const currentAnnouncer = presentAnnouncers[activeAnnouncerIndex % Math.max(presentAnnouncers.length, 1)] ?? "";
+  const activeAnnouncerAirName = currentAnnouncer.replace(/\s*\([^)]*\)\s*$/, "").trim();
   const firstScheduledAnnouncer = currentSlot.type === "main"
     ? currentSlot.announcer.split(/\s*(?:\/|&|,)\s*/)[0]
     : "";
   const activeAnnouncerProfile = currentAnnouncer
-    ? findAnnouncerProfile(firstScheduledAnnouncer)
+    ? findAnnouncerProfile(activeAnnouncerAirName) ?? findAnnouncerProfile(firstScheduledAnnouncer)
     : null;
 
   const {
@@ -46,6 +57,20 @@ export function StreamingPage({
   const [requestFormOpen, setRequestFormOpen] = useState(false);
   const scrollTargetRef = useRef<HTMLHeadingElement>(null);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveAnnouncerIndex(0);
+
+    if (presentAnnouncers.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveAnnouncerIndex((current) => (current + 1) % presentAnnouncers.length);
+    }, 4_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [presentAnnouncerKey, presentAnnouncers.length]);
 
   // Auto-slide history
   useEffect(() => {
@@ -186,7 +211,7 @@ export function StreamingPage({
       <div className="streaming-content">
         <div className="streaming-col" style={{ position: "relative" }}>
           {/* Giant Logo with Radial Spectrum */}
-          <div style={{ position: "relative", width: "190px", height: "190px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px", zIndex: 1 }}>
+          <div style={{ position: "relative", width: "160px", height: "160px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px", zIndex: 1 }}>
              {/* Inner Static Rings */}
              <div style={{ position: "absolute", inset: "-10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%", pointerEvents: "none" }}></div>
              <div style={{ position: "absolute", inset: "-20px", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "50%", pointerEvents: "none" }}></div>
@@ -208,7 +233,7 @@ export function StreamingPage({
                  }}>
                     <div style={{
                       position: "absolute",
-                      top: "125px",
+                      top: "100px",
                       left: 0,
                       width: "100%",
                       background: "rgba(255,255,255,0.9)",
@@ -246,24 +271,27 @@ export function StreamingPage({
           <p style={{ margin: "0 0 4px", fontSize: "1rem", opacity: 0.9, textAlign: "center", zIndex: 1, position: "relative" }}>{metadata.artist || "SBL RADIO"}</p>
           <p style={{ margin: "0 0 4px", fontSize: "0.85rem", opacity: 0.8 }}>Program: {currentSlot.title}</p>
           {currentAnnouncer && (
-            <p style={{ margin: "0 0 4px", fontSize: "0.85rem", opacity: 0.8 }}>
+            <p
+              title={presentAnnouncers.join(" / ")}
+              style={{ margin: "0 0 4px", fontSize: "0.85rem", opacity: 0.8 }}
+            >
               Penyiar: {currentAnnouncer}
             </p>
           )}
           <p style={{ margin: "0 0 20px", fontSize: "0.85rem", opacity: 0.8 }}>{currentSlot.time} WITA</p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "20px", width: "100%", maxWidth: "340px", marginBottom: "24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "10px", width: "100%", maxWidth: "340px", marginBottom: "24px" }}>
              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-               <span style={{ padding: "8px 16px", minWidth: "120px", boxSizing: "border-box", borderRadius: "999px", background: "rgba(255,255,255,0.15)", fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap", textAlign: "center", display: "inline-block" }}>{stationFrequency}</span>
+               <span style={{ padding: "8px 12px", borderRadius: "999px", background: "rgba(255,255,255,0.15)", fontSize: "0.75rem", fontWeight: 800, whiteSpace: "nowrap", textAlign: "center" }}>{stationFrequency}</span>
              </div>
              <button 
                onClick={togglePlayback}
-               style={{ width: "80px", height: "80px", borderRadius: "50%", background: "white", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 10px 20px rgba(0,0,0,0.2)" }}
+               style={{ width: "68px", height: "68px", flexShrink: 0, borderRadius: "50%", background: "white", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 10px 20px rgba(0,0,0,0.2)" }}
              >
-               {playing ? <Pause size={36} color="#1665D8" /> : <Play size={36} color="#1665D8" style={{ marginLeft: "4px" }} />}
+               {playing ? <Pause size={32} color="#1665D8" /> : <Play size={32} color="#1665D8" style={{ marginLeft: "4px" }} />}
              </button>
              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-               <span style={{ padding: "8px 16px", minWidth: "120px", boxSizing: "border-box", borderRadius: "999px", background: metadata.isOnline ? "#FF4B4B" : "rgba(255,255,255,0.15)", fontSize: "0.8rem", fontWeight: 800, whiteSpace: "nowrap", textAlign: "center", display: "inline-block" }}>{metadata.isOnline ? "ON AIR" : "OFF AIR"}</span>
+               <span style={{ padding: "8px 12px", borderRadius: "999px", background: metadata.isOnline ? "#FF4B4B" : "rgba(255,255,255,0.15)", fontSize: "0.75rem", fontWeight: 800, whiteSpace: "nowrap", textAlign: "center" }}>{metadata.isOnline ? "ON AIR" : "OFF AIR"}</span>
              </div>
           </div>
 

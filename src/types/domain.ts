@@ -51,6 +51,7 @@ export type DriveFile = {
 };
 
 export type AttendanceStatus = "present" | "late" | "outside_radius" | "valid" | "needs_review" | "rejected" | "sick" | "leave";
+export type AttendanceSelfieUploadStatus = "pending" | "uploaded" | "failed";
 
 export type AttendanceRecord = {
   id: string;
@@ -69,6 +70,8 @@ export type AttendanceRecord = {
   aiVerificationText?: string;
   outOfOfficeReason?: string;
   selfieDriveFileId: string;
+  selfieUploadStatus?: AttendanceSelfieUploadStatus;
+  selfieUploadError?: string;
   status: AttendanceStatus;
 };
 
@@ -82,11 +85,38 @@ export type BroadcastProgram = {
 };
 
 export type BroadcastProgramSlot = {
+  id?: string;
   day: string;
   time: string;
   program: string;
   description: string;
   announcer: string;
+  date?: string;
+  source?: "regular" | "override" | "special";
+  overrideType?: ScheduleOverrideType;
+  originalProgram?: string;
+  originalAnnouncer?: string;
+  originalTime?: string;
+  isCancelled?: boolean;
+  reason?: string;
+};
+
+export type ScheduleOverrideType = "replace" | "add" | "cancel" | "reschedule" | "activate_optional";
+
+export type ScheduleOverride = {
+  id: string;
+  date: string;
+  slotId: string;
+  type: ScheduleOverrideType;
+  newProgram?: string;
+  newAnnouncer?: string;
+  newTime?: string;
+  description?: string;
+  reason: string;
+  sourceSwapId?: string;
+  createdBy: string;
+  createdAt: TimestampLike;
+  updatedAt?: TimestampLike;
 };
 
 export type BroadcastSchedule = {
@@ -106,10 +136,13 @@ export type BroadcastSchedule = {
 export type ScheduleSwapRequest = {
   id: string;
   scheduleId: string;
+  targetDate?: string;
   requesterId: string;
   targetAnnouncerId: string;
+  requesterAliases?: string[];
+  targetAnnouncerAliases?: string[];
   reason: string;
-  status: "pending_target" | "pending_admin" | "approved" | "rejected";
+  status: "pending_target" | "approved" | "rejected";
   createdAt: TimestampLike;
   updatedAt?: TimestampLike;
 };

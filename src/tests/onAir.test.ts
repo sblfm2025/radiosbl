@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveOnAirAnnouncerFromAttendance } from "../services/onAir.service";
-import type { AttendanceRecord } from "../types/domain";
+import {
+  resolveOnAirAnnouncerFromAttendance,
+  resolveOnAirAnnouncersFromAttendance
+} from "../services/onAir.service";
+import type { AppUser, AttendanceRecord } from "../types/domain";
 import type { CurrentBroadcastSlot } from "../utils/scheduleClock";
 
 const slot: CurrentBroadcastSlot = {
@@ -14,7 +17,7 @@ const slot: CurrentBroadcastSlot = {
 };
 
 describe("on air announcer resolver", () => {
-  it("shows scheduled announcer only when matching attendance exists", () => {
+  it("shows scheduled announcer when matching attendance exists", () => {
     const records: AttendanceRecord[] = [
       {
         id: "attendance-1",
@@ -40,5 +43,132 @@ describe("on air announcer resolver", () => {
 
   it("hides announcer when the scheduled person has not checked in", () => {
     expect(resolveOnAirAnnouncerFromAttendance(slot, [], new Date("2026-05-15T02:00:00.000Z"))).toBe("");
+  });
+
+  it("returns every checked-in announcer for multi-announcer programs", () => {
+    const multiSlot: CurrentBroadcastSlot = {
+      ...slot,
+      announcer: "Miah / Amar"
+    };
+    const records: AttendanceRecord[] = [
+      {
+        id: "attendance-1",
+        userId: "user-1",
+        displayName: "Salmiah",
+        airName: "Miah",
+        checkInAt: "2026-05-15T01:00:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-1",
+        status: "present"
+      },
+      {
+        id: "attendance-2",
+        userId: "user-2",
+        displayName: "Akhmad Amiruddin",
+        airName: "Amar",
+        checkInAt: "2026-05-15T01:05:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-2",
+        status: "needs_review"
+      }
+    ];
+
+    expect(resolveOnAirAnnouncersFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
+      "Miah (Salmiah)",
+      "Amar (Akhmad Amiruddin)"
+    ]);
+    expect(resolveOnAirAnnouncerFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toBe(
+      "Miah (Salmiah) / Amar (Akhmad Amiruddin)"
+    );
+  });
+
+  it("matches older attendance records by WhatsApp user id when airName is missing", () => {
+    const records: AttendanceRecord[] = [
+      {
+        id: "attendance-1",
+        userId: "08114441006",
+        displayName: "Pengguna Radio SBL",
+        checkInAt: "2026-05-15T01:00:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-1",
+        status: "present"
+      }
+    ];
+
+    expect(resolveOnAirAnnouncerFromAttendance(slot, records, new Date("2026-05-15T02:00:00.000Z"))).toBe(
+      "Miah (Salmiah)"
+    );
+  });
+
+  it("matches attendance Firebase uid through registered user profile", () => {
+    const users: AppUser[] = [
+      {
+        id: "firebase-uid-amar",
+        email: "amar@example.com",
+        displayName: "Akhmad Amiruddin",
+        role: "announcer",
+        airName: "Amar",
+        announcerNames: ["Amar"],
+        whatsapp: "085397286112",
+        active: true
+      }
+    ];
+    const records: AttendanceRecord[] = [
+      {
+        id: "attendance-1",
+        userId: "firebase-uid-amar",
+        displayName: "Akun Login Radio",
+        checkInAt: "2026-05-15T01:00:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-1",
+        status: "present"
+      }
+    ];
+    const amarSlot: CurrentBroadcastSlot = {
+      ...slot,
+      announcer: "Amar"
+    };
+
+    expect(resolveOnAirAnnouncerFromAttendance(amarSlot, records, new Date("2026-05-15T02:00:00.000Z"), users)).toBe(
+      "Amar (Akhmad Amiruddin)"
+    );
+  });
+
+  it("matches active announcers when attendance names contain schedule air names", () => {
+    const multiSlot: CurrentBroadcastSlot = {
+      ...slot,
+      announcer: "Amar & Riska / Tokoh / Komunitas"
+    };
+    const records: AttendanceRecord[] = [
+      {
+        id: "attendance-1",
+        userId: "firebase-uid-amar",
+        displayName: "Akhmad Amiruddin",
+        checkInAt: "2026-05-15T01:00:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-1",
+        status: "present"
+      },
+      {
+        id: "attendance-2",
+        userId: "firebase-uid-riska",
+        displayName: "Riska Dwi Ayanti",
+        checkInAt: "2026-05-15T01:05:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-2",
+        status: "present"
+      }
+    ];
+
+    expect(resolveOnAirAnnouncersFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
+      "Amar (Akhmad Amiruddin)",
+      "Riska (Riska Dwiayanti)"
+    ]);
   });
 });

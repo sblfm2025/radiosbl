@@ -79,10 +79,17 @@ function toMainSlot(slot: BroadcastProgramSlot): CurrentBroadcastSlot {
 }
 
 export function findCurrentBroadcastSlot(date = new Date()): CurrentBroadcastSlot {
+  return findCurrentBroadcastSlotFromSchedule(date, weeklyBroadcastSchedule);
+}
+
+export function findCurrentBroadcastSlotFromSchedule(
+  date = new Date(),
+  schedule: BroadcastProgramSlot[] = weeklyBroadcastSchedule
+): CurrentBroadcastSlot {
   const day = getIndonesianDay(date);
   const minutes = getMinutesOfDay(date);
 
-  const mainSlot = weeklyBroadcastSchedule.find(
+  const mainSlot = schedule.find(
     (slot) => slot.day === day && isWithinTimeRange(minutes, slot.time)
   );
 

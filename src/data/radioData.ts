@@ -535,6 +535,7 @@ export const announcerBreakdown = [
 ];
 
 export type AnnouncerProfile = {
+  id?: string;
   fullName: string;
   airName: string;
   scheduleNames: string[];

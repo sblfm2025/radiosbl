@@ -46,6 +46,18 @@ function getDurationLabel(checkIn: Date, checkOut?: Date | null): string {
   return `${mins}m`;
 }
 
+function isPreviewableSelfieReference(value: string): boolean {
+  return /^(https?:|data:image\/|blob:)/i.test(value);
+}
+
+function getSelfieViewUrl(value: string): string {
+  if (isPreviewableSelfieReference(value)) {
+    return value;
+  }
+
+  return `https://drive.google.com/file/d/${encodeURIComponent(value)}/view`;
+}
+
 function toWeekInputValue(date: Date): string {
   const target = new Date(date);
   target.setHours(0, 0, 0, 0);
@@ -630,6 +642,8 @@ function SidePanelDetail({ record, user, session, onReview }: { record: Attendan
   const checkInAt = toDate(record.checkInAt);
   const mapUrl = `https://www.google.com/maps?q=${record.latitude},${record.longitude}`;
   const isAdmin = session && ["super_admin", "admin"].includes(session.user.role);
+  const selfieUrl = record.selfieDriveFileId ? getSelfieViewUrl(record.selfieDriveFileId) : "";
+  const canPreviewSelfie = record.selfieDriveFileId ? isPreviewableSelfieReference(record.selfieDriveFileId) : false;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -653,9 +667,21 @@ function SidePanelDetail({ record, user, session, onReview }: { record: Attendan
       <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
         <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><Camera size={16} /> Verifikasi Selfie</h5>
         {record.selfieDriveFileId ? (
-          <div style={{ position: "relative", width: "100%", paddingTop: "100%", borderRadius: "12px", overflow: "hidden", background: "#e2e8f0" }}>
-            <img src={record.selfieDriveFileId} alt="Selfie" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
+          <>
+            {canPreviewSelfie ? (
+              <div style={{ position: "relative", width: "100%", paddingTop: "100%", borderRadius: "12px", overflow: "hidden", background: "#e2e8f0" }}>
+                <img src={record.selfieDriveFileId} alt="Selfie" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            ) : (
+              <div style={{ padding: "24px 16px", textAlign: "center", background: "#e2e8f0", borderRadius: "12px", color: "var(--muted)" }}>
+                <Camera size={32} style={{ opacity: 0.3, margin: "0 auto 8px" }} />
+                <p style={{ margin: "0 0 12px", fontSize: "0.8rem", fontWeight: 700, wordBreak: "break-all" }}>{record.selfieDriveFileId}</p>
+                <a href={selfieUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 14px", borderRadius: "10px", background: "white", color: "var(--ink)", textDecoration: "none", fontWeight: 800, fontSize: "0.82rem" }}>
+                  Buka bukti selfie
+                </a>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ padding: "32px 16px", textAlign: "center", background: "#e2e8f0", borderRadius: "12px", color: "var(--muted)" }}>
             <Camera size={32} style={{ opacity: 0.2, margin: "0 auto 8px" }} />

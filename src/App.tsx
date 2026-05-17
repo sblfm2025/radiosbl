@@ -4,7 +4,7 @@ import {
   useMemo,
   useState
 } from "react";
-import { CalendarClock, ChevronRight, Mic2, Radio, UsersRound } from "lucide-react";
+import { CalendarClock, Mic2, Radio, UsersRound } from "lucide-react";
 
 // Components
 import { Shell } from "./components/Shell";
@@ -54,27 +54,55 @@ import {
   listAttendanceRecords,
   subscribeAttendanceRecords
 } from "./services/attendance.service";
-import { resolveOnAirAnnouncerFromAttendance } from "./services/onAir.service";
+import {
+  resolveOnAirAnnouncerFromAttendance,
+  resolveOnAirAnnouncersFromAttendance
+} from "./services/onAir.service";
 import {
   signOut,
   subscribeToSession,
   type AuthSession
 } from "./services/auth.service";
+import { listUserProfiles } from "./services/userProfile.service";
 
 // Utils & Hooks
 import { getAnnouncerWorkload } from "./utils/announcerResolver";
-import type { AttendanceRecord } from "./types/domain";
+import type { AppUser, AttendanceRecord } from "./types/domain";
 import { useCurrentBroadcastSlot } from "./hooks/useCurrentBroadcastSlot";
 
 // Styles
 import "./styles/app.css";
 
+function getInitialPageFromUrl(): PageKey | null {
+  if (typeof window === "undefined") return null;
+
+  const page = new URLSearchParams(window.location.search).get("page");
+  const allowedPages: PageKey[] = [
+    "dashboard",
+    "announcers",
+    "announcerProfile",
+    "attendance",
+    "schedule",
+    "streaming",
+    "liveOb",
+    "coverage",
+    "podcast",
+    "requests",
+    "complaints",
+    "aiScript",
+    "users",
+    "scheduleSwap",
+    "attendanceReport",
+    "profile"
+  ];
+
+  return allowedPages.includes(page as PageKey) ? (page as PageKey) : null;
+}
+
 function AnnouncersPage({
-  data,
-  onOpenAnnouncerProfile
+  data
 }: {
   data: DashboardSnapshot;
-  onOpenAnnouncerProfile: (airName: string) => void;
 }) {
   const totalSlots = data.announcerProfiles.reduce(
     (sum, announcer) => sum + getAnnouncerWorkload(announcer.airName).slotCount,
@@ -192,6 +220,7 @@ export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [userProfiles, setUserProfiles] = useState<AppUser[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardSnapshot>({
     stats: dashboardStats,
     programs: todayPrograms,
@@ -223,12 +252,14 @@ export default function App() {
   useEffect(() => {
     if (!session) {
       setAttendanceRecords([]);
+      setUserProfiles([]);
       return;
     }
 
     const unsubscribe = subscribeAttendanceRecords(setAttendanceRecords);
 
     void listAttendanceRecords().then(setAttendanceRecords);
+    void listUserProfiles().then(setUserProfiles);
 
     return () => {
       unsubscribe();
@@ -242,11 +273,13 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = subscribeToSession((restoredSession) => {
+      const requestedPage = getInitialPageFromUrl();
       setSession(restoredSession);
       if (restoredSession) {
-        setActivePage("dashboard");
+        setActivePage(requestedPage || "dashboard");
       } else {
         setActivePage((prev) => {
+          if (requestedPage) return "login";
           if (prev === "splash") return prev;
           return "login";
         });
@@ -267,8 +300,12 @@ export default function App() {
 
   const currentSlot = useCurrentBroadcastSlot();
   const currentAnnouncer = useMemo(
-    () => resolveOnAirAnnouncerFromAttendance(currentSlot, attendanceRecords),
-    [attendanceRecords, currentSlot]
+    () => resolveOnAirAnnouncerFromAttendance(currentSlot, attendanceRecords, new Date(), userProfiles),
+    [attendanceRecords, currentSlot, userProfiles]
+  );
+  const currentAnnouncers = useMemo(
+    () => resolveOnAirAnnouncersFromAttendance(currentSlot, attendanceRecords, new Date(), userProfiles),
+    [attendanceRecords, currentSlot, userProfiles]
   );
 
   const page = useMemo(() => {
@@ -280,7 +317,7 @@ export default function App() {
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              setActivePage("dashboard");
+              setActivePage(getInitialPageFromUrl() || "dashboard");
             }}
           />
         );
@@ -288,13 +325,7 @@ export default function App() {
         return <AttendancePage data={dashboardData} session={session} onAttendanceRecorded={refreshAttendanceRecords} />;
       case "announcers":
         return (
-          <AnnouncersPage
-            data={dashboardData}
-            onOpenAnnouncerProfile={(airName) => {
-              setSelectedAnnouncerAirName(airName);
-              setActivePage("announcerProfile");
-            }}
-          />
+          <AnnouncersPage data={dashboardData} />
         );
       case "announcerProfile":
         return (
@@ -316,7 +347,14 @@ export default function App() {
           />
         );
       case "streaming":
-        return <StreamingPage data={dashboardData} onAirAnnouncer={currentAnnouncer} onExit={() => setActivePage("dashboard")} />;
+        return (
+          <StreamingPage
+            data={dashboardData}
+            onAirAnnouncer={currentAnnouncer}
+            onAirAnnouncers={currentAnnouncers}
+            onExit={() => setActivePage("dashboard")}
+          />
+        );
       case "liveOb":
         return <LiveObPage data={dashboardData} />;
       case "coverage":
@@ -342,7 +380,7 @@ export default function App() {
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              setActivePage("dashboard");
+              setActivePage(getInitialPageFromUrl() || "dashboard");
             }}
           />
         );
@@ -354,6 +392,7 @@ export default function App() {
             onNavigate={setActivePage} 
             onLogout={handleLogout}
             onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
           />
         ) : null;
@@ -361,6 +400,7 @@ export default function App() {
   }, [
     activePage,
     currentAnnouncer,
+    currentAnnouncers,
     dashboardData,
     handleLogout,
     attendanceRecords,
