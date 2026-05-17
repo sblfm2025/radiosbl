@@ -5,6 +5,7 @@ import {
   Headphones,
   Home,
   Mic2,
+  Menu,
   Radio,
   ShieldCheck,
   UsersRound,
@@ -36,7 +37,8 @@ export type PageKey =
   | "users"
   | "scheduleSwap"
   | "attendanceReport"
-  | "profile";
+  | "profile"
+  | "menu";
 
 import type { Permission } from "../types/domain";
 
@@ -64,7 +66,13 @@ export const primaryNav: NavItem[] = [
   { key: "complaints", label: "Aduan", icon: Bell, requiredPermission: "complaints:submit" }
 ];
 
-export const bottomNav = primaryNav;
+export const bottomNav: NavItem[] = [
+  { key: "dashboard", label: "Beranda", icon: Home, requiredPermission: "dashboard:read" },
+  { key: "schedule", label: "Jadwal", icon: CalendarDays, requiredPermission: "schedule:read" },
+  { key: "attendance", label: "Absensi", icon: ClipboardCheck, requiredPermission: "attendance:self" },
+  { key: "requests", label: "Request", icon: Headphones, requiredPermission: "complaints:submit" },
+  { key: "menu", label: "Menu", icon: Menu }
+];
 
 export const dashboardStats = [
   { label: "Pegawai hadir", value: "28", change: "+6 dari kemarin" },

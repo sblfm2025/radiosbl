@@ -1,8 +1,8 @@
-import { useState, useEffect, type FormEvent } from "react";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, FileText, X, CalendarClock, Mic2 } from "lucide-react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, FileText, X, CalendarClock, Mic2, Radio, Search, RotateCcw, Headphones, Sparkles, PlayCircle } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
-import { announcers, getProgramInfo, type ProgramInfo } from "../data/radioData";
+import { announcers, getProgramInfo, type PageKey, type ProgramInfo } from "../data/radioData";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import {
   formatScheduleDate,
@@ -19,17 +19,51 @@ import { resolveAnnouncerText, type ResolvedAnnouncerPart } from "../utils/annou
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import type { AppUser, BroadcastProgramSlot } from "../types/domain";
 
+type ScheduleProgramParts = {
+  primary: string;
+  optional?: string;
+};
+
+function splitProgramParts(program: string): ScheduleProgramParts {
+  const parts = program.split(/\s+\/\s+/).map((part) => part.trim()).filter(Boolean);
+  return {
+    primary: parts[0] || program,
+    optional: parts.length > 1 ? parts.slice(1).join(" / ") : undefined
+  };
+}
+
+function getScheduleStatusLabel(slot: BroadcastProgramSlot, isLive: boolean): string {
+  if (isLive) return "Sedang Berjalan";
+  if (slot.isCancelled || slot.overrideType === "cancel") return "Dibatalkan";
+  if (slot.overrideType === "activate_optional") return "Tentative Aktif";
+  if (slot.source === "special") return "Khusus";
+  if (slot.source === "override") return "Pengganti";
+  if (splitProgramParts(slot.program).optional) return "Tentative";
+  return "Reguler";
+}
+
+function getScheduleStatusClass(slot: BroadcastProgramSlot, isLive: boolean): string {
+  if (isLive) return "live";
+  if (slot.isCancelled || slot.overrideType === "cancel") return "cancelled";
+  if (slot.overrideType === "activate_optional" || splitProgramParts(slot.program).optional) return "tentative";
+  if (slot.source === "special") return "special";
+  if (slot.source === "override") return "replacement";
+  return "regular";
+}
+
 export function BroadcastSchedulePage({
   data,
   session,
-  onOpenAnnouncerProfile
+  onOpenAnnouncerProfile,
+  onNavigate
 }: {
   data: DashboardSnapshot;
   session: AuthSession | null;
   onOpenAnnouncerProfile: (airName: string) => void;
+  onNavigate: (page: PageKey) => void;
 }) {
   const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const todayDate = formatScheduleDate(today);
   const currentSlot = useCurrentBroadcastSlot();
   const [selectedDate, setSelectedDate] = useState(todayDate);
@@ -48,6 +82,8 @@ export function BroadcastSchedulePage({
   const [announcerName, setAnnouncerName] = useState("");
   const [description, setDescription] = useState("");
   const [scheduleNotice, setScheduleNotice] = useState("");
+  const [scheduleQuery, setScheduleQuery] = useState("");
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState("all");
   const [selectedProgram, setSelectedProgram] = useState<{
     slot: BroadcastProgramSlot;
     info: ProgramInfo;
@@ -215,7 +251,7 @@ export function BroadcastSchedulePage({
       setSwapAnnouncer("");
     } catch (err) {
       console.error("Gagal mengirim permintaan tukar jadwal:", err);
-      alert("Gagal mengirim permintaan tukar jadwal. Coba lagi nanti.");
+      setScheduleNotice("Gagal mengirim permintaan tukar jadwal. Periksa koneksi internet, lalu coba lagi.");
     }
   };
 
@@ -259,6 +295,38 @@ export function BroadcastSchedulePage({
   }
 
   const activeSlots = scheduleSlots.filter((slot: BroadcastProgramSlot) => slot.day === activeDay);
+  const liveSlot = activeSlots.find((slot) => selectedDate === todayDate && currentSlot.title === slot.program && getScheduleDayName(today) === slot.day);
+  const scheduleFilterActive = scheduleQuery.trim().length > 0 || scheduleStatusFilter !== "all";
+  const filteredActiveSlots = useMemo(() => {
+    const normalizedQuery = scheduleQuery.trim().toLowerCase();
+
+    return activeSlots.filter((slot) => {
+      const isCurrentlyPlaying = selectedDate === todayDate && currentSlot.title === slot.program && getScheduleDayName(today) === slot.day;
+      const statusClass = getScheduleStatusClass(slot, isCurrentlyPlaying);
+      const statusLabel = getScheduleStatusLabel(slot, isCurrentlyPlaying);
+      const programParts = splitProgramParts(slot.program);
+      const programInfo = getProgramInfo(programParts.primary);
+      const text = [
+        slot.program,
+        slot.announcer,
+        slot.time,
+        slot.description,
+        programInfo.description,
+        statusLabel,
+        programParts.optional
+      ].filter(Boolean).join(" ").toLowerCase();
+      const matchesQuery = !normalizedQuery || text.includes(normalizedQuery);
+      const matchesStatus = scheduleStatusFilter === "all" || statusClass === scheduleStatusFilter;
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [activeSlots, currentSlot.title, scheduleQuery, scheduleStatusFilter, selectedDate, today, todayDate]);
+  const ownedSlots = activeSlots.filter((slot) => isSlotOwnedByUser(slot));
+  const tentativeSlots = activeSlots.filter((slot) => {
+    const isCurrentlyPlaying = selectedDate === todayDate && currentSlot.title === slot.program && getScheduleDayName(today) === slot.day;
+    return getScheduleStatusClass(slot, isCurrentlyPlaying) === "tentative";
+  });
+  const nextPrioritySlot = liveSlot ?? ownedSlots[0] ?? activeSlots[0];
 
   function goToPreviousDay() {
     const date = parseScheduleDate(selectedDate);
@@ -270,6 +338,11 @@ export function BroadcastSchedulePage({
     const date = parseScheduleDate(selectedDate);
     date.setDate(date.getDate() + 1);
     setSelectedDate(formatScheduleDate(date));
+  }
+
+  function navigateFromProgramDetail(page: PageKey) {
+    setSelectedProgram(null);
+    onNavigate(page);
   }
 
   return (
@@ -313,13 +386,12 @@ export function BroadcastSchedulePage({
             <ChevronRight size={24} />
           </button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "var(--ink)" }}>
-          <CalendarClock size={18} color="var(--blue)" />
+        <label className="schedule-date-picker">
+          <CalendarClock size={18} />
           <input
             type="date"
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value || todayDate)}
-            style={{ border: "1px solid rgba(15,23,42,0.12)", borderRadius: "12px", padding: "10px 12px", fontWeight: 800, color: "var(--ink)", background: "white" }}
           />
         </label>
       </div>
@@ -328,11 +400,98 @@ export function BroadcastSchedulePage({
         <section className="schedule-list-panel" aria-label={`Jadwal hari ${activeDay}`}>
           {scheduleNotice && <p className="schedule-notice">{scheduleNotice}</p>}
 
+          <div className="schedule-date-summary">
+            <div>
+              <p className="eyebrow">Jadwal Aktual</p>
+              <h2>{activeDay}, {selectedDate}</h2>
+              <span>
+                {scheduleFilterActive
+                  ? `${filteredActiveSlots.length} dari ${activeSlots.length} slot terlihat`
+                  : `${activeSlots.length} slot siaran`}
+              </span>
+            </div>
+            <div className="schedule-date-summary-live">
+              <Radio size={18} />
+              <span>{liveSlot ? liveSlot.program : "Belum ada program live di tanggal ini"}</span>
+            </div>
+          </div>
+
+          <div className="schedule-command-panel">
+            <label className="schedule-search-field">
+              <Search size={18} />
+              <span>Cari jadwal</span>
+              <input
+                value={scheduleQuery}
+                onChange={(event) => setScheduleQuery(event.target.value)}
+                placeholder="Program, penyiar, jam..."
+              />
+            </label>
+            <label className="schedule-filter-field">
+              <span>Status</span>
+              <select
+                value={scheduleStatusFilter}
+                onChange={(event) => setScheduleStatusFilter(event.target.value)}
+              >
+                <option value="all">Semua status</option>
+                <option value="live">Sedang berjalan</option>
+                <option value="regular">Reguler</option>
+                <option value="tentative">Tentative</option>
+                <option value="replacement">Pengganti</option>
+                <option value="special">Khusus</option>
+                <option value="cancelled">Dibatalkan</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="schedule-focus-row" aria-label="Fokus jadwal">
+            <article className="schedule-focus-card live">
+              <span>Prioritas</span>
+              <strong>{nextPrioritySlot ? nextPrioritySlot.program : "Belum ada slot"}</strong>
+              <p>{nextPrioritySlot ? `${nextPrioritySlot.time} WITA - ${nextPrioritySlot.announcer}` : "Pilih hari lain untuk melihat rundown."}</p>
+            </article>
+            <article className="schedule-focus-card">
+              <span>Slot saya</span>
+              <strong>{ownedSlots.length}</strong>
+              <p>{ownedSlots[0] ? `${ownedSlots[0].program} pukul ${ownedSlots[0].time}` : "Tidak ada jadwal pribadi di hari ini."}</p>
+            </article>
+            <article className="schedule-focus-card warning">
+              <span>Tentative</span>
+              <strong>{tentativeSlots.length}</strong>
+              <p>{tentativeSlots[0] ? tentativeSlots[0].program : "Tidak ada slot tentative."}</p>
+            </article>
+          </div>
+
           <div className="schedule-slot-list">
-            {activeSlots.map((slot: BroadcastProgramSlot) => {
+            {activeSlots.length === 0 && (
+              <div className="schedule-empty-state">
+                <CalendarClock size={26} />
+                <strong>Belum ada jadwal hari ini.</strong>
+                <p>Pilih tanggal lain atau hubungi admin bila jadwal seharusnya sudah tersedia.</p>
+              </div>
+            )}
+            {activeSlots.length > 0 && filteredActiveSlots.length === 0 && (
+              <div className="schedule-empty-state">
+                <Search size={26} />
+                <strong>Jadwal tidak ditemukan.</strong>
+                <p>Coba kata kunci lain atau tampilkan semua status untuk melihat rundown hari ini.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleQuery("");
+                    setScheduleStatusFilter("all");
+                  }}
+                >
+                  <RotateCcw size={16} /> Reset filter
+                </button>
+              </div>
+            )}
+            {filteredActiveSlots.map((slot: BroadcastProgramSlot) => {
               const isCurrentlyPlaying = selectedDate === todayDate && currentSlot.title === slot.program && getScheduleDayName(today) === slot.day;
               const announcerParts = resolveAnnouncerText(slot.announcer);
-              const programInfo = getProgramInfo(slot.program);
+              const programParts = splitProgramParts(slot.program);
+              const programInfo = getProgramInfo(programParts.primary);
+              const statusLabel = getScheduleStatusLabel(slot, isCurrentlyPlaying);
+              const statusClass = getScheduleStatusClass(slot, isCurrentlyPlaying);
 
               return (
                 <div
@@ -354,18 +513,17 @@ export function BroadcastSchedulePage({
                       <img src={programInfo.imageUrl} alt="" />
                     </div>
                     <div className="schedule-slot-copy">
-                      {isCurrentlyPlaying && (
-                        <div className="schedule-live-badge">
-                          <span />
-                          SEDANG SIARAN
+                      <div className={`schedule-status-badge ${statusClass}`}>
+                        {isCurrentlyPlaying && <span />}
+                        {statusLabel}
+                      </div>
+                      <h3>{programParts.primary}</h3>
+                      {programParts.optional && (
+                        <div className="schedule-tentative-row">
+                          <span>Tentative</span>
+                          <strong>{programParts.optional}</strong>
                         </div>
                       )}
-                      {slot.source && slot.source !== "regular" && (
-                        <div className="schedule-live-badge" style={{ background: slot.isCancelled ? "#fee2e2" : "#eef5ff", color: slot.isCancelled ? "#dc2626" : "var(--blue)" }}>
-                          {slot.isCancelled ? "DIBATALKAN" : slot.source === "special" ? "KHUSUS" : "OVERRIDE"}
-                        </div>
-                      )}
-                      <h3>{slot.program}</h3>
                       <div className="schedule-announcer">
                         <Mic2 size={14} color="#64748B" />
                         <span className="schedule-announcer-links">
@@ -379,7 +537,7 @@ export function BroadcastSchedulePage({
                         {slot.isCancelled ? `Slot dibatalkan. ${slot.reason || ""}` : programInfo.description}
                       </p>
                       {slot.originalAnnouncer && (
-                        <p className="schedule-slot-description" style={{ marginTop: 6 }}>
+                        <p className="schedule-slot-description schedule-slot-default">
                           Default: {slot.originalProgram || slot.program} - {slot.originalAnnouncer}
                         </p>
                       )}
@@ -395,6 +553,7 @@ export function BroadcastSchedulePage({
                           }}
                           className="schedule-icon-button"
                           title="Tukar Jadwal"
+                          aria-label={`Ajukan tukar jadwal ${slot.program}`}
                         >
                           <ArrowLeftRight size={16} />
                         </button>
@@ -408,6 +567,7 @@ export function BroadcastSchedulePage({
                           }}
                           className="schedule-icon-button warning"
                           title="Edit Jadwal"
+                          aria-label={`Edit jadwal ${slot.program}`}
                         >
                           <FileText size={16} />
                         </button>
@@ -449,7 +609,7 @@ export function BroadcastSchedulePage({
                 </select>
               </label>
               {replacementCandidates.length === 0 && (
-                <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+                <p className="schedule-modal-help">
                   Tidak ada daftar penyiar pengganti. Silakan perbarui profil user atau hubungi admin.
                 </p>
               )}
@@ -484,6 +644,24 @@ export function BroadcastSchedulePage({
               <span><Mic2 size={16} /> {selectedProgram.slot.announcer}</span>
             </div>
             <p className="program-detail-description">{selectedProgram.info.description}</p>
+            <div className="program-detail-workflow" aria-label="Aksi lanjutan program">
+              <button type="button" onClick={() => navigateFromProgramDetail("aiScript")}>
+                <Sparkles size={16} />
+                <span>Buat naskah</span>
+              </button>
+              <button type="button" onClick={() => navigateFromProgramDetail("requests")}>
+                <Headphones size={16} />
+                <span>Request</span>
+              </button>
+              <button type="button" onClick={() => navigateFromProgramDetail("streaming")}>
+                <PlayCircle size={16} />
+                <span>Streaming</span>
+              </button>
+              <button type="button" onClick={() => navigateFromProgramDetail("liveOb")}>
+                <Radio size={16} />
+                <span>Live/OB</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

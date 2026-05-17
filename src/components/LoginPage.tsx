@@ -116,105 +116,6 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
 
   return (
     <main className="login-page-container">
-      <style>
-        {`
-          .auth-logo-showcase {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 32px;
-            perspective: 1000px;
-          }
-          .auth-logo-showcase::before,
-          .auth-logo-showcase::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 140px;
-            height: 140px;
-            border-radius: 36px;
-            border: 3px solid rgba(255, 255, 255, 0.4);
-            animation: signalPulse 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
-            z-index: 1;
-            pointer-events: none;
-          }
-          .auth-logo-showcase::after {
-            animation-delay: 1.5s;
-          }
-          .showcase-fx {
-            width: 140px;
-            height: auto;
-            border-radius: 28px;
-            box-shadow: 0 24px 48px rgba(0,0,0,0.25);
-            animation: pulseLogo 2s ease-in-out infinite alternate;
-            border: 2px solid rgba(255,255,255,0.1);
-            position: relative;
-            z-index: 2;
-          }
-          .mobile-showcase-fx {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
-            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-            animation: pulseLogo 2s ease-in-out infinite alternate;
-            border: 2px solid rgba(255,255,255,0.05);
-            position: relative;
-            z-index: 2;
-          }
-          @keyframes pulseLogo {
-            0% { transform: scale(1); box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 0 20px rgba(255,255,255,0.05); }
-            100% { transform: scale(1.05); box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 60px rgba(255,255,255,0.2); }
-          }
-          @keyframes signalPulse {
-            0% {
-              width: 140px;
-              height: 140px;
-              opacity: 0.8;
-              border-width: 4px;
-            }
-            100% {
-              width: 280px;
-              height: 280px;
-              opacity: 0;
-              border-width: 0px;
-            }
-          }
-          .login-page-container {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            align-items: center !important;
-            min-height: 100dvh !important;
-          }
-          .login-form-panel {
-            width: 100%;
-            max-width: 480px !important;
-            margin: auto !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-          }
-          .auth-form-card {
-            margin: auto 0;
-          }
-          @media (min-width: 1024px) {
-            .login-page-container {
-              flex-direction: row !important;
-              align-items: stretch !important;
-            }
-            .login-brand-panel {
-              flex: 1.2 !important;
-              background: linear-gradient(135deg, #1665D8 0%, #0D47A1 100%) !important;
-            }
-            .login-form-panel {
-              flex: 0.8 !important;
-            }
-          }
-        `}
-      </style>
       <div className="auth-background" aria-hidden="true" />
 
       <section className="login-brand-panel" aria-label="Identitas Radio SBL">
@@ -254,7 +155,7 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
       <div className="login-form-panel">
         <div className="auth-form-card">
           <div className="auth-form-header">
-            <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}>
+            <div className="auth-mobile-logo-wrap">
               <img src="/logoapp.png" alt="SBL" className="mobile-showcase-fx" />
             </div>
             <div className="auth-mode-tabs" role="tablist" aria-label="Pilih mode akun">

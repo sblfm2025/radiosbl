@@ -1,15 +1,45 @@
-import { useState, useEffect, type FormEvent } from "react";
-import { Users, Shield, CheckCircle, XCircle, Search, Save, RefreshCcw, KeyRound, Mic, RadioTower, Video, ChevronRight, Activity, CalendarClock, Eye } from "lucide-react";
+import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  ChevronRight,
+  Eye,
+  KeyRound,
+  Mic,
+  RefreshCcw,
+  Save,
+  Search,
+  Shield,
+  Users,
+  Video,
+  X,
+  XCircle
+} from "lucide-react";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { listUserProfiles, upsertUserProfile, syncSblStaff } from "../services/userProfile.service";
 import { subscribeAttendanceRecords } from "../services/attendance.service";
 import { getRoleLabel } from "../utils/rbac";
 import type { AppUser, UserRole, AttendanceRecord } from "../types/domain";
 import { getFirebaseAuth } from "../lib/firebase";
-import { sendPasswordResetEmail } from "firebase/auth";
 
 const AVAILABLE_ROLES: UserRole[] = [
   "super_admin", "admin", "leader", "announcer", "reporter", "operator", "employee", "public"
 ];
+
+const USER_TABS = [
+  { id: "all", label: "Semua User" },
+  { id: "management", label: "Manajemen" },
+  { id: "announcer", label: "Penyiar" },
+  { id: "reporter", label: "Reporter" },
+  { id: "operator", label: "Operator" },
+  { id: "public", label: "Tamu/Pendengar" }
+];
+
+type Notice = { tone: "success" | "error"; text: string };
+type PendingConfirmation =
+  | { kind: "sync" }
+  | { kind: "reset-password"; email: string };
 
 export function UsersManagementPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -18,48 +48,58 @@ export function UsersManagementPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [exporting, setExporting] = useState(false);
-  
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [editUserForm, setEditUserForm] = useState<Partial<AppUser>>({});
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [resettingPwd, setResettingPwd] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
 
-  useEffect(() => { 
-    loadUsers();
-    
-    // Subscribe ke data absensi secara realtime
-    const unsubscribeAttendances = subscribeAttendanceRecords((records) => {
-      setAttendances(records);
-    });
-    
-    return () => {
-      unsubscribeAttendances();
-    };
+  const showNotice = useCallback((text: string, tone: Notice["tone"] = "success", timeout = 3200) => {
+    setNotice({ text, tone });
+    window.setTimeout(() => setNotice((current) => current?.text === text ? null : current), timeout);
   }, []);
 
-  async function loadUsers() {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const usersData = await listUserProfiles();
       setUsers(usersData);
-    } catch (err) { console.error("Gagal memuat data:", err); }
-    finally { setLoading(false); }
-  }
+    } catch (err) {
+      console.error("Gagal memuat data:", err);
+      showNotice("Gagal memuat daftar user.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showNotice]);
+
+  useEffect(() => {
+    loadUsers();
+
+    const unsubscribeAttendances = subscribeAttendanceRecords((records) => {
+      setAttendances(records);
+    });
+
+    return () => {
+      unsubscribeAttendances();
+    };
+  }, [loadUsers]);
 
   async function handleUpdateRole(uid: string, newRole: UserRole) {
     setUpdatingId(uid);
     try {
       await upsertUserProfile(uid, { role: newRole });
-      setUsers(prev => prev.map(u => u.id === uid ? { ...u, role: newRole } : u));
-      if (selectedUser?.id === uid) setSelectedUser(prev => prev ? {...prev, role: newRole} : null);
-      setMessage("Role berhasil diperbarui.");
-      setTimeout(() => setMessage(""), 3000);
-    } catch (err) { alert("Gagal memperbarui role."); }
-    finally { setUpdatingId(null); }
+      setUsers((prev) => prev.map((user) => user.id === uid ? { ...user, role: newRole } : user));
+      if (selectedUser?.id === uid) setSelectedUser((prev) => prev ? { ...prev, role: newRole } : null);
+      showNotice("Role berhasil diperbarui.");
+    } catch {
+      showNotice("Gagal memperbarui role.", "error");
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   async function toggleStatus(user: AppUser) {
@@ -67,20 +107,25 @@ export function UsersManagementPage() {
     const newStatus = !user.active;
     try {
       await upsertUserProfile(user.id, { active: newStatus });
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: newStatus } : u));
-      if (selectedUser?.id === user.id) setSelectedUser(prev => prev ? {...prev, active: newStatus} : null);
-      setMessage(`Status user ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`);
-      setTimeout(() => setMessage(""), 3000);
-    } catch (err) { alert("Gagal memperbarui status."); }
-    finally { setUpdatingId(null); }
+      setUsers((prev) => prev.map((item) => item.id === user.id ? { ...item, active: newStatus } : item));
+      if (selectedUser?.id === user.id) setSelectedUser((prev) => prev ? { ...prev, active: newStatus } : null);
+      showNotice(`Status user ${newStatus ? "diaktifkan" : "dinonaktifkan"}.`);
+    } catch {
+      showNotice("Gagal memperbarui status.", "error");
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   function openUserDetail(user: AppUser) {
     setSelectedUser(user);
     setEditError("");
     setEditUserForm({
-      displayName: user.displayName, email: user.email, photoUrl: user.photoUrl,
-      airName: user.airName, whatsapp: user.whatsapp
+      displayName: user.displayName,
+      email: user.email,
+      photoUrl: user.photoUrl,
+      airName: user.airName,
+      whatsapp: user.whatsapp
     });
   }
 
@@ -95,16 +140,18 @@ export function UsersManagementPage() {
     setEditUserForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleSendResetPassword() {
-    if (!selectedUser || !selectedUser.email) return;
-    if (!confirm(`Kirim tautan reset kata sandi ke ${selectedUser.email}?`)) return;
+  function requestResetPassword() {
+    if (!selectedUser?.email) return;
+    setPendingConfirmation({ kind: "reset-password", email: selectedUser.email });
+  }
+
+  async function sendResetPassword(email: string) {
     setResettingPwd(true);
     setEditError("");
     try {
       const auth = getFirebaseAuth();
-      await sendPasswordResetEmail(auth, selectedUser.email);
-      setMessage(`Tautan reset sandi terkirim ke email: ${selectedUser.email}`);
-      setTimeout(() => setMessage(""), 5000);
+      await sendPasswordResetEmail(auth, email);
+      showNotice(`Tautan reset sandi terkirim ke email: ${email}`, "success", 5000);
     } catch (err: unknown) {
       setEditError("Gagal mengirim email: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -128,14 +175,9 @@ export function UsersManagementPage() {
       };
 
       await upsertUserProfile(selectedUser.id, payload);
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === selectedUser.id ? { ...user, ...payload } : user
-        )
-      );
-      setSelectedUser(prev => prev ? {...prev, ...payload} : null);
-      setMessage("Profil user berhasil diperbarui.");
-      setTimeout(() => setMessage(""), 3000);
+      setUsers((prev) => prev.map((user) => user.id === selectedUser.id ? { ...user, ...payload } : user));
+      setSelectedUser((prev) => prev ? { ...prev, ...payload } : null);
+      showNotice("Profil user berhasil diperbarui.");
       closeUserDetail();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Gagal menyimpan profil.");
@@ -144,38 +186,50 @@ export function UsersManagementPage() {
     }
   }
 
-  async function handleSyncStaff() {
-    if (!confirm("Sinkronkan daftar personil SBL ke database?")) return;
+  async function runSyncStaff() {
     setSyncing(true);
     try {
       const result = await syncSblStaff();
       if (result.success) {
-        setMessage(`Berhasil mensinkronkan ${result.count} personil SBL ke Firestore!`);
-        loadUsers();
+        showNotice(`Berhasil mensinkronkan ${result.count} personil SBL ke Firestore!`);
       } else {
-        alert("Gagal mensinkronkan beberapa data.");
-        loadUsers();
+        showNotice("Gagal mensinkronkan beberapa data.", "error");
       }
-    } catch (err) { alert("Terjadi kesalahan sistem saat sinkronisasi."); }
-    finally { setSyncing(false); }
+      await loadUsers();
+    } catch {
+      showNotice("Terjadi kesalahan sistem saat sinkronisasi.", "error");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function confirmPendingAction() {
+    const action = pendingConfirmation;
+    if (!action) return;
+    setPendingConfirmation(null);
+    if (action.kind === "sync") {
+      await runSyncStaff();
+      return;
+    }
+    await sendResetPassword(action.email);
   }
 
   function handleExportCsv() {
     setExporting(true);
     try {
       const headers = ["Nama Lengkap", "Air Name", "Email", "WhatsApp", "Role", "Status Aktif", "Hadir Bulan Ini", "Izin/Sakit"];
-      const rows = users.map(u => {
-        const uAttendances = attendances.filter(a => a.userId === u.id);
-        const presentCount = uAttendances.filter(a => a.status === "present" || a.status === "outside_radius").length;
-        const sickLeaveCount = uAttendances.filter(a => a.status === "sick" || a.status === "leave").length;
-        
+      const rows = users.map((user) => {
+        const userAttendances = attendances.filter((attendance) => attendance.userId === user.id);
+        const presentCount = userAttendances.filter((attendance) => attendance.status === "present" || attendance.status === "outside_radius").length;
+        const sickLeaveCount = userAttendances.filter((attendance) => attendance.status === "sick" || attendance.status === "leave").length;
+
         return [
-          `"${u.displayName || ""}"`,
-          `"${u.airName || ""}"`,
-          `"${u.email || ""}"`,
-          `"${u.whatsapp || ""}"`,
-          `"${getRoleLabel(u.role)}"`,
-          u.active ? '"Aktif"' : '"Nonaktif"',
+          `"${user.displayName || ""}"`,
+          `"${user.airName || ""}"`,
+          `"${user.email || ""}"`,
+          `"${user.whatsapp || ""}"`,
+          `"${getRoleLabel(user.role)}"`,
+          user.active ? "\"Aktif\"" : "\"Nonaktif\"",
           `"${presentCount}"`,
           `"${sickLeaveCount}"`
         ].join(",");
@@ -189,61 +243,83 @@ export function UsersManagementPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      setMessage("Data Staf berhasil diekspor ke CSV.");
-      setTimeout(() => setMessage(""), 3000);
-    } catch (err) {
-      alert("Gagal mengekspor data.");
+
+      showNotice("Data Staf berhasil diekspor ke CSV.");
+    } catch {
+      showNotice("Gagal mengekspor data.", "error");
     } finally {
       setExporting(false);
     }
   }
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.displayName.toLowerCase().includes(search.toLowerCase()) || 
-                          u.email.toLowerCase().includes(search.toLowerCase()) ||
-                          (u.airName && u.airName.toLowerCase().includes(search.toLowerCase()));
-    
+  const filteredUsers = users.filter((user) => {
+    const keyword = search.toLowerCase();
+    const matchesSearch = (user.displayName || "").toLowerCase().includes(keyword) ||
+      (user.email || "").toLowerCase().includes(keyword) ||
+      (user.airName || "").toLowerCase().includes(keyword);
+
     if (!matchesSearch) return false;
     if (activeTab === "all") return true;
-    if (activeTab === "management") return ["super_admin", "admin", "leader"].includes(u.role);
-    if (activeTab === "announcer") return u.role === "announcer";
-    if (activeTab === "reporter") return u.role === "reporter";
-    if (activeTab === "operator") return u.role === "operator";
-    if (activeTab === "public") return u.role === "public";
+    if (activeTab === "management") return ["super_admin", "admin", "leader"].includes(user.role);
+    if (activeTab === "announcer") return user.role === "announcer";
+    if (activeTab === "reporter") return user.role === "reporter";
+    if (activeTab === "operator") return user.role === "operator";
+    if (activeTab === "public") return user.role === "public";
     return true;
   });
 
-  // Analytics
-  const totalActive = users.filter(u => u.active && u.role !== "public").length;
-  const totalAnnouncers = users.filter(u => u.active && u.role === "announcer").length;
-  const totalReporters = users.filter(u => u.active && u.role === "reporter").length;
+  const totalActive = users.filter((user) => user.active && user.role !== "public").length;
+  const totalAnnouncers = users.filter((user) => user.active && user.role === "announcer").length;
+  const totalReporters = users.filter((user) => user.active && user.role === "reporter").length;
+  const selectedMetrics = selectedUser ? getUserAttendanceSummary(selectedUser) : null;
+  const pendingConfirmationCopy = getConfirmationCopy(pendingConfirmation);
+
+  function getUserAttendanceSummary(user: AppUser) {
+    const userAttendances = attendances
+      .filter((attendance) =>
+        attendance.userId === user.id ||
+        (attendance.displayName && attendance.displayName === user.displayName) ||
+        (attendance.airName && attendance.airName === user.airName)
+      )
+      .sort((a, b) => new Date(b.checkInAt).getTime() - new Date(a.checkInAt).getTime());
+    const presentCount = userAttendances.filter((attendance) => attendance.status === "present" || attendance.status === "outside_radius").length;
+    const leaveCount = userAttendances.filter((attendance) => attendance.status === "sick" || attendance.status === "leave").length;
+    const totalDays = presentCount + leaveCount;
+    const lastCheckIn = userAttendances[0] ? new Date(userAttendances[0].checkInAt) : null;
+
+    return {
+      presentCount,
+      leaveCount,
+      totalDays,
+      performanceScore: totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0,
+      lastCheckIn,
+      isOnline: Boolean(lastCheckIn && Date.now() - lastCheckIn.getTime() < 12 * 60 * 60 * 1000)
+    };
+  }
+
+  function getProfileAlert(user: AppUser) {
+    if (!user.whatsapp) return "Nomor WhatsApp belum diisi";
+    if (!user.airName && user.role === "announcer") return "Air Name penyiar belum diisi";
+    return "";
+  }
 
   return (
-    <div className="users-management-page" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh" }}>
-      <header style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "14px" }}>
+    <div className="users-management-page">
+      <header className="users-page-header">
+        <div className="users-title-row">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-              <Users size={28} color="var(--blue)" />
-              <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: 0 }}>Smart User Management</h1>
+            <div className="users-title-lockup">
+              <Users size={28} />
+              <h1>Smart User Management</h1>
             </div>
-            <p style={{ color: "var(--muted)", margin: 0 }}>Pusat komando SDM & Operasional Radio SBL.</p>
+            <p>Pusat komando SDM & Operasional Radio SBL.</p>
           </div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button 
-              onClick={handleExportCsv} 
-              disabled={exporting}
-              style={{ padding: "10px 16px", borderRadius: "12px", background: "white", border: "1px solid rgba(0, 0, 0, 0.1)", color: "var(--ink)", fontWeight: "bold", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}
-            >
+          <div className="users-header-actions">
+            <button type="button" onClick={handleExportCsv} disabled={exporting}>
               <Save size={18} />
               {exporting ? "Mengekspor..." : "Export CSV"}
             </button>
-            <button 
-              onClick={handleSyncStaff} 
-              disabled={syncing}
-              style={{ padding: "10px 16px", borderRadius: "12px", background: "white", border: "1px solid rgba(22, 119, 237, 0.2)", color: "var(--blue)", fontWeight: "bold", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}
-            >
+            <button type="button" onClick={() => setPendingConfirmation({ kind: "sync" })} disabled={syncing}>
               <RefreshCcw size={18} className={syncing ? "animate-spin" : ""} />
               {syncing ? "Menyinkronkan..." : "Sinkronkan"}
             </button>
@@ -251,297 +327,336 @@ export function UsersManagementPage() {
         </div>
       </header>
 
-      {message && (
-        <div style={{ background: "#11a36a", color: "white", padding: "12px 20px", borderRadius: "12px", marginBottom: "20px", fontWeight: "bold", animation: "fadeSlideUp 0.3s ease" }}>
-          {message}
+      {notice && (
+        <div className={`users-notice ${notice.tone}`} role="status">
+          {notice.text}
         </div>
       )}
 
-      {/* SUMMARY CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-        <div style={{ background: "white", padding: "20px", borderRadius: "20px", borderLeft: "4px solid var(--blue)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-          <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700, marginBottom: "8px" }}>TOTAL STAF AKTIF</div>
-          <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--ink)", display: "flex", alignItems: "center", gap: "10px" }}>
-            {totalActive} <Users size={24} color="var(--blue)" opacity={0.5} />
-          </div>
-        </div>
-        <div style={{ background: "white", padding: "20px", borderRadius: "20px", borderLeft: "4px solid #f59e0b", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-          <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700, marginBottom: "8px" }}>PENYIAR AKTIF</div>
-          <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--ink)", display: "flex", alignItems: "center", gap: "10px" }}>
-            {totalAnnouncers} <Mic size={24} color="#f59e0b" opacity={0.5} />
-          </div>
-        </div>
-        <div style={{ background: "white", padding: "20px", borderRadius: "20px", borderLeft: "4px solid #10b981", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-          <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700, marginBottom: "8px" }}>REPORTER AKTIF</div>
-          <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--ink)", display: "flex", alignItems: "center", gap: "10px" }}>
-            {totalReporters} <Video size={24} color="#10b981" opacity={0.5} />
-          </div>
-        </div>
-      </div>
+      <section className="users-summary-grid" aria-label="Ringkasan staf">
+        <SummaryCard tone="blue" label="TOTAL STAF AKTIF" value={totalActive} icon={<Users size={24} />} />
+        <SummaryCard tone="amber" label="PENYIAR AKTIF" value={totalAnnouncers} icon={<Mic size={24} />} />
+        <SummaryCard tone="green" label="REPORTER AKTIF" value={totalReporters} icon={<Video size={24} />} />
+      </section>
 
-      <div style={{ background: "white", borderRadius: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", overflow: "hidden" }}>
-        
-        {/* TABS */}
-        <div style={{ display: "flex", borderBottom: "1px solid #f1f3f5", overflowX: "auto" }}>
-           {[
-             { id: "all", label: "Semua User" },
-             { id: "management", label: "Manajemen" },
-             { id: "announcer", label: "Penyiar" },
-             { id: "reporter", label: "Reporter" },
-             { id: "operator", label: "Operator" },
-             { id: "public", label: "Tamu/Pendengar" }
-           ].map(tab => (
-             <button
-               key={tab.id}
-               onClick={() => setActiveTab(tab.id)}
-               style={{
-                 padding: "16px 24px", background: "transparent", border: "none", cursor: "pointer",
-                 borderBottom: activeTab === tab.id ? "3px solid var(--blue)" : "3px solid transparent",
-                 color: activeTab === tab.id ? "var(--blue)" : "var(--muted)",
-                 fontWeight: activeTab === tab.id ? 800 : 600,
-                 fontSize: "0.95rem", whiteSpace: "nowrap", transition: "all 0.2s"
-               }}
-             >
-               {tab.label}
-             </button>
-           ))}
+      <section className="users-directory-panel">
+        <div className="users-tabs" role="tablist" aria-label="Filter user">
+          {USER_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={activeTab === tab.id ? "active" : ""}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div style={{ padding: "20px" }}>
-          <div style={{ position: "relative", marginBottom: "20px" }}>
-            <Search style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }} size={18} />
-            <input 
-              type="text" 
-              placeholder="Cari nama, air name, atau email..." 
+        <div className="users-directory-body">
+          <label className="users-search-field">
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Cari nama, air name, atau email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "14px 14px 14px 48px", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
-          </div>
+          </label>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: "40px" }}>
-              <div className="spinner-small" style={{ margin: "0 auto 12px" }}></div>
+            <div className="users-loading-state">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div className="ui-skeleton-row" key={index}>
+                  <span className="ui-skeleton avatar" />
+                  <span className="ui-skeleton-copy">
+                    <span className="ui-skeleton line medium" />
+                    <span className="ui-skeleton line short" />
+                  </span>
+                </div>
+              ))}
               <p>Memuat daftar SDM...</p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "700px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                    <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 700, fontSize: "0.85rem" }}>STAF</th>
-                    <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 700, fontSize: "0.85rem" }}>AIR NAME</th>
-                    <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 700, fontSize: "0.85rem" }}>ROLE</th>
-                    <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 700, fontSize: "0.85rem" }}>STATUS</th>
-                    <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 700, fontSize: "0.85rem", textAlign: "center" }}>DETAIL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} style={{ borderBottom: "1px solid #f1f3f5", transition: "background 0.2s" }} onMouseOver={e=>e.currentTarget.style.background="#f8f9fc"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-                      <td style={{ padding: "16px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                          <img 
-                            src={user.photoUrl || "/iconSBL.svg"} 
-                            alt="" 
-                            style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover", background: "#f1f3f5" }} 
-                          />
-                          <div>
-                            <div style={{ fontWeight: 800, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                              {user.displayName}
-                              {(!user.whatsapp || (!user.airName && user.role === "announcer")) && (
-                                <span style={{ width: "8px", height: "8px", background: "#FF3B3B", borderRadius: "50%", display: "inline-block" }} title="Profil belum lengkap (Smart Alert)"></span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px 12px", fontSize: "0.9rem", fontWeight: 700, color: "var(--blue)" }}>
-                        {user.airName || "-"}
-                      </td>
-                      <td style={{ padding: "16px 12px" }}>
-                        <select 
-                          value={user.role} 
-                          onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
-                          disabled={updatingId === user.id}
-                          style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#fff", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600 }}
-                        >
-                          {AVAILABLE_ROLES.map(role => (
-                            <option key={role} value={role}>{getRoleLabel(role)}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ padding: "16px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", color: user.active ? "#11a36a" : "#FF3B3B", fontWeight: 800 }}>
-                          {user.active ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                          {user.active ? "Aktif" : "Nonaktif"}
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px 12px", textAlign: "center" }}>
-                        <button
-                          onClick={() => openUserDetail(user)}
-                          style={{ background: "rgba(22, 119, 237, 0.1)", border: "none", color: "var(--blue)", width: "36px", height: "36px", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "transform 0.1s" }}
-                          title="Lihat Detail Panel"
-                        >
-                          <ChevronRight size={20} />
-                        </button>
-                      </td>
+            <>
+              <div className="users-mobile-list" aria-label="Daftar user mobile">
+                {filteredUsers.map((user) => renderMobileUserCard(user))}
+              </div>
+
+              <div className="users-desktop-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>STAF</th>
+                      <th>AIR NAME</th>
+                      <th>ROLE</th>
+                      <th>STATUS</th>
+                      <th>DETAIL</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--muted)" }}>
-                  <Users size={48} opacity={0.2} style={{ marginBottom: "12px" }} />
-                  <p style={{ margin: 0, fontWeight: 600 }}>Tidak ada staf yang cocok dengan pencarian / tab ini.</p>
-                </div>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="users-table-person">
+                            <img src={user.photoUrl || "/iconSBL.svg"} alt="" />
+                            <div>
+                              <strong>
+                                {user.displayName}
+                                {getProfileAlert(user) && <span title="Profil belum lengkap (Smart Alert)"></span>}
+                              </strong>
+                              <small>{user.email}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="users-air-name">{user.airName || "-"}</td>
+                        <td>
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
+                            disabled={updatingId === user.id}
+                            aria-label={`Ubah role ${user.displayName}`}
+                          >
+                            {AVAILABLE_ROLES.map((role) => (
+                              <option key={role} value={role}>{getRoleLabel(role)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <span className={`users-status ${user.active ? "active" : "inactive"}`}>
+                            {user.active ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                            {user.active ? "Aktif" : "Nonaktif"}
+                          </span>
+                        </td>
+                        <td>
+                          <button type="button" className="users-detail-button" onClick={() => openUserDetail(user)} title="Lihat Detail Panel">
+                            <ChevronRight size={20} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredUsers.length === 0 && (
+                  <div className="users-empty-state">
+                    <Users size={48} />
+                    <p>Tidak ada staf yang cocok dengan pencarian / tab ini.</p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* SIDE PANEL DETAIL / MODAL */}
-      {selectedUser && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", justifyContent: "flex-end", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", animation: "fadeIn 0.2s" }}>
-          <div style={{ background: "white", width: "100%", maxWidth: "480px", height: "100%", overflowY: "auto", boxShadow: "-10px 0 30px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column", animation: "slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-            <style>
-              {`
-                @keyframes slideLeft { from { transform: translateX(100%); } to { transform: translateX(0); } }
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-              `}
-            </style>
-            
-            {/* Header Panel */}
-            <div style={{ background: "var(--blue)", color: "white", padding: "32px 24px", position: "relative" }}>
-              <button onClick={closeUserDetail} style={{ position: "absolute", top: "16px", left: "16px", background: "rgba(255,255,255,0.2)", border: "none", color: "white", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-              
-              <div style={{ display: "flex", gap: "20px", alignItems: "center", marginTop: "10px" }}>
-                <img 
-                  src={selectedUser.photoUrl || "/iconSBL.svg"} 
-                  alt="" 
-                  style={{ width: "80px", height: "80px", borderRadius: "24px", objectFit: "cover", background: "white", border: "4px solid rgba(255,255,255,0.2)" }} 
-                />
+      {selectedUser && selectedMetrics && (
+        <div className="users-detail-overlay">
+          <aside className="users-detail-drawer" aria-label={`Detail ${selectedUser.displayName}`}>
+            <div className="users-detail-hero">
+              <button type="button" onClick={closeUserDetail} aria-label="Tutup detail user">
+                <X size={18} />
+              </button>
+              <div className="users-detail-profile">
+                <img src={selectedUser.photoUrl || "/iconSBL.svg"} alt="" />
                 <div>
-                  <h2 style={{ margin: "0 0 4px", fontSize: "1.5rem", fontWeight: 800 }}>{selectedUser.displayName}</h2>
-                  <p style={{ margin: "0 0 8px", fontSize: "0.95rem", opacity: 0.9 }}>{selectedUser.airName || "Tidak ada Air Name"}</p>
-                  <span style={{ display: "inline-block", background: "rgba(255,255,255,0.2)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 800 }}>
-                    {getRoleLabel(selectedUser.role)}
-                  </span>
+                  <h2>{selectedUser.displayName}</h2>
+                  <p>{selectedUser.airName || "Tidak ada Air Name"}</p>
+                  <span>{getRoleLabel(selectedUser.role)}</span>
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: "24px", flex: 1 }}>
-              
-              {/* Absensi / Performa Summary */}
-              <h3 style={{ fontSize: "1rem", fontWeight: 800, margin: "0 0 16px", color: "var(--ink)", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Activity size={18} color="var(--blue)" /> Performa & Kehadiran
+            <div className="users-detail-body">
+              <h3 className="users-section-title">
+                <Activity size={18} /> Performa & Kehadiran
               </h3>
-              {(() => {
-                // Perbaiki logika pencocokan UID atau Nama Udara karena kadang UID Auth lokal & remote berbeda
-                const userAttendances = attendances.filter(a => 
-                  a.userId === selectedUser.id || 
-                  (a.displayName && a.displayName === selectedUser.displayName) ||
-                  (a.airName && a.airName === selectedUser.airName)
-                );
-                
-                // Urutkan dari yang terbaru
-                userAttendances.sort((a, b) => new Date(b.checkInAt).getTime() - new Date(a.checkInAt).getTime());
-                
-                const presentCount = userAttendances.filter(a => a.status === "present" || a.status === "outside_radius").length;
-                const sickLeaveCount = userAttendances.filter(a => a.status === "sick" || a.status === "leave").length;
-                const totalDays = presentCount + sickLeaveCount;
-                const performanceScore = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0;
-                
-                // Ambil data pertama (terbaru)
-                const lastCheckIn = userAttendances.length > 0 ? new Date(userAttendances[0].checkInAt) : null;
-                const isOnline = lastCheckIn && (Date.now() - lastCheckIn.getTime() < 12 * 60 * 60 * 1000); // 12 jam terakhir dianggap aktif hari ini
-                
-                return (
-                  <>
-                    {(!selectedUser.whatsapp || (!selectedUser.airName && selectedUser.role === "announcer")) && (
-                      <div style={{ background: "#fff4f4", border: "1px solid #ffd1d1", color: "#d92d20", padding: "12px", borderRadius: "12px", fontSize: "0.85rem", fontWeight: 700, marginBottom: "16px", display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                        <span style={{ fontSize: "1.1rem" }}>⚠️</span>
-                        <div>
-                          <strong>Smart Alert:</strong> Profil belum lengkap. 
-                          {!selectedUser.whatsapp && " Nomor WhatsApp belum diisi."}
-                          {(!selectedUser.airName && selectedUser.role === "announcer") && " Penyiar wajib memiliki Air Name."}
-                        </div>
-                      </div>
-                    )}
-                  
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "32px" }}>
-                      <div style={{ background: "#f8f9fc", padding: "16px", borderRadius: "16px", position: "relative", overflow: "hidden" }}>
-                        <div style={{ color: "var(--muted)", fontSize: "0.75rem", fontWeight: 700, marginBottom: "4px" }}>KEHADIRAN & PERFORMA</div>
-                        <div style={{ color: "var(--ink)", fontWeight: 800, fontSize: "1.1rem", marginBottom: "4px" }}>
-                          {presentCount} <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Hadir</span> • {sickLeaveCount} <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Izin</span>
-                        </div>
-                        {totalDays > 0 && (
-                          <div style={{ display: "inline-block", background: performanceScore >= 80 ? "#e7f5ef" : "#fff0f0", color: performanceScore >= 80 ? "#11a36a" : "#FF3B3B", padding: "4px 8px", borderRadius: "6px", fontSize: "0.75rem", fontWeight: 800 }}>
-                            {performanceScore}% Disiplin
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ background: "#f8f9fc", padding: "16px", borderRadius: "16px" }}>
-                        <div style={{ color: "var(--muted)", fontSize: "0.75rem", fontWeight: 700, marginBottom: "4px" }}>LAST CHECK-IN</div>
-                        <div style={{ color: isOnline ? "#11a36a" : "var(--ink)", fontWeight: 800, fontSize: "0.95rem" }}>
-                          {lastCheckIn ? lastCheckIn.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + " " + lastCheckIn.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "Belum Absen"}
-                        </div>
-                        {isOnline && <div style={{ fontSize: "0.75rem", color: "#11a36a", fontWeight: 700, marginTop: "4px" }}>Sedang Aktif Shift</div>}
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
 
-              {/* Form Edit */}
-              <h3 style={{ fontSize: "1rem", fontWeight: 800, margin: "0 0 16px", color: "var(--ink)", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Shield size={18} color="var(--blue)" /> Profil & Keamanan
+              {getProfileAlert(selectedUser) && (
+                <div className="users-detail-alert">
+                  <AlertTriangle size={18} />
+                  <div>
+                    <strong>Smart Alert:</strong> Profil belum lengkap.
+                    {!selectedUser.whatsapp && " Nomor WhatsApp belum diisi."}
+                    {!selectedUser.airName && selectedUser.role === "announcer" && " Penyiar wajib memiliki Air Name."}
+                  </div>
+                </div>
+              )}
+
+              <div className="users-performance-grid">
+                <article>
+                  <span>KEHADIRAN & PERFORMA</span>
+                  <strong>
+                    {selectedMetrics.presentCount} <small>Hadir</small> / {selectedMetrics.leaveCount} <small>Izin</small>
+                  </strong>
+                  {selectedMetrics.totalDays > 0 && (
+                    <em className={selectedMetrics.performanceScore >= 80 ? "good" : "bad"}>
+                      {selectedMetrics.performanceScore}% Disiplin
+                    </em>
+                  )}
+                </article>
+                <article>
+                  <span>LAST CHECK-IN</span>
+                  <strong className={selectedMetrics.isOnline ? "online" : ""}>
+                    {selectedMetrics.lastCheckIn
+                      ? `${selectedMetrics.lastCheckIn.toLocaleDateString("id-ID", { day: "numeric", month: "short" })} ${selectedMetrics.lastCheckIn.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`
+                      : "Belum Absen"}
+                  </strong>
+                  {selectedMetrics.isOnline && <em className="good">Sedang Aktif Shift</em>}
+                </article>
+              </div>
+
+              <h3 className="users-section-title">
+                <Shield size={18} /> Profil & Keamanan
               </h3>
-              
-              <form onSubmit={handleSaveUserProfile} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--muted)", marginBottom: "6px" }}>Nama Lengkap</label>
-                  <input type="text" value={editUserForm.displayName ?? ""} onChange={(e) => handleEditFormChange("displayName", e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", fontSize: "0.95rem" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--muted)", marginBottom: "6px" }}>Air Name / Nama Siaran</label>
-                  <input type="text" value={editUserForm.airName ?? ""} onChange={(e) => handleEditFormChange("airName", e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", fontSize: "0.95rem" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--muted)", marginBottom: "6px" }}>Nomor WhatsApp</label>
-                  <input type="text" value={editUserForm.whatsapp ?? ""} onChange={(e) => handleEditFormChange("whatsapp", e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", fontSize: "0.95rem" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--muted)", marginBottom: "6px" }}>Email Kontak</label>
-                  <input type="email" value={editUserForm.email ?? ""} onChange={(e) => handleEditFormChange("email", e.target.value)} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", fontSize: "0.95rem" }} />
-                </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                  <button type="button" onClick={handleSendResetPassword} disabled={resettingPwd} style={{ background: "transparent", border: "none", color: "var(--coral)", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+              <form onSubmit={handleSaveUserProfile} className="users-edit-form">
+                <label>
+                  <span>Nama Lengkap</span>
+                  <input type="text" value={editUserForm.displayName ?? ""} onChange={(e) => handleEditFormChange("displayName", e.target.value)} />
+                </label>
+                <label>
+                  <span>Air Name / Nama Siaran</span>
+                  <input type="text" value={editUserForm.airName ?? ""} onChange={(e) => handleEditFormChange("airName", e.target.value)} />
+                </label>
+                <label>
+                  <span>Nomor WhatsApp</span>
+                  <input type="text" value={editUserForm.whatsapp ?? ""} onChange={(e) => handleEditFormChange("whatsapp", e.target.value)} />
+                </label>
+                <label>
+                  <span>Email Kontak</span>
+                  <input type="email" value={editUserForm.email ?? ""} onChange={(e) => handleEditFormChange("email", e.target.value)} />
+                </label>
+
+                <div className="users-inline-actions">
+                  <button type="button" onClick={requestResetPassword} disabled={resettingPwd}>
                     <KeyRound size={16} /> {resettingPwd ? "Mengirim..." : "Kirim Link Reset Sandi"}
                   </button>
-                  <button type="button" onClick={() => toggleStatus(selectedUser)} disabled={updatingId === selectedUser.id} style={{ background: "transparent", border: "none", color: selectedUser.active ? "#FF3B3B" : "#11a36a", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className={selectedUser.active ? "danger" : "success"}
+                    onClick={() => toggleStatus(selectedUser)}
+                    disabled={updatingId === selectedUser.id}
+                  >
                     {selectedUser.active ? <XCircle size={16} /> : <CheckCircle size={16} />}
                     {selectedUser.active ? "Suspend Akun" : "Aktifkan Akun"}
                   </button>
                 </div>
 
-                {editError && <div style={{ color: "#d92d20", fontSize: "0.85rem", fontWeight: 600 }}>{editError}</div>}
-                
-                <div style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid #f1f3f5", display: "flex", gap: "12px" }}>
-                  <button type="button" onClick={closeUserDetail} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "white", fontWeight: 800, color: "var(--ink)", cursor: "pointer" }}>Tutup</button>
-                  <button type="submit" disabled={editSaving} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "none", background: "var(--blue)", fontWeight: 800, color: "white", cursor: "pointer" }}>{editSaving ? "Menyimpan..." : "Simpan Profil"}</button>
+                {editError && <div className="users-form-error">{editError}</div>}
+
+                <div className="users-form-actions">
+                  <button type="button" onClick={closeUserDetail}>Tutup</button>
+                  <button type="submit" disabled={editSaving}>{editSaving ? "Menyimpan..." : "Simpan Profil"}</button>
                 </div>
               </form>
+            </div>
+          </aside>
+        </div>
+      )}
 
+      {pendingConfirmationCopy && (
+        <div className="users-confirm-overlay">
+          <div className="users-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="users-confirm-title">
+            <AlertTriangle size={28} />
+            <h2 id="users-confirm-title">{pendingConfirmationCopy.title}</h2>
+            <p>{pendingConfirmationCopy.description}</p>
+            <div>
+              <button type="button" onClick={() => setPendingConfirmation(null)}>Batal</button>
+              <button type="button" onClick={confirmPendingAction}>{pendingConfirmationCopy.confirmLabel}</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
+
+  function renderMobileUserCard(user: AppUser) {
+    const summary = getUserAttendanceSummary(user);
+    const profileAlert = getProfileAlert(user);
+
+    return (
+      <article key={user.id} className="users-mobile-card">
+        <div className="users-mobile-head">
+          <img src={user.photoUrl || "/iconSBL.svg"} alt="" />
+          <div>
+            <h3>{user.displayName}</h3>
+            <p>{user.airName || user.email}</p>
+          </div>
+          <button type="button" onClick={() => openUserDetail(user)} aria-label={`Lihat detail ${user.displayName}`}>
+            <Eye size={18} />
+          </button>
+        </div>
+
+        {profileAlert && <div className="users-profile-alert">{profileAlert}</div>}
+
+        <div className="users-mobile-meta">
+          <span><strong>{summary.presentCount}</strong>Hadir</span>
+          <span><strong>{summary.leaveCount}</strong>Izin/Sakit</span>
+          <span>
+            <strong>{summary.lastCheckIn ? summary.lastCheckIn.toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-"}</strong>
+            Terakhir
+          </span>
+        </div>
+
+        <div className="users-mobile-actions">
+          <select
+            value={user.role}
+            onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
+            disabled={updatingId === user.id}
+            aria-label={`Ubah role ${user.displayName}`}
+          >
+            {AVAILABLE_ROLES.map((role) => (
+              <option key={role} value={role}>{getRoleLabel(role)}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => toggleStatus(user)}
+            disabled={updatingId === user.id}
+            className={user.active ? "danger" : "success"}
+          >
+            {user.active ? <XCircle size={16} /> : <CheckCircle size={16} />}
+            {user.active ? "Nonaktifkan" : "Aktifkan"}
+          </button>
+        </div>
+      </article>
+    );
+  }
+}
+
+function SummaryCard({
+  tone,
+  label,
+  value,
+  icon
+}: {
+  tone: "blue" | "amber" | "green";
+  label: string;
+  value: number;
+  icon: ReactNode;
+}) {
+  return (
+    <article className={`users-summary-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value} {icon}</strong>
+    </article>
+  );
+}
+
+function getConfirmationCopy(pendingConfirmation: PendingConfirmation | null) {
+  if (!pendingConfirmation) return null;
+  if (pendingConfirmation.kind === "sync") {
+    return {
+      title: "Sinkronkan personil SBL?",
+      description: "Data personil bawaan akan diselaraskan ke database. Daftar user akan dimuat ulang setelah proses selesai.",
+      confirmLabel: "Sinkronkan"
+    };
+  }
+  return {
+    title: "Kirim tautan reset sandi?",
+    description: `Tautan reset kata sandi akan dikirim ke ${pendingConfirmation.email}.`,
+    confirmLabel: "Kirim Email"
+  };
 }

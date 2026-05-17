@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Camera, MapPin, Clock3, CheckCircle2, UploadCloud, Cloud, BadgeCheck, X } from "lucide-react";
+import { AlertCircle, Camera, MapPin, Clock3, CheckCircle2, UploadCloud, Cloud, BadgeCheck, X } from "lucide-react";
 import { getCurrentPosition, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { validateFile, moduleFileRules } from "../utils/fileValidation";
 import type { AuthSession } from "../services/auth.service";
@@ -18,12 +18,45 @@ import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 
 const officeCenter: GeoPoint = { latitude: -3.8112091495447213, longitude: 119.65144231962896 };
 const officeRadiusMeters = 100;
+type AttendanceType = "present" | "sick" | "leave" | "out_of_office";
+
+function getAttendanceTypeLabel(type: AttendanceType | AttendanceRecord["status"]): string {
+  switch (type) {
+    case "sick":
+      return "Sakit";
+    case "leave":
+      return "Izin";
+    case "out_of_office":
+      return "Tugas luar";
+    case "outside_radius":
+      return "Di luar radius";
+    case "needs_review":
+      return "Perlu ditinjau";
+    case "rejected":
+      return "Perlu validasi admin";
+    default:
+      return "Hadir";
+  }
+}
+
+function getSelfieStatusLabel(status: "idle" | "pending" | "uploaded" | "failed"): string {
+  switch (status) {
+    case "uploaded":
+      return "Selfie tersimpan";
+    case "pending":
+      return "Selfie diunggah";
+    case "failed":
+      return "Upload selfie gagal";
+    default:
+      return "Menunggu selfie";
+  }
+}
 
 export function AttendancePage({
   session,
   onAttendanceRecorded
 }: {
-  data: any; // Menambahkan akses ke dashboard data (termasuk weeklySchedule)
+  data: unknown;
   session: AuthSession | null;
   onAttendanceRecorded?: () => void;
 }) {
@@ -36,7 +69,7 @@ export function AttendancePage({
   const [uploadNotice, setUploadNotice] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<{ isValid: boolean; description: string; greeting?: string } | null>(null);
   
-  const [attendanceType, setAttendanceType] = useState<"present" | "sick" | "leave" | "out_of_office">("present");
+  const [attendanceType, setAttendanceType] = useState<AttendanceType>("present");
   const [outOfOfficeReason, setOutOfOfficeReason] = useState("");
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   
@@ -59,6 +92,34 @@ export function AttendancePage({
   const currentSlot = useCurrentBroadcastSlot(); // Mengambil info siaran saat ini
 
   const distance = position ? distanceInMeters(position, officeCenter) : null;
+  const hasCheckedIn = Boolean(todayRecord);
+  const hasCheckedOut = Boolean(todayRecord?.checkOutAt);
+  const attendanceStatusTitle = hasCheckedOut
+    ? "Tugas hari ini selesai"
+    : hasCheckedIn
+      ? "Sudah absen masuk"
+      : "Belum absen hari ini";
+  const attendanceStatusDescription = hasCheckedOut
+    ? "Check-in dan check-out sudah tercatat."
+    : hasCheckedIn
+      ? "Silakan check-out setelah tugas selesai."
+      : "Pilih status, ambil selfie, lalu izinkan lokasi.";
+  const locationStatusTitle = distance === null
+    ? "Lokasi belum dicek"
+    : distance <= officeRadiusMeters
+      ? "Radius studio valid"
+      : "Di luar radius studio";
+  const locationStatusDescription = distance === null
+    ? `Batas kantor ${officeRadiusMeters} meter.`
+    : `${Math.round(distance)} meter dari titik kantor${position?.accuracy ? `, akurasi +/-${Math.round(position.accuracy)}m` : ""}.`;
+  const selfieStatusTitle = getSelfieStatusLabel(selfieUploadStatus);
+  const selfieStatusDescription = selfieUploadStatus === "failed"
+    ? "Absensi tetap tercatat, bukti selfie perlu ditinjau."
+    : selfieUploadStatus === "uploaded"
+      ? "Bukti selfie sudah aman tersimpan."
+      : selfieUploadStatus === "pending"
+        ? "Upload berlangsung di latar belakang."
+        : "Selfie akan diminta saat absen masuk.";
 
   useEffect(() => {
     notificationAudioRef.current = new Audio("/notifikasi.mp3");
@@ -139,7 +200,7 @@ export function AttendancePage({
         } else {
           setShowLocationPrompt(true);
         }
-      } catch (err) {
+      } catch {
         setShowLocationPrompt(true);
       }
     } else {
@@ -342,86 +403,86 @@ export function AttendancePage({
       await checkOut(todayRecord.id);
       setTodayRecord({ ...todayRecord, checkOutAt: new Date().toISOString() });
       setRecordStatus("Terima kasih! Absen pulang berhasil dikonfirmasi.");
-    } catch (err) {
-      alert("Gagal melakukan check-out. Coba lagi.");
+    } catch {
+      setFileError("Gagal melakukan check-out. Periksa koneksi internet, lalu coba lagi.");
     } finally {
       setCheckingOut(false);
     }
   }
 
+  const attendanceTypeOptions: Array<{ id: AttendanceType; label: string }> = [
+    { id: "present", label: "Hadir / Di Kantor" },
+    { id: "sick", label: "Sakit" },
+    { id: "leave", label: "Izin" },
+    { id: "out_of_office", label: "Tugas Luar" }
+  ];
+  const gpsAccuracyTone = position?.accuracy
+    ? position.accuracy <= 30
+      ? "success"
+      : position.accuracy <= 100
+        ? "warning"
+        : "danger"
+    : "";
+
   return (
-    <div className="schedule-page" style={{ paddingBottom: "100px" }}>
-      {/* LOCATION PROMPT MODAL */}
+    <div className="schedule-page attendance-page">
       {showLocationPrompt && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderRadius: "20px", width: "100%", maxWidth: "300px", padding: "24px 20px", textAlign: "center", boxShadow: "0 16px 32px rgba(0,0,0,0.15)", animation: "fadeSlideUp 0.3s ease-out" }}>
-            <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(22, 119, 237, 0.1)", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <MapPin size={30} color="var(--blue)" />
+        <div className="attendance-location-modal">
+          <div className="attendance-location-dialog">
+            <div className="attendance-location-icon">
+              <MapPin size={30} />
             </div>
-            <h3 style={{ margin: "0 0 10px", color: "var(--ink)", fontSize: "1.05rem", fontWeight: 800 }}>
-              Sistem Membutuhkan Akses Lokasi Anda
-            </h3>
-            <p style={{ margin: "0 0 20px", color: "var(--muted)", fontSize: "0.85rem", lineHeight: 1.4 }}>
+            <h3>Sistem Membutuhkan Akses Lokasi Anda</h3>
+            <p>
               Demi keamanan dan validitas kehadiran Staf Radio SBL, izinkan akses lokasi ke sistem absensi cerdas ini.
             </p>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button 
-                onClick={() => setShowLocationPrompt(false)}
-                style={{ flex: 1, padding: "10px", borderRadius: "99px", background: "white", border: "1.5px solid var(--blue)", color: "var(--blue)", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}
-              >
+            <div className="attendance-location-actions">
+              <button type="button" onClick={() => setShowLocationPrompt(false)}>
                 Tolak
               </button>
-              <button 
-                onClick={handleAllowLocation}
-                style={{ flex: 1, padding: "10px", borderRadius: "99px", background: "var(--blue)", border: "1.5px solid var(--blue)", color: "white", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}
-              >
+              <button type="button" className="primary" onClick={handleAllowLocation}>
                 Izinkan
               </button>
             </div>
-            <p style={{ margin: "16px 0 0", color: "var(--muted)", fontSize: "0.75rem", lineHeight: 1.3 }}>
+            <small>
               *Setelah menekan 'Izinkan', mohon berikan izin ('Allow') pada popup bawaan browser.
-            </p>
+            </small>
           </div>
         </div>
       )}
 
-      {/* CAMERA MODAL */}
       {isCameraOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#000", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ width: "100%", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "absolute", top: 0, zIndex: 10 }}>
-            <span style={{ color: "white", fontWeight: 800, textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>Ambil Foto Kehadiran</span>
-            <button onClick={() => { stopCamera(); setIsCameraOpen(false); }} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "white", padding: "8px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="attendance-camera-modal">
+          <div className="attendance-camera-topbar">
+            <span>Ambil Foto Kehadiran</span>
+            <button type="button" onClick={() => { stopCamera(); setIsCameraOpen(false); }} aria-label="Tutup kamera">
               <X size={24} />
             </button>
           </div>
           
-          <div style={{ flex: 1, width: "100%", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <div className="attendance-camera-preview">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} // Mirror effect
             />
           </div>
           
-          <canvas ref={canvasRef} style={{ display: "none" }} />
+          <canvas ref={canvasRef} className="attendance-hidden-canvas" />
           
-          <div style={{ position: "absolute", bottom: "40px", width: "100%", display: "flex", justifyContent: "center" }}>
-            <div style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", padding: "20px 30px", borderRadius: "32px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-              <span style={{ color: "white", fontSize: "0.9rem", fontWeight: 700 }}>Arahkan wajah Anda ke kamera</span>
-              <button 
-                onClick={captureAndSubmit}
-                style={{ width: "72px", height: "72px", borderRadius: "50%", background: "white", border: "6px solid rgba(22, 119, 237, 0.5)", cursor: "pointer", boxShadow: "0 8px 32px rgba(22, 119, 237, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-              >
-                <div style={{ width: "54px", height: "54px", borderRadius: "50%", background: "var(--blue)" }}></div>
+          <div className="attendance-camera-controls">
+            <div>
+              <span>Arahkan wajah Anda ke kamera</span>
+              <button type="button" onClick={captureAndSubmit} aria-label="Ambil foto kehadiran">
+                <span />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="schedule-page-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: "16px" }}>
+      <div className="schedule-page-header attendance-page-header">
         <div className="schedule-title-lockup">
           <img src="/LogoSBL.svg" alt="Radio SBL" />
           <div>
@@ -429,97 +490,113 @@ export function AttendancePage({
             <h1>Absensi Cerdas</h1>
           </div>
         </div>
-        <p style={{ color: "var(--muted)", fontSize: "0.95rem", lineHeight: 1.5, margin: 0 }}>
-          Pilih status kehadiran Anda. Sistem AI akan menganalisa foto dan lokasi secara otomatis.
+        <p>
+          Status hari ini, lokasi, selfie, dan check-out ditampilkan jelas agar proses absen tidak membingungkan.
         </p>
       </div>
 
-      <div style={{ padding: "0 20px" }}>
-        <div style={{ background: "white", borderRadius: "32px", padding: "24px", boxShadow: "0 8px 32px rgba(12, 36, 70, 0.05)", marginBottom: "24px" }}>
-          
+      <div className="attendance-content">
+        <section className="attendance-status-panel" aria-label="Ringkasan absensi hari ini">
+          <article className={`attendance-status-card ${hasCheckedIn ? "success" : "warning"}`}>
+            <span>
+              {hasCheckedIn ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+            </span>
+            <div>
+              <small>Status hari ini</small>
+              <strong>{attendanceStatusTitle}</strong>
+              <p>{attendanceStatusDescription}</p>
+            </div>
+          </article>
+
+          <article className={`attendance-status-card ${distance !== null && distance > officeRadiusMeters ? "warning" : ""}`}>
+            <span>
+              <MapPin size={20} />
+            </span>
+            <div>
+              <small>Lokasi dan GPS</small>
+              <strong>{locationStatusTitle}</strong>
+              <p>{locationStatusDescription}</p>
+            </div>
+          </article>
+
+          <article className={`attendance-status-card ${selfieUploadStatus === "failed" ? "warning" : selfieUploadStatus === "uploaded" ? "success" : ""}`}>
+            <span>
+              <Camera size={20} />
+            </span>
+            <div>
+              <small>Bukti selfie</small>
+              <strong>{selfieStatusTitle}</strong>
+              <p>{selfieStatusDescription}</p>
+            </div>
+          </article>
+        </section>
+
+        <section className="attendance-main-panel">
           {todayRecord ? (
             todayRecord.checkOutAt ? (
-              <div style={{ background: "#ecfdf5", padding: "32px 24px", borderRadius: "20px", textAlign: "center", color: "#059669", border: "1px solid #a7f3d0", animation: "fadeSlideUp 0.4s ease-out" }}>
-                <BadgeCheck size={56} style={{ margin: "0 auto 16px" }} />
-                <h3 style={{ margin: "0 0 8px", fontSize: "1.4rem", fontWeight: 900 }}>Tugas Selesai</h3>
-                <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>Terima kasih! Anda telah menyelesaikan Check-in dan Check-out hari ini.</p>
+              <div className="attendance-complete-state">
+                <BadgeCheck size={56} />
+                <h3>Tugas Selesai</h3>
+                <p>Terima kasih! Anda telah menyelesaikan Check-in dan Check-out hari ini.</p>
               </div>
             ) : (
-              <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeSlideUp 0.4s ease-out" }}>
-                <div style={{ background: "rgba(17, 163, 106, 0.08)", border: "2px solid rgba(17, 163, 106, 0.2)", color: "#11a36a", padding: "24px", borderRadius: "24px", marginBottom: "24px", fontWeight: 800 }}>
-                  <CheckCircle2 size={48} color="#11a36a" style={{ margin: "0 auto 12px" }} />
-                  <h3 style={{ margin: "0 0 12px", fontSize: "1.4rem", fontWeight: 900, color: "var(--ink)" }}>Absensi Berhasil!</h3>
-                  <p style={{ margin: "0 0 16px", fontSize: "0.95rem", color: "var(--muted)", lineHeight: 1.5 }}>
+              <div className="attendance-checked-state">
+                <div className="attendance-success-card">
+                  <CheckCircle2 size={48} />
+                  <h3>Absensi Berhasil!</h3>
+                  <p>
                     Data kehadiran Anda telah tercatat dengan aman di server Radio SBL. Anda tidak perlu mengambil foto lagi.
                   </p>
                   {uploadNotice && (
-                    <div style={{ background: selfieUploadStatus === "failed" ? "#fff7ed" : "#eefdf7", color: selfieUploadStatus === "failed" ? "#c2410c" : "#047857", padding: "12px", borderRadius: "14px", marginBottom: "16px", fontSize: "0.85rem", lineHeight: 1.4 }}>
+                    <div className={`attendance-upload-notice ${selfieUploadStatus === "failed" ? "warning" : ""}`}>
                       {uploadNotice}
                     </div>
                   )}
-                  <div style={{ background: "white", padding: "16px", borderRadius: "16px", display: "flex", flexDirection: "column", gap: "8px", textAlign: "left", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Status</span>
-                      <span style={{ fontSize: "0.85rem", color: "#11a36a", fontWeight: 900 }}>DITERIMA</span>
+                  <div className="attendance-receipt">
+                    <div>
+                      <span>Status</span>
+                      <strong className="success">DITERIMA</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Jam Masuk</span>
-                      <span style={{ fontSize: "0.85rem", color: "var(--ink)", fontWeight: 900 }}>{new Date(todayRecord.checkInAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WITA</span>
+                    <div>
+                      <span>Jam Masuk</span>
+                      <strong>{new Date(todayRecord.checkInAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WITA</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Tipe</span>
-                      <span style={{ fontSize: "0.85rem", color: "var(--ink)", fontWeight: 900 }}>{todayRecord.status === "sick" ? "Sakit" : todayRecord.status === "leave" ? "Izin" : "Hadir"}</span>
+                    <div>
+                      <span>Tipe</span>
+                      <strong>{getAttendanceTypeLabel(todayRecord.status)}</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Bukti Selfie</span>
-                      <span style={{ fontSize: "0.85rem", color: selfieUploadStatus === "failed" ? "#ef4444" : selfieUploadStatus === "uploaded" ? "#11a36a" : "#f59e0b", fontWeight: 900 }}>
+                    <div>
+                      <span>Bukti Selfie</span>
+                      <strong className={selfieUploadStatus === "failed" ? "danger" : selfieUploadStatus === "uploaded" ? "success" : "warning"}>
                         {selfieUploadStatus === "uploaded" ? "TERSIMPAN" : selfieUploadStatus === "failed" ? "GAGAL UPLOAD" : "MENGUNGGAH"}
-                      </span>
+                      </strong>
                     </div>
                   </div>
                 </div>
                 
-                <h4 style={{ margin: "0 0 12px", fontSize: "1rem", color: "var(--ink)" }}>Tugas Selesai?</h4>
+                <h4>Tugas Selesai?</h4>
                 <button 
+                  type="button"
                   onClick={handleCheckOut} 
                   disabled={checkingOut} 
-                  style={{ width: "100%", padding: "18px", borderRadius: "99px", background: checkingOut ? "var(--muted)" : "#f59e0b", color: "white", border: "none", fontWeight: 800, fontSize: "1.05rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", cursor: checkingOut ? "not-allowed" : "pointer", boxShadow: checkingOut ? "none" : "0 8px 24px rgba(245, 158, 11, 0.25)", transition: "all 0.3s" }}
+                  className="attendance-submit-button checkout"
                 >
-                  {checkingOut ? <div className="spinner-small" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "white" }}></div> : <Clock3 size={22} />}
+                  {checkingOut ? <div className="spinner-small light"></div> : <Clock3 size={22} />}
                   {checkingOut ? "Menyimpan Data..." : "Absen Pulang (Check-out)"}
                 </button>
               </div>
             )
           ) : (
             <>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "24px" }}>
-                {[
-                  { id: "present", label: "Hadir / Di Kantor", color: "#11a36a", bg: "rgba(17, 163, 106, 0.1)" },
-                  { id: "sick", label: "Sakit", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
-                  { id: "leave", label: "Izin", color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" },
-                  { id: "out_of_office", label: "Tugas Luar", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.1)" }
-                ].map((type) => {
+              <div className="attendance-type-grid">
+                {attendanceTypeOptions.map((type) => {
                   const isActive = attendanceType === type.id;
                   return (
                     <button
                       key={type.id}
-                      onClick={() => { setAttendanceType(type.id as any); setOutOfOfficeReason(""); }}
-                      style={{
-                        flex: "1 1 calc(50% - 12px)",
-                        padding: "16px 14px",
-                        borderRadius: "18px",
-                        border: isActive ? `2px solid ${type.color}` : "2px solid transparent",
-                        background: isActive ? type.bg : "#f1f3f5",
-                        color: isActive ? type.color : "var(--muted)",
-                        fontWeight: 800,
-                        fontSize: "0.95rem",
-                        cursor: "pointer",
-                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                        boxShadow: isActive ? `0 4px 12px ${type.bg}` : "none",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
-                      }}
+                      type="button"
+                      onClick={() => { setAttendanceType(type.id as AttendanceType); setOutOfOfficeReason(""); }}
+                      className={`attendance-type-option ${type.id} ${isActive ? "active" : ""}`}
                     >
                       {type.label}
                     </button>
@@ -528,8 +605,8 @@ export function AttendancePage({
               </div>
 
               {["sick", "leave", "out_of_office"].includes(attendanceType) && (
-                <div style={{ marginBottom: "20px" }}>
-                  <label style={{ display: "block", marginBottom: "8px", color: "var(--ink)", fontWeight: 800, fontSize: "0.9rem" }}>
+                <div className="attendance-note-field">
+                  <label>
                     Catatan Tambahan (Wajib)
                   </label>
                   <textarea
@@ -540,93 +617,89 @@ export function AttendancePage({
                       attendanceType === "leave" ? "Contoh: Izin ada keperluan keluarga darurat..." :
                       "Deskripsikan lokasi liputan Anda..."
                     }
-                    style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "2px solid rgba(22, 119, 237, 0.15)", outline: "none", fontSize: "0.95rem", minHeight: "100px", resize: "vertical", background: "rgba(22, 119, 237, 0.02)", color: "var(--ink)" }}
                   />
                 </div>
               )}
 
               {fileError && (
-                <div style={{ background: "#fef2f2", borderLeft: "4px solid #ef4444", padding: "12px 16px", borderRadius: "12px", marginBottom: "16px", color: "#b91c1c", fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.4, display: "flex", alignItems: "center", gap: "10px" }}>
-                  <X size={18} color="#ef4444" style={{ flexShrink: 0 }} />
+                <div className="attendance-error">
+                  <X size={18} />
                   <span>{fileError}</span>
                 </div>
               )}
               
               <button 
+                type="button"
                 onClick={handleStartCamera} 
                 disabled={checking} 
-                style={{ width: "100%", padding: "18px", borderRadius: "99px", background: checking ? "var(--muted)" : "#1677ED", color: "white", border: "none", fontWeight: 800, fontSize: "1.05rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", cursor: checking ? "not-allowed" : "pointer", boxShadow: checking ? "none" : "0 8px 24px rgba(22, 119, 237, 0.25)", transition: "all 0.3s" }}
+                className="attendance-submit-button"
               >
-                {checking ? <div className="spinner-small" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "white" }}></div> : <Camera size={22} />}
+                {checking ? <div className="spinner-small light"></div> : <Camera size={22} />}
                 {checking ? "Memeriksa & Menganalisa..." : "Mulai Kamera Smart"}
               </button>
             </>
           )}
-        </div>
+        </section>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {/* Lokasi Card */}
-          <div style={{ background: "white", borderRadius: "24px", padding: "20px", display: "flex", alignItems: "center", gap: "16px", boxShadow: "0 4px 20px rgba(12, 36, 70, 0.03)" }}>
+        <div className="attendance-info-list">
+          <article className="attendance-info-card">
             <MapPin size={24} color="var(--blue)" />
-            <div style={{ flex: 1 }}>
-              <strong style={{ display: "block", color: "var(--ink)", fontSize: "1.05rem", marginBottom: "4px", fontWeight: 800 }}>
+            <div>
+              <strong>
                 {distance === null
                   ? "Satelit belum dilacak"
                   : distance <= officeRadiusMeters
                     ? "Radius studio valid"
                     : "Di luar radius studio"}
               </strong>
-              <span style={{ color: "var(--muted)", fontSize: "0.9rem", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span>
                 <span>
                   {distance === null
                     ? `Batas kantor ${officeRadiusMeters}m`
                     : `${Math.round(distance)} meter dari titik kantor`}
                 </span>
                 {position?.accuracy && (
-                  <span style={{ color: position.accuracy <= 30 ? "#11a36a" : position.accuracy <= 100 ? "#f59e0b" : "#ef4444", fontWeight: 700, fontSize: "0.8rem" }}>
-                    Akurasi Satelit (GPS): ±{Math.round(position.accuracy)}m
+                  <span className={gpsAccuracyTone}>
+                    Akurasi Satelit (GPS): +/-{Math.round(position.accuracy)}m
                   </span>
                 )}
               </span>
             </div>
             {distance !== null && distance <= officeRadiusMeters && <BadgeCheck size={20} color="#11a36a" />}
-          </div>
+          </article>
 
-          {/* AI Vision Card (Hidden Header & Log) */}
-          <div style={{ background: "white", borderRadius: "24px", padding: aiAnalysis?.greeting ? "24px 20px" : "16px 20px", display: "flex", alignItems: "flex-start", gap: "16px", boxShadow: "0 4px 20px rgba(12, 36, 70, 0.03)" }}>
-            <BadgeCheck size={24} color={aiAnalysis?.isValid ? "#11a36a" : "var(--muted)"} style={{ marginTop: aiAnalysis?.greeting ? "4px" : "0" }} />
-            <div style={{ flex: 1 }}>
+          <article className={`attendance-info-card ai ${aiAnalysis?.greeting ? "with-greeting" : ""}`}>
+            <BadgeCheck size={24} color={aiAnalysis?.isValid ? "#11a36a" : "var(--muted)"} />
+            <div>
               {aiAnalysis?.greeting ? (
-                <div style={{ background: "linear-gradient(135deg, #f4f9ff 0%, #e6f0fa 100%)", padding: "18px 20px", borderRadius: "24px", borderTopLeftRadius: "4px", color: "#1e293b", fontWeight: 500, fontSize: "0.95rem", lineHeight: 1.6 }}>
+                <div className="attendance-ai-bubble">
                   {aiAnalysis.greeting.replace(/^["']|["']$/g, '')}
                 </div>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", height: "24px" }}>
-                  <span style={{ color: "var(--muted)", fontSize: "0.95rem", fontWeight: 500 }}>
+                <div>
+                  <span>
                     Identifikasi visual aktif dan siap digunakan.
                   </span>
                 </div>
               )}
             </div>
-            {aiAnalysis?.isValid && <CheckCircle2 size={20} color="#11a36a" style={{ marginTop: aiAnalysis?.greeting ? "4px" : "0" }} />}
-          </div>
+            {aiAnalysis?.isValid && <CheckCircle2 size={20} color="#11a36a" />}
+          </article>
 
-          {/* Check-in Status Card */}
-          <div style={{ background: "white", borderRadius: "24px", padding: "20px", display: "flex", alignItems: "center", gap: "16px", boxShadow: "0 4px 20px rgba(12, 36, 70, 0.03)" }}>
+          <article className="attendance-info-card">
             <Clock3 size={24} color="var(--blue)" />
-            <div style={{ flex: 1 }}>
-              <strong style={{ display: "block", color: "var(--ink)", fontSize: "1.05rem", marginBottom: "4px", fontWeight: 800 }}>Status Transmisi</strong>
-              <span style={{ color: "var(--muted)", fontSize: "0.9rem" }}>{recordStatus || "Siap menerima data."}</span>
+            <div>
+              <strong>Status Transmisi</strong>
+              <span>{recordStatus || "Siap menerima data."}</span>
             </div>
             {recordStatus && <CheckCircle2 size={20} color="#11a36a" />}
-          </div>
+          </article>
 
-          {/* Drive Metadata Card */}
-          <div style={{ background: "white", borderRadius: "24px", padding: "20px", display: "flex", alignItems: "center", gap: "16px", boxShadow: "0 4px 20px rgba(12, 36, 70, 0.03)" }}>
+          <article className="attendance-info-card">
             <UploadCloud size={24} color="var(--blue)" />
-            <div style={{ flex: 1 }}>
-              <strong style={{ display: "block", color: "var(--ink)", fontSize: "1.05rem", marginBottom: "4px", fontWeight: 800 }}>Penyimpanan Eksternal</strong>
-              <span style={{ color: "var(--muted)", fontSize: "0.9rem", wordBreak: "break-all" }}>
+            <div>
+              <strong>Penyimpanan Eksternal</strong>
+              <span className="breakable">
                 {selfieUploadStatus === "pending"
                   ? "Foto sedang diunggah. Absensi Anda sudah tercatat."
                   : selfieUploadStatus === "failed"
@@ -635,9 +708,8 @@ export function AttendancePage({
               </span>
             </div>
             <Cloud size={20} color="var(--muted)" />
-          </div>
+          </article>
         </div>
-
       </div>
     </div>
   );

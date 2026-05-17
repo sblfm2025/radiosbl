@@ -1,11 +1,13 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Filter,
   Inbox,
   ListChecks,
   MessageSquare,
+  Search,
   Send,
   UserRound
 } from "lucide-react";
@@ -18,9 +20,16 @@ import { canUser } from "../utils/rbac";
 export function ComplaintsPage({ data, session }: { data: DashboardSnapshot, session: AuthSession | null }) {
   type ComplaintCategory = "Teknis" | "Program" | "Informasi Publik" | "Lainnya";
   type ComplaintActionStatus = "Terverifikasi" | "Diproses" | "Selesai";
+  type ComplaintStatus = Complaint["status"];
+  type ComplaintStatusFilter = ComplaintStatus | "Semua";
+  type ComplaintCategoryFilter = ComplaintCategory | "Semua";
+  const complaintProgressSteps: ComplaintStatus[] = ["Baru", "Terverifikasi", "Diproses", "Selesai"];
   const [reporterName, setReporterName] = useState("");
   const [category, setCategory] = useState<ComplaintCategory>("Teknis");
   const [message, setMessage] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ComplaintStatusFilter>("Semua");
+  const [categoryFilter, setCategoryFilter] = useState<ComplaintCategoryFilter>("Semua");
   const [complaintItems, setComplaintItems] = useState<Complaint[]>(() =>
     data.complaints.map((item, index) => ({
       id: `mock-complaint-${index}`,
@@ -117,9 +126,44 @@ export function ComplaintsPage({ data, session }: { data: DashboardSnapshot, ses
   const complaintStats = {
     total: complaintItems.length,
     baru: complaintItems.filter((item) => item.status === "Baru").length,
+    terverifikasi: complaintItems.filter((item) => item.status === "Terverifikasi").length,
     diproses: complaintItems.filter((item) => item.status === "Diproses").length,
     selesai: complaintItems.filter((item) => item.status === "Selesai").length
   };
+  const filteredComplaintItems = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+
+    return complaintItems.filter((item) => {
+      const matchesStatus = statusFilter === "Semua" || item.status === statusFilter;
+      const matchesCategory = categoryFilter === "Semua" || item.category === categoryFilter;
+      const searchable = [
+        item.reporterName,
+        item.category,
+        item.message,
+        item.status,
+        formatComplaintDate(item.createdAt)
+      ].join(" ").toLowerCase();
+      const matchesQuery = !keyword || searchable.includes(keyword);
+
+      return matchesStatus && matchesCategory && matchesQuery;
+    });
+  }, [categoryFilter, complaintItems, query, statusFilter]);
+  const priorityComplaint = useMemo(() => {
+    const priorityOrder: ComplaintStatus[] = ["Baru", "Terverifikasi", "Diproses"];
+
+    return (
+      priorityOrder
+        .map((status) => complaintItems.find((item) => item.status === status))
+        .find(Boolean) ?? null
+    );
+  }, [complaintItems]);
+  const hasActiveFilters = Boolean(query.trim()) || statusFilter !== "Semua" || categoryFilter !== "Semua";
+
+  function resetComplaintFilters() {
+    setQuery("");
+    setStatusFilter("Semua");
+    setCategoryFilter("Semua");
+  }
 
   return (
     <main className="complaints-page">
@@ -159,6 +203,71 @@ export function ComplaintsPage({ data, session }: { data: DashboardSnapshot, ses
             <strong>{complaintStats.selesai}</strong>
             Selesai
           </span>
+        </div>
+      </section>
+
+      <section className="complaints-command-panel" aria-label="Kontrol dan prioritas aduan">
+        <label className="complaints-search-field">
+          <Search size={18} />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Cari pelapor, kategori, isi aduan..."
+            aria-label="Cari aduan"
+          />
+        </label>
+
+        <div className="complaints-filter-grid">
+          <label>
+            <Filter size={16} />
+            <span>Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as ComplaintStatusFilter)}
+            >
+              <option value="Semua">Semua status</option>
+              <option value="Baru">Baru</option>
+              <option value="Terverifikasi">Terverifikasi</option>
+              <option value="Diproses">Diproses</option>
+              <option value="Selesai">Selesai</option>
+            </select>
+          </label>
+          <label>
+            <MessageSquare size={16} />
+            <span>Kategori</span>
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value as ComplaintCategoryFilter)}
+            >
+              <option value="Semua">Semua kategori</option>
+              <option value="Teknis">Teknis</option>
+              <option value="Program">Program</option>
+              <option value="Informasi Publik">Informasi Publik</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="complaints-focus-row" aria-label="Prioritas tindak lanjut">
+          <article>
+            <ListChecks size={18} />
+            <small>Tampilan aktif</small>
+            <strong>{filteredComplaintItems.length} aduan</strong>
+            <span>{hasActiveFilters ? "Filter sedang digunakan" : "Semua antrean ditampilkan"}</span>
+          </article>
+          <article>
+            <AlertCircle size={18} />
+            <small>Butuh atensi</small>
+            <strong>{complaintStats.baru + complaintStats.terverifikasi} aduan</strong>
+            <span>Baru atau menunggu proses awal</span>
+          </article>
+          <article>
+            <Clock size={18} />
+            <small>Prioritas berikutnya</small>
+            <strong>{priorityComplaint?.reporterName ?? "Antrean aman"}</strong>
+            <span>{priorityComplaint ? `${priorityComplaint.status} - ${priorityComplaint.category}` : "Tidak ada aduan aktif"}</span>
+          </article>
         </div>
       </section>
 
@@ -229,19 +338,29 @@ export function ComplaintsPage({ data, session }: { data: DashboardSnapshot, ses
                 <h2 id="complaint-list-title">Daftar Aduan Masuk</h2>
               </div>
             </div>
-            <strong>{complaintItems.length}</strong>
+            <strong>{filteredComplaintItems.length}</strong>
           </div>
 
           <div className="complaint-list">
-            {complaintItems.length === 0 ? (
+            {filteredComplaintItems.length === 0 ? (
               <div className="complaint-empty-state">
                 <Inbox size={28} />
-                <h3>Belum ada aduan masuk</h3>
-                <p>Aduan yang dikirim pendengar akan tampil di sini.</p>
+                <h3>{hasActiveFilters ? "Tidak ada aduan yang cocok" : "Belum ada aduan masuk"}</h3>
+                <p>
+                  {hasActiveFilters
+                    ? "Coba ubah kata kunci, status, atau kategori untuk melihat antrean lain."
+                    : "Aduan yang dikirim pendengar akan tampil di sini."}
+                </p>
+                {hasActiveFilters && (
+                  <button type="button" onClick={resetComplaintFilters}>
+                    Reset filter
+                  </button>
+                )}
               </div>
-            ) : complaintItems.map((item) => {
+            ) : filteredComplaintItems.map((item) => {
               const statusStyle = getStatusColor(item.status);
               const createdAt = formatComplaintDate(item.createdAt);
+              const activeStepIndex = complaintProgressSteps.indexOf(item.status);
 
               return (
                 <article key={item.id} className={`complaint-ticket ${statusStyle.className}`}>
@@ -260,6 +379,20 @@ export function ComplaintsPage({ data, session }: { data: DashboardSnapshot, ses
                   </div>
 
                   <p className="complaint-message">{item.message}</p>
+
+                  <div className="complaint-progress" aria-label={`Progres aduan ${item.reporterName}`}>
+                    {complaintProgressSteps.map((step, index) => (
+                      <span
+                        key={step}
+                        className={[
+                          index <= activeStepIndex ? "is-complete" : "",
+                          index === activeStepIndex ? "is-current" : ""
+                        ].filter(Boolean).join(" ")}
+                      >
+                        <small>{step}</small>
+                      </span>
+                    ))}
+                  </div>
 
                   {canUser(session?.user.role, "complaints:manage") && (
                     <div className="complaint-actions">

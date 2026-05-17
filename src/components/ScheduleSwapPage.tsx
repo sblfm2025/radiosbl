@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Clock, CheckCircle2, Send, AlertCircle, Calendar } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, Calendar, CheckCircle2, Clock, Send } from "lucide-react";
 import { PageHeader } from "./PageHeader";
 import {
   getScheduleSwapAliasesForUser,
@@ -10,7 +10,7 @@ import {
 } from "../services/scheduleSwap.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import type { AuthSession } from "../services/auth.service";
-import type { ScheduleSwapRequest, AppUser } from "../types/domain";
+import type { AppUser, ScheduleSwapRequest } from "../types/domain";
 import { announcers as localAnnouncers, weeklyBroadcastSchedule } from "../data/radioData";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import { formatScheduleDate, getScheduleDayName } from "../services/scheduleSlot.service";
@@ -21,9 +21,9 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
 
-  // Form State
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
   const [targetDate, setTargetDate] = useState(formatScheduleDate(new Date()));
   const [targetAnnouncerId, setTargetAnnouncerId] = useState("");
@@ -34,12 +34,9 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
     const digits = value.replace(/\D/g, "");
 
     if (!digits) return null;
-    // radioData.ts id announcer = nomor WA tanpa 0 depan (contoh: 085397286112)
-    // kalau digits diawali 0, buang leading 0
     return digits.replace(/^0+/, "");
   };
 
-  // Filter jadwal milik penyiar yang sedang login
   const mySlots = useMemo(() => {
     if (!session) return [];
 
@@ -48,23 +45,22 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
 
     if (profile?.airName) candidateNames.add(profile.airName.toLowerCase());
     if (profile?.fullName) candidateNames.add(profile.fullName.toLowerCase());
-    if (profile?.scheduleNames) profile.scheduleNames.forEach(n => candidateNames.add(n.toLowerCase()));
+    if (profile?.scheduleNames) profile.scheduleNames.forEach((name) => candidateNames.add(name.toLowerCase()));
     if (session.user.displayName) candidateNames.add(session.user.displayName.toLowerCase());
     if (session.user.airName) candidateNames.add(session.user.airName.toLowerCase());
 
     const fromWhatsapp = extractWaNumber(session.user.whatsapp);
     if (fromWhatsapp) {
-      // extractWaNumber membuang '0' di depan. Namun id di localAnnouncers formatnya '08...'. 
-      // Jadi gunakan endsWith agar cocok.
-      const local = localAnnouncers.find((a) => a.id.endsWith(fromWhatsapp));
+      const local = localAnnouncers.find((announcer) => announcer.id.endsWith(fromWhatsapp));
       if (local?.airName) candidateNames.add(local.airName.toLowerCase());
-      if (local?.scheduleNames) local.scheduleNames.forEach(n => candidateNames.add(n.toLowerCase()));
+      if (local?.scheduleNames) local.scheduleNames.forEach((name) => candidateNames.add(name.toLowerCase()));
     }
 
-    // Ekstraksi kata-kata dari nama Google Account untuk menebak (fuzzy search)
     if (session.user.displayName) {
       const parts = session.user.displayName.toLowerCase().split(/\s+/);
-      parts.forEach(p => { if (p.length > 2) candidateNames.add(p); });
+      parts.forEach((part) => {
+        if (part.length > 2) candidateNames.add(part);
+      });
     }
 
     const targetDay = getScheduleDayName(targetDate);
@@ -91,28 +87,24 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
         return user.role === "announcer" && user.id !== session.user.id && user.active;
       });
 
-      // Kalau Firestore/local profile tidak menghasilkan kandidat, fallback ke announcers lokal
       if (filtered.length > 0) {
         setAnnouncers(filtered);
       } else {
         setAnnouncers(
           localAnnouncers
-            .filter((a) => a.id !== session.user.id && a.active)
-            .map((a) => {
-              const waId = `wa-${a.id}`;
-              return {
-                id: waId,
-                email: `${a.id}@radiosbl.com`,
-                displayName: a.fullName,
-                role: "announcer" as const,
-                airName: a.airName,
-                announcerNames: a.scheduleNames,
-                photoUrl: a.photoUrl,
-                whatsapp: a.id,
-                active: a.active,
-                employeeId: undefined
-              };
-            })
+            .filter((announcer) => announcer.id !== session.user.id && announcer.active)
+            .map((announcer) => ({
+              id: `wa-${announcer.id}`,
+              email: `${announcer.id}@radiosbl.com`,
+              displayName: announcer.fullName,
+              role: "announcer" as const,
+              airName: announcer.airName,
+              announcerNames: announcer.scheduleNames,
+              photoUrl: announcer.photoUrl,
+              whatsapp: announcer.id,
+              active: announcer.active,
+              employeeId: undefined
+            }))
         );
       }
     } finally {
@@ -147,28 +139,47 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
     return () => unsubscribe();
   }, [session]);
 
+  const swapSummary = useMemo(() => {
+    return swaps.reduce(
+      (summary, swap) => {
+        const incoming = session ? isIncomingScheduleSwap(swap, session.user) : false;
+
+        if (swap.status === "pending_target" && incoming) {
+          summary.incoming += 1;
+        } else if (swap.status === "pending_target") {
+          summary.outgoing += 1;
+        } else {
+          summary.completed += 1;
+        }
+
+        return summary;
+      },
+      { incoming: 0, outgoing: 0, completed: 0 }
+    );
+  }, [session, swaps]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!session || !selectedSlotKey || !targetAnnouncerId || !reason) return;
 
     setSubmitting(true);
     setWhatsappLink(null);
+    setErrorMessage("");
     try {
       const targetAnnouncer = announcers.find((announcer) => announcer.id === targetAnnouncerId);
       const result = await submitSwapRequest({
-        scheduleId: selectedSlotKey, // Menggunakan key sebagai ID sementara
+        scheduleId: selectedSlotKey,
         targetDate,
         requesterId: session.user.id,
         requesterAliases: getScheduleSwapAliasesForUser(session.user),
         targetAnnouncerId,
-        targetAnnouncerAliases: getScheduleSwapAliasesForUser(
-          targetAnnouncer ?? targetAnnouncerId
-        ),
+        targetAnnouncerAliases: getScheduleSwapAliasesForUser(targetAnnouncer ?? targetAnnouncerId),
         reason
       }, {
         requester: session.user,
         targetAnnouncer
       });
+
       if (result.whatsappDelivered) {
         setMessage("Permintaan dikirim dan notifikasi WhatsApp terkirim ke penyiar pengganti.");
       } else if (result.whatsappUrl) {
@@ -178,12 +189,13 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
       } else {
         setMessage(`Permintaan dikirim. WhatsApp belum terkirim: ${result.whatsappFallbackReason || "nomor tujuan belum tersedia."}`);
       }
+
       setSelectedSlotKey("");
       setTargetDate(formatScheduleDate(new Date()));
       setTargetAnnouncerId("");
       setReason("");
     } catch {
-      alert("Gagal mengirim permintaan.");
+      setErrorMessage("Gagal mengirim permintaan. Coba periksa koneksi lalu kirim ulang.");
     } finally {
       setSubmitting(false);
     }
@@ -193,17 +205,18 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
     if (!session) return;
 
     try {
+      setErrorMessage("");
       await updateSwapStatus(swapId, approve ? "approved" : "rejected", session.user);
       setMessage(approve ? "Pertukaran disetujui. Jadwal otomatis diperbarui." : "Pertukaran ditolak.");
       setTimeout(() => setMessage(""), 3000);
     } catch {
-      alert("Gagal menanggapi permintaan.");
+      setErrorMessage("Gagal menanggapi permintaan. Coba ulangi dari kartu permintaan ini.");
     }
   }
 
-  function getStatusLabel(swap: ScheduleSwapRequest, isIncoming: boolean) {
+  function getStatusLabel(swap: ScheduleSwapRequest, incoming: boolean) {
     if (swap.status === "pending_target") {
-      return isIncoming ? "Menunggu keputusan Anda" : "Menunggu rekan penyiar";
+      return incoming ? "Menunggu keputusan Anda" : "Menunggu rekan penyiar";
     }
 
     if (swap.status === "approved") {
@@ -213,194 +226,211 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
     return "Ditolak";
   }
 
+  function getStatusClass(swap: ScheduleSwapRequest, incoming: boolean) {
+    if (swap.status === "approved") return "approved";
+    if (swap.status === "rejected") return "rejected";
+    if (incoming) return "incoming";
+    return "pending";
+  }
+
   return (
-    <div className="schedule-swap-page" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh", paddingBottom: "100px" }}>
-      <PageHeader
-        eyebrow="Tukar Jadwal"
-        title="Pengajuan Jadwal Siaran"
-        description="Ajukan permintaan pengganti slot siaran dan tanggapi permintaan masuk dari rekan penyiar."
-      />
+    <div className="schedule-swap-page">
+      <div className="schedule-swap-content">
+        <PageHeader
+          eyebrow="Tukar Jadwal"
+          title="Pengajuan Jadwal Siaran"
+          description="Ajukan permintaan pengganti slot siaran dan tanggapi permintaan masuk dari rekan penyiar."
+        />
 
-      {message && (
-        <div style={{ background: "#11a36a", color: "white", padding: "14px 20px", borderRadius: "16px", marginBottom: "24px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-          <CheckCircle2 size={20} /> {message}
-          {whatsappLink && (
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "white", marginLeft: "auto", textDecoration: "underline" }}
-            >
-              Kirim WA
-            </a>
-          )}
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
-        
-        {/* Form Pengajuan */}
-        <section style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-          <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Send size={18} color="var(--blue)" /> Ajukan Pertukaran
-          </h2>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label htmlFor="swap-target-date" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>Tanggal Tukar</label>
-              <input
-                id="swap-target-date"
-                type="date"
-                value={targetDate}
-                onChange={(e) => {
-                  setTargetDate(e.target.value || formatScheduleDate(new Date()));
-                  setSelectedSlotKey("");
-                }}
-                required
-                style={{ padding: "14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", outline: "none" }}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label htmlFor="swap-source-slot" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>Pilih Jadwal Anda</label>
-              <select 
-                id="swap-source-slot"
-                value={selectedSlotKey} 
-                onChange={(e) => setSelectedSlotKey(e.target.value)}
-                required
-                style={{ padding: "14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", outline: "none" }}
-              >
-                <option value="">-- Pilih Jam Siaran --</option>
-                {mySlots.map((slot, i) => (
-                  <option key={i} value={`${slot.day}|${slot.time}|${slot.program}`}>
-                    {targetDate} • {slot.time} • {slot.program}
-                  </option>
-                ))}
-              </select>
-              <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.8rem" }}>
-                Hanya jadwal Anda pada hari {getScheduleDayName(targetDate)} yang ditampilkan.
-              </p>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label htmlFor="swap-target-announcer" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>Pilih Penyiar Pengganti</label>
-              <select 
-                id="swap-target-announcer"
-                value={targetAnnouncerId} 
-                onChange={(e) => setTargetAnnouncerId(e.target.value)}
-                required
-                style={{ padding: "14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", outline: "none" }}
-              >
-                <option value="">-- Pilih Rekan Penyiar --</option>
-                {announcers.map(ann => (
-                  <option key={ann.id} value={ann.id}>{ann.airName || ann.displayName}</option>
-                ))}
-              </select>
-              {announcers.length === 0 && (
-                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.85rem" }}>
-                  Daftar penyiar pengganti belum tersedia. Periksa kembali data profil atau hubungi admin.
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label htmlFor="swap-reason" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>Alasan Pertukaran</label>
-              <textarea 
-                id="swap-reason"
-                value={reason} 
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Berikan alasan mengapa Anda butuh pertukaran..."
-                required
-                rows={3}
-                style={{ padding: "14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "#f8f9fc", outline: "none", resize: "none" }}
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={submitting || mySlots.length === 0}
-              style={{ padding: "16px", borderRadius: "99px", background: "var(--blue)", color: "white", border: "none", fontWeight: "bold", cursor: "pointer", boxShadow: "0 8px 16px rgba(22, 119, 237, 0.2)" }}
-            >
-              {submitting ? "Mengirim..." : "Kirim Permintaan Tukar"}
-            </button>
-            {mySlots.length === 0 && (
-              <div style={{ marginTop: "12px", padding: "12px", background: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
-                <p style={{ fontSize: "0.85rem", color: "#b91c1c", textAlign: "center", margin: 0, fontWeight: 700 }}>Anda tidak memiliki jadwal siaran pada hari tersebut.</p>
-                <p style={{ fontSize: "0.75rem", color: "#dc2626", textAlign: "center", margin: "4px 0 0 0" }}>Silakan ubah Tanggal Tukar ke hari di mana Anda dijadwalkan bersiaran.</p>
-              </div>
+        {message && (
+          <div className="schedule-swap-alert success">
+            <CheckCircle2 size={20} />
+            <span>{message}</span>
+            {whatsappLink && (
+              <a href={whatsappLink} target="_blank" rel="noreferrer">
+                Kirim WA
+              </a>
             )}
-          </form>
-        </section>
+          </div>
+        )}
 
-        {/* Daftar Permintaan */}
-        <section style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-          <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Clock size={18} color="var(--blue)" /> Riwayat & Permintaan Masuk
-          </h2>
+        {errorMessage && (
+          <div className="schedule-swap-alert danger">
+            <AlertCircle size={20} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "32px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-          ) : swaps.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)" }}>
-              <AlertCircle size={32} style={{ marginBottom: "12px", opacity: 0.3 }} />
-              <p>Belum ada aktivitas pertukaran jadwal.</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {swaps.map((swap) => {
-                const isIncoming = session ? isIncomingScheduleSwap(swap, session.user) : false;
-                const targetAnnouncer = announcers.find(a => a.id === swap.targetAnnouncerId);
-                const requester = announcers.find(a => a.id === swap.requesterId);
+        <div className="schedule-swap-summary">
+          <article className="schedule-swap-summary-card incoming">
+            <small>Permintaan masuk</small>
+            <strong>{swapSummary.incoming}</strong>
+            <span>Perlu ditanggapi</span>
+          </article>
+          <article className="schedule-swap-summary-card pending">
+            <small>Menunggu rekan</small>
+            <strong>{swapSummary.outgoing}</strong>
+            <span>Pengajuan saya</span>
+          </article>
+          <article className="schedule-swap-summary-card done">
+            <small>Selesai</small>
+            <strong>{swapSummary.completed}</strong>
+            <span>Disetujui atau ditolak</span>
+          </article>
+        </div>
 
-                return (
-                  <article key={swap.id} style={{ padding: "16px", borderRadius: "16px", border: "1px solid #f1f3f5", position: "relative" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-                      <span style={{ fontSize: "0.75rem", fontWeight: "bold", background: isIncoming ? "#e7f5ef" : "#f1f3f5", color: isIncoming ? "#11a36a" : "var(--muted)", padding: "4px 10px", borderRadius: "99px" }}>
-                        {isIncoming ? "PERMINTAAN MASUK" : "PENGAJUAN SAYA"}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
-                        {getStatusLabel(swap, isIncoming)}
-                      </span>
-                    </div>
+        <div className="schedule-swap-grid">
+          <section className="schedule-swap-panel">
+            <h2 className="schedule-swap-section-title">
+              <Send size={18} /> Ajukan Pertukaran
+            </h2>
 
-                    <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
-                      <Calendar size={18} color="var(--blue)" />
-                      <div>
-                        <div style={{ fontWeight: "bold", fontSize: "0.95rem" }}>{swap.scheduleId.split("|").join(" • ")}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
-                          {swap.targetDate ? `${swap.targetDate} • ` : ""}
-                          {isIncoming
-                            ? `Dari: ${requester?.airName || requester?.displayName || swap.requesterId}`
-                            : `Target: ${targetAnnouncer?.airName || targetAnnouncer?.displayName || swap.targetAnnouncerId}`}
+            <form className="schedule-swap-form" onSubmit={handleSubmit}>
+              <div className="schedule-swap-field">
+                <label htmlFor="swap-target-date">Tanggal Tukar</label>
+                <input
+                  id="swap-target-date"
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => {
+                    setTargetDate(e.target.value || formatScheduleDate(new Date()));
+                    setSelectedSlotKey("");
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="schedule-swap-field">
+                <label htmlFor="swap-source-slot">Pilih Jadwal Anda</label>
+                <select
+                  id="swap-source-slot"
+                  value={selectedSlotKey}
+                  onChange={(e) => setSelectedSlotKey(e.target.value)}
+                  required
+                >
+                  <option value="">-- Pilih Jam Siaran --</option>
+                  {mySlots.map((slot, index) => (
+                    <option key={index} value={`${slot.day}|${slot.time}|${slot.program}`}>
+                      {targetDate} - {slot.time} - {slot.program}
+                    </option>
+                  ))}
+                </select>
+                <p>Hanya jadwal Anda pada hari {getScheduleDayName(targetDate)} yang ditampilkan.</p>
+              </div>
+
+              <div className="schedule-swap-field">
+                <label htmlFor="swap-target-announcer">Pilih Penyiar Pengganti</label>
+                <select
+                  id="swap-target-announcer"
+                  value={targetAnnouncerId}
+                  onChange={(e) => setTargetAnnouncerId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Pilih Rekan Penyiar --</option>
+                  {announcers.map((announcer) => (
+                    <option key={announcer.id} value={announcer.id}>{announcer.airName || announcer.displayName}</option>
+                  ))}
+                </select>
+                {announcers.length === 0 && (
+                  <p>Daftar penyiar pengganti belum tersedia. Periksa kembali data profil atau hubungi admin.</p>
+                )}
+              </div>
+
+              <div className="schedule-swap-field">
+                <label htmlFor="swap-reason">Alasan Pertukaran</label>
+                <textarea
+                  id="swap-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Berikan alasan mengapa Anda butuh pertukaran..."
+                  required
+                  rows={3}
+                />
+              </div>
+
+              <button type="submit" disabled={submitting || mySlots.length === 0} className="schedule-swap-submit">
+                {submitting ? "Mengirim..." : "Kirim Permintaan Tukar"}
+              </button>
+
+              {mySlots.length === 0 && (
+                <div className="schedule-swap-warning">
+                  <strong>Anda tidak memiliki jadwal siaran pada hari tersebut.</strong>
+                  <span>Silakan ubah Tanggal Tukar ke hari di mana Anda dijadwalkan bersiaran.</span>
+                </div>
+              )}
+            </form>
+          </section>
+
+          <section className="schedule-swap-panel">
+            <h2 className="schedule-swap-section-title">
+              <Clock size={18} /> Riwayat & Permintaan Masuk
+            </h2>
+
+            {loading ? (
+              <div className="schedule-swap-loading">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div className="ui-skeleton-card" key={index}>
+                    <span className="ui-skeleton line short" />
+                    <span className="ui-skeleton line" />
+                    <span className="ui-skeleton line medium" />
+                  </div>
+                ))}
+              </div>
+            ) : swaps.length === 0 ? (
+              <div className="schedule-swap-empty">
+                <AlertCircle size={32} />
+                <p>Belum ada aktivitas pertukaran jadwal.</p>
+              </div>
+            ) : (
+              <div className="schedule-swap-list">
+                {swaps.map((swap) => {
+                  const incoming = session ? isIncomingScheduleSwap(swap, session.user) : false;
+                  const targetAnnouncer = announcers.find((announcer) => announcer.id === swap.targetAnnouncerId);
+                  const requester = announcers.find((announcer) => announcer.id === swap.requesterId);
+
+                  return (
+                    <article key={swap.id} className="schedule-swap-card">
+                      <div className="schedule-swap-card-head">
+                        <span className={`schedule-swap-kind ${incoming ? "incoming" : "outgoing"}`}>
+                          {incoming ? "PERMINTAAN MASUK" : "PENGAJUAN SAYA"}
+                        </span>
+                        <span className={`schedule-swap-status ${getStatusClass(swap, incoming)}`}>
+                          {getStatusLabel(swap, incoming)}
+                        </span>
+                      </div>
+
+                      <div className="schedule-swap-card-main">
+                        <div className="schedule-swap-card-icon"><Calendar size={18} /></div>
+                        <div>
+                          <h3>{swap.scheduleId.split("|").join(" - ")}</h3>
+                          <p>
+                            {swap.targetDate ? `${swap.targetDate} - ` : ""}
+                            {incoming
+                              ? `Dari: ${requester?.airName || requester?.displayName || swap.requesterId}`
+                              : `Target: ${targetAnnouncer?.airName || targetAnnouncer?.displayName || swap.targetAnnouncerId}`}
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    <p style={{ margin: "0 0 16px", fontSize: "0.9rem", color: "var(--ink)", background: "#f8f9fc", padding: "10px", borderRadius: "8px", fontStyle: "italic" }}>
-                      "{swap.reason}"
-                    </p>
+                      <p className="schedule-swap-reason">"{swap.reason}"</p>
 
-                    {isIncoming && swap.status === "pending_target" && (
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <button 
-                          onClick={() => handleResponse(swap.id, true)}
-                          style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "none", background: "#11a36a", color: "white", fontWeight: "bold", cursor: "pointer" }}
-                        >
-                          Setujui
-                        </button>
-                        <button 
-                          onClick={() => handleResponse(swap.id, false)}
-                          style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid #FF3B3B", background: "white", color: "#FF3B3B", fontWeight: "bold", cursor: "pointer" }}
-                        >
-                          Tolak
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                      {incoming && swap.status === "pending_target" && (
+                        <div className="schedule-swap-response-actions">
+                          <button type="button" onClick={() => handleResponse(swap.id, true)} className="approve">
+                            Setujui
+                          </button>
+                          <button type="button" onClick={() => handleResponse(swap.id, false)} className="reject">
+                            Tolak
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

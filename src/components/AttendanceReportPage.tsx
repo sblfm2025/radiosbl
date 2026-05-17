@@ -2,26 +2,42 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   Calendar,
-  CheckCircle2,
+  Camera,
   CheckCircle,
+  CheckCircle2,
+  Clock,
   Download,
   Filter,
   MapPin,
-  Users,
-  XCircle,
-  ShieldAlert,
-  X,
-  Camera,
   MonitorSmartphone,
-  Clock,
-  Navigation
+  Navigation,
+  RotateCcw,
+  Search,
+  ShieldAlert,
+  Users,
+  X,
+  XCircle
 } from "lucide-react";
 import { listAttendanceRecords, updateAttendanceStatus } from "../services/attendance.service";
 import { listUserProfiles } from "../services/userProfile.service";
-import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../types/domain";
 import type { AuthSession } from "../services/auth.service";
+import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../types/domain";
 
 type PeriodMode = "week" | "month" | "year";
+type ReportTab = "summary" | "daily" | "announcers" | "leaves";
+type NoticeState = { type: "success" | "danger"; text: string } | null;
+
+const STATUS_CONFIG: Record<string, { label: string; tone: string }> = {
+  present: { label: "Hadir (Radius)", tone: "green" },
+  outside_radius: { label: "Luar Radius", tone: "amber" },
+  late: { label: "Terlambat", tone: "red" },
+  valid: { label: "Valid", tone: "green" },
+  needs_review: { label: "Butuh Review", tone: "amber" },
+  rejected: { label: "Ditolak", tone: "red" },
+  sick: { label: "Sakit", tone: "blue" },
+  leave: { label: "Izin", tone: "purple" },
+  out_of_office: { label: "Tugas Luar", tone: "amber" }
+};
 
 function toDate(value: TimestampLike | { toDate?: () => Date; seconds?: number }): Date {
   if (value && typeof value === "object") {
@@ -138,55 +154,115 @@ function roleMatchesRecord(record: AttendanceRecord, selectedRole: string, userB
   return userById.get(record.userId)?.role === selectedRole;
 }
 
+function isLeaveRecord(record: AttendanceRecord): boolean {
+  return record.status === "sick" || record.status === "leave" || Boolean(record.outOfOfficeReason);
+}
+
+function getStatusLabel(status: string): string {
+  return STATUS_CONFIG[status]?.label || status;
+}
+
+function recordMatchesSearch(record: AttendanceRecord, searchQuery: string, userById: Map<string, AppUser>): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return true;
+
+  const user = userById.get(record.userId);
+  const checkInAt = toDate(record.checkInAt);
+  const haystack = [
+    record.displayName,
+    record.airName,
+    record.status,
+    getStatusLabel(record.status),
+    record.outOfOfficeReason,
+    record.aiVerificationText,
+    user?.displayName,
+    user?.airName,
+    user?.email,
+    user?.role,
+    checkInAt.toLocaleDateString("id-ID", { dateStyle: "medium" }),
+    checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function userMatchesSearch(user: AppUser, searchQuery: string, latest?: AttendanceRecord): boolean {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return true;
+
+  return [
+    user.displayName,
+    user.airName,
+    user.email,
+    user.role,
+    latest?.status,
+    latest ? getStatusLabel(latest.status) : ""
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
+
 export function AttendanceReportPage({ session }: { session: AuthSession | null }) {
   const today = useMemo(() => new Date(), []);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<UserRole | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [weekValue, setWeekValue] = useState(toWeekInputValue(today));
   const [monthValue, setMonthValue] = useState(toMonthInputValue(today));
   const [yearValue, setYearValue] = useState(today.getFullYear());
-  const [activeTab, setActiveTab] = useState<"summary" | "daily" | "announcers" | "leaves">("summary");
+  const [activeTab, setActiveTab] = useState<ReportTab>("summary");
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [notice, setNotice] = useState<NoticeState>(null);
 
   async function handleReviewStatus(recordId: string, newStatus: AttendanceRecord["status"]) {
     try {
       await updateAttendanceStatus(recordId, newStatus);
-      setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, status: newStatus } : r)));
+      setRecords((prev) => prev.map((record) => (record.id === recordId ? { ...record, status: newStatus } : record)));
+      setSelectedRecord((prev) => (prev?.id === recordId ? { ...prev, status: newStatus } : prev));
+      setNotice({
+        type: "success",
+        text: newStatus === "valid" ? "Status absensi diterima." : "Status absensi ditolak."
+      });
     } catch (err) {
-      alert("Gagal memperbarui status. Periksa log konsol.");
+      setNotice({ type: "danger", text: "Gagal memperbarui status. Coba ulangi beberapa saat lagi." });
       console.error(err);
     }
   }
 
   function handleExportCsv() {
     const headers = ["ID", "Nama Staf", "Nama Udara", "Role", "Tanggal", "Jam Masuk", "Jam Pulang", "Durasi", "Status", "Catatan Tambahan"];
-    const rows = filteredRecords.map(r => {
-      const user = userById.get(r.userId);
-      const checkIn = toDate(r.checkInAt);
-      const checkOut = r.checkOutAt ? toDate(r.checkOutAt) : null;
+    const rows = filteredRecords.map((record) => {
+      const user = userById.get(record.userId);
+      const checkIn = toDate(record.checkInAt);
+      const checkOut = record.checkOutAt ? toDate(record.checkOutAt) : null;
       const durLabel = checkOut ? getDurationLabel(checkIn, checkOut) : "";
 
-      const escapedNote = r.outOfOfficeReason ? `"${r.outOfOfficeReason.replace(/"/g, '""')}"` : "";
-      const escapedAirName = (r.airName || user?.airName || "").replace(/"/g, '""');
+      const escapedNote = record.outOfOfficeReason ? `"${record.outOfOfficeReason.replace(/"/g, '""')}"` : "";
+      const escapedAirName = (record.airName || user?.airName || "").replace(/"/g, '""');
 
       return [
-        r.userId,
-        r.displayName || user?.displayName || "",
+        record.userId,
+        record.displayName || user?.displayName || "",
         `"${escapedAirName}"`,
         user?.role || "",
         checkIn.toLocaleDateString("id-ID"),
         checkIn.toLocaleTimeString("id-ID"),
         checkOut ? checkOut.toLocaleTimeString("id-ID") : "",
         durLabel,
-        r.status,
+        record.status,
         escapedNote
       ].join(",");
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const csvContent = `data:text/csv;charset=utf-8,${[headers.join(","), ...rows].join("\n")}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -206,12 +282,13 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
         setRecords(attData);
         setUsers(userData);
       } catch (err) {
+        setNotice({ type: "danger", text: "Gagal memuat rekap absensi. Periksa koneksi lalu muat ulang halaman." });
         console.error("Gagal memuat rekap:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadData();
+    void loadData();
   }, []);
 
   const userById = useMemo(
@@ -232,8 +309,9 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
           return date >= periodRange.start && date < periodRange.end;
         })
         .filter((record) => roleMatchesRecord(record, filterRole, userById))
+        .filter((record) => recordMatchesSearch(record, searchQuery, userById))
         .sort((a, b) => toDate(b.checkInAt).getTime() - toDate(a.checkInAt).getTime()),
-    [filterRole, periodRange.end, periodRange.start, records, userById]
+    [filterRole, periodRange.end, periodRange.start, records, searchQuery, userById]
   );
 
   const periodRecords = useMemo(
@@ -268,8 +346,8 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
           .slice()
           .sort((a, b) => toDate(b.checkInAt).getTime() - toDate(a.checkInAt).getTime())[0]
       };
-    });
-  }, [periodRecords, users]);
+    }).filter((item) => userMatchesSearch(item.user, searchQuery, item.latest));
+  }, [filterRole, periodRecords, searchQuery, users]);
 
   const stats = {
     total: filteredRecords.length,
@@ -279,336 +357,451 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   };
 
   const periodLabel = formatPeriodLabel(periodRange.start, periodRange.end, periodMode);
+  const leaveRecords = useMemo(() => filteredRecords.filter(isLeaveRecord), [filteredRecords]);
+  const attentionRecords = useMemo(
+    () =>
+      filteredRecords.filter((record) =>
+        record.status === "needs_review"
+        || record.status === "outside_radius"
+        || record.status === "late"
+        || record.status === "rejected"
+        || isLeaveRecord(record)
+      ),
+    [filteredRecords]
+  );
+  const attendanceRate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+  const topAttentionRecord = attentionRecords[0] || null;
+
+  function handleResetFilters() {
+    setSearchQuery("");
+    setFilterRole("all");
+  }
 
   return (
-    <div className="attendance-report" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh", position: "relative" }}>
-      <header style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: "0 0 8px" }}>Rekap Kehadiran Staf</h1>
-        <p style={{ color: "var(--muted)", margin: 0 }}>Pantau kedisiplinan dan lokasi absensi seluruh kru Radio SBL.</p>
-      </header>
-
-      {/* TAB NAVIGATION */}
-      <div style={{ display: "flex", gap: "12px", marginBottom: "24px", borderBottom: "2px solid rgba(15,23,42,0.05)", paddingBottom: "12px", overflowX: "auto" }}>
-        <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>Ringkasan</TabButton>
-        <TabButton active={activeTab === "daily"} onClick={() => setActiveTab("daily")}>Harian</TabButton>
-        <TabButton active={activeTab === "announcers"} onClick={() => setActiveTab("announcers")}>Penyiar / Staf</TabButton>
-        <TabButton active={activeTab === "leaves"} onClick={() => setActiveTab("leaves")}>Izin & Cuti</TabButton>
-      </div>
-
-      {/* FILTER (Muncul di semua tab) */}
-      <div style={{ background: "white", borderRadius: "24px", padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", color: "var(--ink)", fontWeight: 800 }}>
-          <Filter size={18} color="var(--blue)" />
-          Filter Rekap
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px", alignItems: "end" }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", fontWeight: 800, color: "var(--muted)" }}>
-            Periode
-            <select
-              value={periodMode}
-              onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
-              style={filterControlStyle}
-            >
-              <option value="week">Minggu</option>
-              <option value="month">Bulan</option>
-              <option value="year">Tahun</option>
-            </select>
-          </label>
-
-          {periodMode === "week" && (
-            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", fontWeight: 800, color: "var(--muted)" }}>
-              Pilih Minggu
-              <input type="week" value={weekValue} onChange={(event) => setWeekValue(event.target.value)} style={filterControlStyle} />
-            </label>
-          )}
-
-          {periodMode === "month" && (
-            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", fontWeight: 800, color: "var(--muted)" }}>
-              Pilih Bulan
-              <input type="month" value={monthValue} onChange={(event) => setMonthValue(event.target.value)} style={filterControlStyle} />
-            </label>
-          )}
-
-          {periodMode === "year" && (
-            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", fontWeight: 800, color: "var(--muted)" }}>
-              Pilih Tahun
-              <input
-                type="number"
-                min="2024"
-                max="2100"
-                value={yearValue}
-                onChange={(event) => setYearValue(Number(event.target.value) || today.getFullYear())}
-                style={filterControlStyle}
-              />
-            </label>
-          )}
-
-          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.8rem", fontWeight: 800, color: "var(--muted)" }}>
-            Role
-            <select
-              value={filterRole}
-              onChange={(event) => setFilterRole(event.target.value as UserRole | "all")}
-              style={filterControlStyle}
-            >
-              <option value="all">Semua Role</option>
-              <option value="announcer">Penyiar</option>
-              <option value="reporter">Reporter</option>
-              <option value="operator">Operator</option>
-              <option value="employee">Staf / Pegawai</option>
-            </select>
-          </label>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 14px", borderRadius: "14px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, minHeight: "44px" }}>
-            <Calendar size={17} />
+    <div className="attendance-report">
+      <div className="attendance-report-content">
+        <header className="attendance-report-hero">
+          <div>
+            <p>Rekap Absensi</p>
+            <h1>Rekap Kehadiran Staf</h1>
+            <span>Pantau kedisiplinan, lokasi absensi, dan validasi kehadiran kru Radio SBL.</span>
+          </div>
+          <div className="attendance-report-period">
+            <Calendar size={18} />
             <span>{periodLabel}</span>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {activeTab === "summary" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-          <StatCard icon={<Users size={20} />} label="Total Absen" value={stats.total} color="var(--blue)" />
-          <StatCard icon={<CheckCircle2 size={20} />} label="Tepat Lokasi" value={stats.present} color="#11a36a" />
-          <StatCard icon={<MapPin size={20} />} label="Luar Radius" value={stats.outside} color="#f59e0b" />
-          <StatCard icon={<AlertTriangle size={20} />} label="Terlambat" value={stats.late} color="#ef4444" />
-        </div>
-      )}
-
-      {activeTab === "announcers" && (
-        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0 }}>Rekap Absensi Staf</h2>
-              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Ringkasan kehadiran staf untuk {periodLabel}.
-              </p>
-            </div>
-            <span style={{ padding: "8px 12px", borderRadius: "99px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, fontSize: "0.8rem" }}>
-              {staffSummary.length} staf
-            </span>
-          </div>
-
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "32px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-          ) : staffSummary.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
-              <Users size={40} style={{ opacity: 0.18, marginBottom: "10px" }} />
-              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data staf.</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "780px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                    <th style={tableHeadStyle}>NAMA STAF</th>
-                    <th style={tableHeadStyle}>TOTAL</th>
-                    <th style={tableHeadStyle}>TEPAT LOKASI</th>
-                    <th style={tableHeadStyle}>LUAR RADIUS</th>
-                    <th style={tableHeadStyle}>TERLAMBAT</th>
-                    <th style={tableHeadStyle}>RASIO</th>
-                    <th style={tableHeadStyle}>TERAKHIR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffSummary.map((item) => (
-                    <tr key={item.user.id} style={{ borderBottom: "1px solid #f1f3f5" }}>
-                      <td style={{ padding: "16px" }}>
-                        <div style={{ fontWeight: 800 }}>{item.user.displayName}</div>
-                        <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{item.user.airName || item.user.email}</div>
-                      </td>
-                      <td style={summaryCellStyle}>{item.total}</td>
-                      <td style={{ ...summaryCellStyle, color: "#059669" }}>{item.present}</td>
-                      <td style={{ ...summaryCellStyle, color: "#d97706" }}>{item.outside}</td>
-                      <td style={{ ...summaryCellStyle, color: "#dc2626" }}>{item.late}</td>
-                      <td style={{ padding: "16px", minWidth: "130px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <div style={{ flex: 1, height: "8px", background: "rgba(15,23,42,0.08)", borderRadius: "99px", overflow: "hidden" }}>
-                            <div style={{ width: `${item.rate}%`, height: "100%", background: item.rate >= 80 ? "#11a36a" : item.rate >= 50 ? "#f59e0b" : "#ef4444" }} />
-                          </div>
-                          <strong style={{ fontSize: "0.82rem", color: "var(--ink)", minWidth: "34px" }}>{item.rate}%</strong>
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px", color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>
-                        {item.latest
-                          ? toDate(item.latest.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "daily" && (
-        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Daftar Kehadiran</h2>
-              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Klik baris untuk melihat foto selfie dan detail absensi.
-              </p>
-            </div>
-            <button onClick={handleExportCsv} style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.1s" }}>
-              <Download size={18} /> Export CSV
+        {notice && (
+          <div className={`attendance-report-notice ${notice.type}`}>
+            {notice.type === "success" ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+            <span>{notice.text}</span>
+            <button type="button" onClick={() => setNotice(null)} aria-label="Tutup pesan">
+              <X size={16} />
             </button>
           </div>
+        )}
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "40px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-          ) : filteredRecords.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "44px 16px", color: "var(--muted)" }}>
-              <Calendar size={44} style={{ opacity: 0.18, marginBottom: "12px" }} />
-              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data absensi pada filter ini.</p>
+        <div className="attendance-report-tabs">
+          <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>Ringkasan</TabButton>
+          <TabButton active={activeTab === "daily"} onClick={() => setActiveTab("daily")}>Harian</TabButton>
+          <TabButton active={activeTab === "announcers"} onClick={() => setActiveTab("announcers")}>Penyiar / Staf</TabButton>
+          <TabButton active={activeTab === "leaves"} onClick={() => setActiveTab("leaves")}>Izin & Cuti</TabButton>
+        </div>
+
+        <section className="attendance-report-filter">
+          <div className="attendance-report-section-title">
+            <Filter size={18} />
+            <h2>Filter Rekap</h2>
+          </div>
+          <div className="attendance-report-filter-grid">
+            <label className="attendance-report-search">
+              Cari Rekap
+              <span>
+                <Search size={17} />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Nama, role, status, alasan..."
+                />
+              </span>
+            </label>
+
+            <label>
+              Periode
+              <select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}>
+                <option value="week">Minggu</option>
+                <option value="month">Bulan</option>
+                <option value="year">Tahun</option>
+              </select>
+            </label>
+
+            {periodMode === "week" && (
+              <label>
+                Pilih Minggu
+                <input type="week" value={weekValue} onChange={(event) => setWeekValue(event.target.value)} />
+              </label>
+            )}
+
+            {periodMode === "month" && (
+              <label>
+                Pilih Bulan
+                <input type="month" value={monthValue} onChange={(event) => setMonthValue(event.target.value)} />
+              </label>
+            )}
+
+            {periodMode === "year" && (
+              <label>
+                Pilih Tahun
+                <input
+                  type="number"
+                  min="2024"
+                  max="2100"
+                  value={yearValue}
+                  onChange={(event) => setYearValue(Number(event.target.value) || today.getFullYear())}
+                />
+              </label>
+            )}
+
+            <label>
+              Role
+              <select value={filterRole} onChange={(event) => setFilterRole(event.target.value as UserRole | "all")}>
+                <option value="all">Semua Role</option>
+                <option value="announcer">Penyiar</option>
+                <option value="reporter">Reporter</option>
+                <option value="operator">Operator</option>
+                <option value="employee">Staf / Pegawai</option>
+              </select>
+            </label>
+
+            <div className="attendance-report-period-chip">
+              <Calendar size={17} />
+              <span>{periodLabel}</span>
             </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                    <th style={tableHeadStyle}>STAF</th>
-                    <th style={tableHeadStyle}>ROLE</th>
-                    <th style={tableHeadStyle}>WAKTU</th>
-                    <th style={tableHeadStyle}>STATUS</th>
-                    <th style={tableHeadStyle}>LOKASI</th>
-                    <th style={tableHeadStyle}>AKSI</th>
-                  </tr>
-                </thead>
-                <tbody>
+          </div>
+        </section>
+
+        {activeTab === "summary" && (
+          <>
+            <div className="attendance-report-stats">
+              <StatCard tone="blue" icon={<Users size={20} />} label="Total Absen" value={stats.total} />
+              <StatCard tone="green" icon={<CheckCircle2 size={20} />} label="Tepat Lokasi" value={stats.present} />
+              <StatCard tone="amber" icon={<MapPin size={20} />} label="Luar Radius" value={stats.outside} />
+              <StatCard tone="red" icon={<AlertTriangle size={20} />} label="Terlambat" value={stats.late} />
+            </div>
+
+            <section className="attendance-report-focus">
+              <div className="attendance-report-focus-card">
+                <div>
+                  <span>Rasio tepat lokasi</span>
+                  <strong>{attendanceRate}%</strong>
+                  <p>{stats.present} dari {stats.total} rekam absensi aktif.</p>
+                </div>
+                <div className="report-progress">
+                  <progress value={attendanceRate} max={100} aria-label="Rasio tepat lokasi rekap aktif" />
+                </div>
+              </div>
+              <div className="attendance-report-focus-card warning">
+                <div>
+                  <span>Perlu atensi</span>
+                  <strong>{attentionRecords.length}</strong>
+                  <p>{topAttentionRecord ? `${topAttentionRecord.displayName || userById.get(topAttentionRecord.userId)?.displayName || "Staf"} - ${getStatusLabel(topAttentionRecord.status)}` : "Belum ada catatan prioritas."}</p>
+                </div>
+                {topAttentionRecord && (
+                  <button type="button" onClick={() => setSelectedRecord(topAttentionRecord)}>
+                    Buka detail
+                  </button>
+                )}
+              </div>
+              <div className="attendance-report-focus-card">
+                <div>
+                  <span>Filter aktif</span>
+                  <strong>{filteredRecords.length}</strong>
+                  <p>{searchQuery.trim() ? `Hasil untuk "${searchQuery.trim()}".` : filterRole === "all" ? "Semua role ditampilkan." : `Role ${filterRole} ditampilkan.`}</p>
+                </div>
+                {(searchQuery.trim() || filterRole !== "all") && (
+                  <button type="button" onClick={handleResetFilters}>
+                    <RotateCcw size={15} /> Reset
+                  </button>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === "announcers" && (
+          <section className="attendance-report-panel">
+            <PanelHeader
+              title="Rekap Absensi Staf"
+              description={`Ringkasan kehadiran staf untuk ${periodLabel}.`}
+              aside={`${staffSummary.length} staf`}
+            />
+
+            {loading ? (
+              <LoadingState />
+            ) : staffSummary.length === 0 ? (
+              <EmptyState icon={<Users size={40} />} text="Belum ada data staf pada filter ini." onReset={handleResetFilters} />
+            ) : (
+              <>
+                <div className="attendance-report-table-wrap">
+                  <table className="attendance-report-table">
+                    <thead>
+                      <tr>
+                        <th>NAMA STAF</th>
+                        <th>TOTAL</th>
+                        <th>TEPAT LOKASI</th>
+                        <th>LUAR RADIUS</th>
+                        <th>TERLAMBAT</th>
+                        <th>RASIO</th>
+                        <th>TERAKHIR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffSummary.map((item) => (
+                        <tr key={item.user.id}>
+                          <td>
+                            <strong>{item.user.displayName}</strong>
+                            <span>{item.user.airName || item.user.email}</span>
+                          </td>
+                          <td className="numeric">{item.total}</td>
+                          <td className="numeric green">{item.present}</td>
+                          <td className="numeric amber">{item.outside}</td>
+                          <td className="numeric red">{item.late}</td>
+                          <td className="ratio-cell">
+                            <div className="report-progress">
+                              <progress value={item.rate} max={100} aria-label={`Rasio kehadiran ${item.user.displayName}`} />
+                            </div>
+                            <strong>{item.rate}%</strong>
+                          </td>
+                          <td className="muted">
+                            {item.latest
+                              ? toDate(item.latest.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="attendance-report-mobile-list">
+                  {staffSummary.map((item) => (
+                    <article key={item.user.id} className="attendance-report-card">
+                      <div>
+                        <strong>{item.user.displayName}</strong>
+                        <span>{item.user.airName || item.user.email}</span>
+                      </div>
+                      <div className="attendance-report-card-grid">
+                        <Metric label="Total" value={item.total} />
+                        <Metric label="Tepat" value={item.present} tone="green" />
+                        <Metric label="Luar" value={item.outside} tone="amber" />
+                        <Metric label="Terlambat" value={item.late} tone="red" />
+                      </div>
+                      <div className="attendance-report-card-foot">
+                        <div className="report-progress">
+                          <progress value={item.rate} max={100} aria-label={`Rasio kehadiran ${item.user.displayName}`} />
+                        </div>
+                        <strong>{item.rate}%</strong>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {activeTab === "daily" && (
+          <section className="attendance-report-panel">
+            <PanelHeader
+              title="Daftar Kehadiran"
+              description="Klik baris untuk melihat foto selfie dan detail absensi."
+              action={<ExportButton onClick={handleExportCsv} />}
+            />
+
+            {loading ? (
+              <LoadingState />
+            ) : filteredRecords.length === 0 ? (
+              <EmptyState icon={<Calendar size={44} />} text="Belum ada data absensi pada filter ini." onReset={handleResetFilters} />
+            ) : (
+              <>
+                <div className="attendance-report-table-wrap">
+                  <table className="attendance-report-table clickable">
+                    <thead>
+                      <tr>
+                        <th>STAF</th>
+                        <th>ROLE</th>
+                        <th>WAKTU</th>
+                        <th>STATUS</th>
+                        <th>LOKASI</th>
+                        <th>AKSI</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRecords.slice(0, 100).map((record) => {
+                        const user = userById.get(record.userId);
+                        const checkInAt = toDate(record.checkInAt);
+
+                        return (
+                          <tr key={record.id} onClick={() => setSelectedRecord(record)}>
+                            <td>
+                              <strong>{record.displayName || user?.displayName || "Staf Radio SBL"}</strong>
+                              <span>{record.airName || user?.airName || "-"}</span>
+                            </td>
+                            <td className="muted">{user?.role || "-"}</td>
+                            <td>
+                              <div className="report-time-range">
+                                <span className="in">{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                                <span>-</span>
+                                <span className={record.checkOutAt ? "out" : "muted"}>
+                                  {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                                </span>
+                              </div>
+                              <span>{checkInAt.toLocaleDateString("id-ID")} - Durasi: {record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</span>
+                            </td>
+                            <td><StatusBadge status={record.status} /></td>
+                            <td className="muted">
+                              <MapPin size={14} /> {record.accuracyMeters ? `+/-${record.accuracyMeters}m` : "-"}
+                            </td>
+                            <td><button type="button" className="attendance-report-detail-button">Detail</button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="attendance-report-mobile-list">
                   {filteredRecords.slice(0, 100).map((record) => {
                     const user = userById.get(record.userId);
                     const checkInAt = toDate(record.checkInAt);
 
                     return (
-                      <tr key={record.id} onClick={() => setSelectedRecord(record)} style={{ borderBottom: "1px solid #f1f3f5", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f8f9fc"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ fontWeight: "bold" }}>{record.displayName || user?.displayName || "Staf Radio SBL"}</div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{record.airName || user?.airName || "-"}</div>
-                        </td>
-                        <td style={{ padding: "16px", fontSize: "0.85rem", color: "var(--muted)", fontWeight: 700 }}>
-                          {user?.role || "-"}
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span title="Masuk" style={{ color: "#11a36a", fontWeight: 700 }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
-                            <span style={{ color: "var(--muted)" }}>-</span>
-                            <span title="Pulang" style={{ color: record.checkOutAt ? "#ef4444" : "var(--muted)", fontWeight: 700 }}>
-                              {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "4px" }}>
-                            {checkInAt.toLocaleDateString("id-ID")} • Durasi: <strong style={{ color: "var(--ink)" }}>{record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</strong>
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <StatusBadge status={record.status} />
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: 700, color: "var(--ink)" }}>
-                            <MapPin size={14} color="var(--blue)" /> {record.accuracyMeters ? `±${record.accuracyMeters}m` : "-"}
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <button style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer", color: "var(--ink)" }}>
-                            Detail
-                          </button>
-                        </td>
-                      </tr>
+                      <button key={record.id} type="button" className="attendance-report-card clickable" onClick={() => setSelectedRecord(record)}>
+                        <div>
+                          <strong>{record.displayName || user?.displayName || "Staf Radio SBL"}</strong>
+                          <span>{record.airName || user?.airName || user?.role || "-"}</span>
+                        </div>
+                        <div className="attendance-report-card-row">
+                          <Clock size={15} />
+                          <span>{checkInAt.toLocaleDateString("id-ID")} - {checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <div className="attendance-report-card-row">
+                          <MapPin size={15} />
+                          <span>{record.accuracyMeters ? `+/-${record.accuracyMeters}m` : "Lokasi tidak tersedia"}</span>
+                        </div>
+                        <StatusBadge status={record.status} />
+                      </button>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
-      {activeTab === "leaves" && (
-        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Daftar Izin, Sakit & Tugas Luar</h2>
-              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Klik baris untuk melihat detail dan melakukan persetujuan.
-              </p>
-            </div>
-            <button onClick={handleExportCsv} style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.1s" }}>
-              <Download size={18} /> Export CSV
-            </button>
-          </div>
+        {activeTab === "leaves" && (
+          <section className="attendance-report-panel">
+            <PanelHeader
+              title="Daftar Izin, Sakit & Tugas Luar"
+              description="Klik baris untuk melihat detail dan melakukan persetujuan."
+              action={<ExportButton onClick={handleExportCsv} />}
+            />
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "40px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-          ) : filteredRecords.filter(r => r.status === "sick" || r.status === "leave" || r.outOfOfficeReason).length === 0 ? (
-            <div style={{ textAlign: "center", padding: "44px 16px", color: "var(--muted)" }}>
-              <Calendar size={44} style={{ opacity: 0.18, marginBottom: "12px" }} />
-              <p style={{ margin: 0, fontWeight: 700 }}>Tidak ada data izin atau cuti pada filter ini.</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                    <th style={tableHeadStyle}>STAF</th>
-                    <th style={tableHeadStyle}>WAKTU PENGAJUAN</th>
-                    <th style={tableHeadStyle}>JENIS</th>
-                    <th style={tableHeadStyle}>ALASAN / CATATAN</th>
-                    <th style={tableHeadStyle}>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.filter(r => r.status === "sick" || r.status === "leave" || r.outOfOfficeReason).map((record) => {
+            {loading ? (
+              <LoadingState />
+            ) : leaveRecords.length === 0 ? (
+              <EmptyState icon={<Calendar size={44} />} text="Tidak ada data izin atau cuti pada filter ini." onReset={handleResetFilters} />
+            ) : (
+              <>
+                <div className="attendance-report-table-wrap">
+                  <table className="attendance-report-table clickable">
+                    <thead>
+                      <tr>
+                        <th>STAF</th>
+                        <th>WAKTU PENGAJUAN</th>
+                        <th>JENIS</th>
+                        <th>ALASAN / CATATAN</th>
+                        <th>STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaveRecords.map((record) => {
+                        const user = userById.get(record.userId);
+                        const checkInAt = toDate(record.checkInAt);
+
+                        return (
+                          <tr key={record.id} onClick={() => setSelectedRecord(record)}>
+                            <td>
+                              <strong>{record.displayName || user?.displayName || "Staf Radio SBL"}</strong>
+                              <span>{user?.role || "-"}</span>
+                            </td>
+                            <td>
+                              <strong>{checkInAt.toLocaleDateString("id-ID")}</strong>
+                              <span>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                            </td>
+                            <td><StatusBadge status={record.status === "needs_review" ? "out_of_office" : record.status} /></td>
+                            <td className="report-note">"{record.outOfOfficeReason || "-"}"</td>
+                            <td><StatusBadge status={record.status} /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="attendance-report-mobile-list">
+                  {leaveRecords.map((record) => {
                     const user = userById.get(record.userId);
                     const checkInAt = toDate(record.checkInAt);
 
                     return (
-                      <tr key={record.id} onClick={() => setSelectedRecord(record)} style={{ borderBottom: "1px solid #f1f3f5", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f8f9fc"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ fontWeight: "bold" }}>{record.displayName || user?.displayName || "Staf Radio SBL"}</div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{user?.role || "-"}</div>
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ fontSize: "0.9rem", color: "var(--ink)", fontWeight: 700 }}>{checkInAt.toLocaleDateString("id-ID")}</div>
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "4px" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <StatusBadge status={record.status === "needs_review" ? "out_of_office" : record.status} />
-                        </td>
-                        <td style={{ padding: "16px", maxWidth: "250px" }}>
-                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", fontStyle: "italic", whiteSpace: "normal" }}>
-                            "{record.outOfOfficeReason || "-"}"
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <StatusBadge status={record.status} />
-                        </td>
-                      </tr>
+                      <button key={record.id} type="button" className="attendance-report-card clickable" onClick={() => setSelectedRecord(record)}>
+                        <div>
+                          <strong>{record.displayName || user?.displayName || "Staf Radio SBL"}</strong>
+                          <span>{user?.role || "-"}</span>
+                        </div>
+                        <div className="attendance-report-card-row">
+                          <Calendar size={15} />
+                          <span>{checkInAt.toLocaleDateString("id-ID")} - {checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <p>"{record.outOfOfficeReason || "-"}"</p>
+                        <StatusBadge status={record.status} />
+                      </button>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+      </div>
 
-      {/* MODAL / SIDE PANEL */}
       {selectedRecord && (
         <>
-          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "100%", maxWidth: "420px", background: "white", boxShadow: "-10px 0 40px rgba(0,0,0,0.1)", zIndex: 1000, display: "flex", flexDirection: "column", transform: "translateX(0)", transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
-            <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f3f5", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8f9fc" }}>
-              <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem" }}>Detail Absensi</h3>
-              <button onClick={() => setSelectedRecord(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
+          <aside className="attendance-report-drawer">
+            <div className="attendance-report-drawer-head">
+              <h3>Detail Absensi</h3>
+              <button type="button" onClick={() => setSelectedRecord(null)} aria-label="Tutup detail absensi">
                 <X size={20} />
               </button>
             </div>
-            <div style={{ padding: "24px", overflowY: "auto", flex: 1 }}>
-              <SidePanelDetail record={selectedRecord} user={userById.get(selectedRecord.userId)} session={session} onReview={handleReviewStatus} />
+            <div className="attendance-report-drawer-body">
+              <SidePanelDetail
+                record={selectedRecord}
+                user={userById.get(selectedRecord.userId)}
+                session={session}
+                onReview={handleReviewStatus}
+              />
             </div>
-          </div>
-          <div onClick={() => setSelectedRecord(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", zIndex: 999, backdropFilter: "blur(2px)" }} />
+          </aside>
+          <button
+            type="button"
+            className="attendance-report-backdrop"
+            onClick={() => setSelectedRecord(null)}
+            aria-label="Tutup detail absensi"
+          />
         </>
       )}
     </div>
@@ -617,28 +810,83 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "10px 20px",
-        borderRadius: "99px",
-        border: "none",
-        background: active ? "var(--blue)" : "white",
-        color: active ? "white" : "var(--muted)",
-        fontWeight: 800,
-        fontSize: "0.9rem",
-        cursor: "pointer",
-        boxShadow: active ? "0 4px 12px rgba(22, 101, 216, 0.2)" : "0 2px 8px rgba(0,0,0,0.02)",
-        transition: "all 0.2s",
-        whiteSpace: "nowrap"
-      }}
-    >
+    <button type="button" onClick={onClick} className={active ? "active" : ""}>
       {children}
     </button>
   );
 }
 
-function SidePanelDetail({ record, user, session, onReview }: { record: AttendanceRecord; user?: AppUser; session: AuthSession | null; onReview: (id: string, status: AttendanceRecord["status"]) => void }) {
+function PanelHeader({ title, description, aside, action }: { title: string; description: string; aside?: string; action?: ReactNode }) {
+  return (
+    <div className="attendance-report-panel-head">
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {aside && <span>{aside}</span>}
+      {action}
+    </div>
+  );
+}
+
+function ExportButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="attendance-report-export" onClick={onClick}>
+      <Download size={18} /> Export CSV
+    </button>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="attendance-report-loading">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div className="ui-skeleton-row" key={index}>
+          <span className="ui-skeleton avatar" />
+          <span className="ui-skeleton-copy">
+            <span className="ui-skeleton line medium" />
+            <span className="ui-skeleton line short" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, text, onReset }: { icon: ReactNode; text: string; onReset?: () => void }) {
+  return (
+    <div className="attendance-report-empty">
+      {icon}
+      <p>{text}</p>
+      {onReset && (
+        <button type="button" onClick={onReset}>
+          <RotateCcw size={15} /> Reset filter
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Metric({ label, value, tone }: { label: string; value: number; tone?: string }) {
+  return (
+    <span className={tone || ""}>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
+function SidePanelDetail({
+  record,
+  user,
+  session,
+  onReview
+}: {
+  record: AttendanceRecord;
+  user?: AppUser;
+  session: AuthSession | null;
+  onReview: (id: string, status: AttendanceRecord["status"]) => Promise<void> | void;
+}) {
   const checkInAt = toDate(record.checkInAt);
   const mapUrl = `https://www.google.com/maps?q=${record.latitude},${record.longitude}`;
   const isAdmin = session && ["super_admin", "admin"].includes(session.user.role);
@@ -646,102 +894,84 @@ function SidePanelDetail({ record, user, session, onReview }: { record: Attendan
   const canPreviewSelfie = record.selfieDriveFileId ? isPreviewableSelfieReference(record.selfieDriveFileId) : false;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      {/* HEADER INFO */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#eef5ff", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--blue)" }}>
-          <Users size={28} />
-        </div>
+    <div className="attendance-report-detail">
+      <div className="attendance-report-person">
+        <div><Users size={28} /></div>
         <div>
-          <h4 style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: 800, color: "var(--ink)" }}>{record.displayName || user?.displayName || "Staf SBL"}</h4>
-          <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>{user?.role || "-"} • {record.airName || user?.airName || "-"}</div>
+          <h4>{record.displayName || user?.displayName || "Staf SBL"}</h4>
+          <span>{user?.role || "-"} - {record.airName || user?.airName || "-"}</span>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div className="attendance-report-badges">
         <StatusBadge status={record.status} />
-        {record.outOfOfficeReason && <span style={{ padding: "4px 12px", borderRadius: "99px", background: "#fffbeb", color: "#d97706", fontSize: "0.75rem", fontWeight: "bold" }}>Tugas: {record.outOfOfficeReason}</span>}
+        {record.outOfOfficeReason && <span>Tugas: {record.outOfOfficeReason}</span>}
       </div>
 
-      {/* VERIFIKASI WAJAH / FOTO */}
-      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
-        <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><Camera size={16} /> Verifikasi Selfie</h5>
+      <DetailSection icon={<Camera size={16} />} title="Verifikasi Selfie">
         {record.selfieDriveFileId ? (
-          <>
-            {canPreviewSelfie ? (
-              <div style={{ position: "relative", width: "100%", paddingTop: "100%", borderRadius: "12px", overflow: "hidden", background: "#e2e8f0" }}>
-                <img src={record.selfieDriveFileId} alt="Selfie" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-              </div>
-            ) : (
-              <div style={{ padding: "24px 16px", textAlign: "center", background: "#e2e8f0", borderRadius: "12px", color: "var(--muted)" }}>
-                <Camera size={32} style={{ opacity: 0.3, margin: "0 auto 8px" }} />
-                <p style={{ margin: "0 0 12px", fontSize: "0.8rem", fontWeight: 700, wordBreak: "break-all" }}>{record.selfieDriveFileId}</p>
-                <a href={selfieUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 14px", borderRadius: "10px", background: "white", color: "var(--ink)", textDecoration: "none", fontWeight: 800, fontSize: "0.82rem" }}>
-                  Buka bukti selfie
-                </a>
-              </div>
-            )}
-          </>
+          canPreviewSelfie ? (
+            <div className="attendance-report-selfie">
+              <img src={record.selfieDriveFileId} alt="Selfie" />
+            </div>
+          ) : (
+            <div className="attendance-report-selfie-empty">
+              <Camera size={32} />
+              <p>{record.selfieDriveFileId}</p>
+              <a href={selfieUrl} target="_blank" rel="noreferrer">Buka bukti selfie</a>
+            </div>
+          )
         ) : (
-          <div style={{ padding: "32px 16px", textAlign: "center", background: "#e2e8f0", borderRadius: "12px", color: "var(--muted)" }}>
-            <Camera size={32} style={{ opacity: 0.2, margin: "0 auto 8px" }} />
-            <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700 }}>Tidak ada foto selfie</p>
+          <div className="attendance-report-selfie-empty">
+            <Camera size={32} />
+            <p>Tidak ada foto selfie</p>
           </div>
         )}
-        <div style={{ marginTop: "12px", fontSize: "0.8rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-            <span style={{ color: "var(--muted)" }}>Skor AI Wajah:</span>
-            <strong style={{ color: record.confidenceScore && record.confidenceScore >= 80 ? "#11a36a" : "#ef4444" }}>{record.confidenceScore || 0}%</strong>
+        <div className="attendance-report-ai-row">
+          <span>Skor AI Wajah:</span>
+          <strong className={record.confidenceScore && record.confidenceScore >= 80 ? "good" : "bad"}>{record.confidenceScore || 0}%</strong>
+        </div>
+        <p className="attendance-report-ai-note">{record.aiVerificationText || "-"}</p>
+      </DetailSection>
+
+      <DetailSection icon={<MapPin size={16} />} title="Data Waktu & Lokasi">
+        <div className="attendance-report-detail-grid">
+          <div>
+            <small>Masuk - Pulang</small>
+            <strong>
+              <span className="in">{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span> - </span>
+              <span className={record.checkOutAt ? "out" : ""}>
+                {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
+              </span>
+            </strong>
+            <small>{checkInAt.toLocaleDateString("id-ID")}</small>
           </div>
-          <div style={{ color: "var(--muted)", fontStyle: "italic", fontSize: "0.75rem" }}>{record.aiVerificationText || "-"}</div>
+          <div>
+            <small>Durasi Kerja</small>
+            <strong>{record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</strong>
+            <small>Jarak: {record.distanceToCenter ? `${Math.round(record.distanceToCenter)}m` : "-"} (+/-{record.accuracyMeters}m)</small>
+          </div>
         </div>
-      </div>
+        <a className="attendance-report-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+          Buka di Google Maps <Navigation size={14} />
+        </a>
+      </DetailSection>
 
-      {/* INFORMASI LOKASI & WAKTU */}
-      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
-         <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MapPin size={16} /> Data Waktu & Lokasi</h5>
-         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
-           <div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Masuk - Pulang</div>
-             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>
-                <span style={{ color: "#11a36a" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
-                <span style={{ color: "var(--muted)", margin: "0 4px" }}>-</span>
-                <span style={{ color: record.checkOutAt ? "#ef4444" : "var(--muted)" }}>
-                  {record.checkOutAt ? toDate(record.checkOutAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-"}
-                </span>
-             </div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
-           </div>
-           <div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Durasi Kerja</div>
-             <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ink)" }}>{record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</div>
-             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Jarak: {record.distanceToCenter ? `${Math.round(record.distanceToCenter)}m` : "-"} (±{record.accuracyMeters}m)</div>
-           </div>
-         </div>
-         <a href={mapUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", color: "var(--ink)", textDecoration: "none", fontWeight: 800, fontSize: "0.85rem", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f1f3f5"} onMouseOut={(e) => e.currentTarget.style.background = "white"}>
-           Buka di Google Maps <Navigation size={14} />
-         </a>
-      </div>
+      <DetailSection icon={<MonitorSmartphone size={16} />} title="Device Info">
+        <p className="attendance-report-device">{record.userAgent || "Tidak terdeteksi"}</p>
+      </DetailSection>
 
-      {/* INFORMASI DEVICE */}
-      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
-        <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MonitorSmartphone size={16} /> Device Info</h5>
-        <div style={{ fontSize: "0.8rem", color: "var(--ink)", lineHeight: 1.5, wordBreak: "break-all" }}>
-          {record.userAgent || "Tidak terdeteksi"}
-        </div>
-      </div>
-
-      {/* ACTION ADMIN */}
       {isAdmin && record.status === "needs_review" && (
-        <div style={{ marginTop: "8px", borderTop: "2px dashed #e2e8f0", paddingTop: "24px" }}>
-          <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><ShieldAlert size={16} /> Aksi Validasi Admin</h5>
-          <div style={{ display: "flex", gap: "12px" }}>
-             <button onClick={() => { onReview(record.id, "valid"); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#11a36a", color: "white", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer" }}>
-               <CheckCircle size={18} /> Terima Absen
-             </button>
-             <button onClick={() => { onReview(record.id, "rejected"); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#ef4444", color: "white", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer" }}>
-               <XCircle size={18} /> Tolak Absen
-             </button>
+        <div className="attendance-report-admin-actions">
+          <h5><ShieldAlert size={16} /> Aksi Validasi Admin</h5>
+          <div>
+            <button type="button" className="approve" onClick={() => void onReview(record.id, "valid")}>
+              <CheckCircle size={18} /> Terima Absen
+            </button>
+            <button type="button" className="reject" onClick={() => void onReview(record.id, "rejected")}>
+              <XCircle size={18} /> Tolak Absen
+            </button>
           </div>
         </div>
       )}
@@ -749,57 +979,27 @@ function SidePanelDetail({ record, user, session, onReview }: { record: Attendan
   );
 }
 
-const filterControlStyle = {
-  padding: "10px 12px",
-  borderRadius: "12px",
-  border: "1px solid rgba(15,23,42,0.12)",
-  outline: "none",
-  background: "#fff",
-  color: "var(--ink)",
-  fontWeight: 700,
-  minHeight: "44px"
-};
-
-const tableHeadStyle = {
-  padding: "16px",
-  color: "var(--muted)",
-  fontWeight: 700,
-  fontSize: "0.85rem"
-};
-
-const summaryCellStyle = {
-  padding: "16px",
-  color: "var(--ink)",
-  fontWeight: 900,
-  fontSize: "0.95rem"
-};
-
-function StatCard({ icon, label, value, color }: { icon: ReactNode; label: string; value: number; color: string }) {
+function DetailSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <div style={{ background: "white", padding: "20px", borderRadius: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
-      <div style={{ color, marginBottom: "12px" }}>{icon}</div>
-      <div style={{ fontSize: "1.8rem", fontWeight: 900, marginBottom: "4px" }}>{value}</div>
-      <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>{label}</div>
-    </div>
+    <section className="attendance-report-detail-section">
+      <h5>{icon} {title}</h5>
+      {children}
+    </section>
+  );
+}
+
+function StatCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: string }) {
+  return (
+    <article className={`attendance-report-stat ${tone}`}>
+      <div>{icon}</div>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; bg: string; text: string }> = {
-    present: { label: "Hadir (Radius)", bg: "#ecfdf5", text: "#059669" },
-    outside_radius: { label: "Luar Radius", bg: "#fffbeb", text: "#d97706" },
-    late: { label: "Terlambat", bg: "#fef2f2", text: "#dc2626" },
-    valid: { label: "Valid", bg: "#ecfdf5", text: "#059669" },
-    needs_review: { label: "Butuh Review", bg: "#fffbeb", text: "#d97706" },
-    rejected: { label: "Ditolak", bg: "#fef2f2", text: "#dc2626" },
-    sick: { label: "Sakit", bg: "#e0f2fe", text: "#0284c7" },
-    leave: { label: "Izin", bg: "#f3e8ff", text: "#7e22ce" }
-  };
-  const { label, bg, text } = config[status] || { label: status, bg: "#f3f4f6", text: "#374151" };
+  const { label, tone } = STATUS_CONFIG[status] || { label: status, tone: "muted" };
 
-  return (
-    <span style={{ padding: "4px 12px", borderRadius: "99px", background: bg, color: text, fontSize: "0.75rem", fontWeight: "bold" }}>
-      {label}
-    </span>
-  );
+  return <span className={`attendance-report-status ${tone}`}>{label}</span>;
 }

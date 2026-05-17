@@ -1,5 +1,15 @@
-import { useState, useEffect, type FormEvent } from "react";
-import { CheckCircle2, Video, Settings2, Plus, CalendarDays, MapPin } from "lucide-react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
+import {
+  CheckCircle2,
+  Video,
+  Settings2,
+  Plus,
+  CalendarDays,
+  MapPin,
+  Radio,
+  Send,
+  ShieldCheck
+} from "lucide-react";
 import { PageHeader } from "./PageHeader";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { LiveEvent } from "../types/domain";
@@ -38,6 +48,30 @@ export function LiveObPage({ data }: { data: DashboardSnapshot }) {
   const [discordRoomUrl, setDiscordRoomUrl] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const checklistDone = checklist.filter((item) => item.done).length;
+  const latestEvent = events[0];
+  const checklistPercent = checklist.length > 0
+    ? Math.round((checklistDone / checklist.length) * 100)
+    : 0;
+  const linkReadiness = [
+    youtubeUrl.trim() ? "YouTube" : "",
+    discordRoomUrl.trim() ? "Discord" : ""
+  ].filter(Boolean);
+  const nextEvent = useMemo(
+    () =>
+      [...events].sort(
+        (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      )[0],
+    [events]
+  );
+  const nextEventText = nextEvent
+    ? `${nextEvent.title} - ${new Date(nextEvent.startsAt).toLocaleString("id-ID", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })}`
+    : "Belum ada event aktif";
 
   useEffect(() => {
     const unsubscribe = subscribeLiveEvents(setEvents);
@@ -102,49 +136,92 @@ export function LiveObPage({ data }: { data: DashboardSnapshot }) {
       />
 
       <section className="two-column">
-        <div className="panel" style={{ gridColumn: "1 / -1" }}>
+        <div className="panel live-ob-broadcast-panel">
           <LiveBroadcastCard />
         </div>
 
+        <section className="live-ob-summary" aria-label="Ringkasan Live OB">
+          <article>
+            <span>Checklist</span>
+            <strong>{checklistDone}/{checklist.length}</strong>
+          </article>
+          <article>
+            <span>Event</span>
+            <strong>{events.length}</strong>
+          </article>
+          <article>
+            <span>Aktif</span>
+            <strong>{latestEvent ? latestEvent.status : "Belum"}</strong>
+          </article>
+        </section>
+
+        <section className="live-ob-readiness" aria-label="Kesiapan operasional Live OB">
+          <article className="is-primary">
+            <div>
+              <ShieldCheck size={18} />
+              <span>Kesiapan alat</span>
+            </div>
+            <strong>{checklistPercent}%</strong>
+            <progress value={checklistPercent} max={100} aria-label={`Kesiapan alat ${checklistPercent}%`} />
+            <p>{checklistDone} dari {checklist.length} checklist sudah aman.</p>
+          </article>
+          <article>
+            <div>
+              <Radio size={18} />
+              <span>Link siaran</span>
+            </div>
+            <strong>{linkReadiness.length > 0 ? linkReadiness.join(" + ") : "Belum ada link"}</strong>
+            <p>{linkReadiness.length > 0 ? "Link siap masuk notifikasi kru." : "Tambahkan YouTube atau Discord bila tersedia."}</p>
+          </article>
+          <article>
+            <div>
+              <Send size={18} />
+              <span>Event berikutnya</span>
+            </div>
+            <strong>{nextEvent ? nextEvent.status : "Draft dulu"}</strong>
+            <p>{nextEventText}</p>
+          </article>
+        </section>
+
         <div className="panel">
-          <div className="panel-title" style={{ alignItems: "flex-start" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ background: "rgba(22, 119, 237, 0.1)", color: "var(--blue)", width: "40px", height: "40px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="panel-title live-ob-panel-title">
+            <div>
+              <div className="live-ob-title-icon primary">
                 <Settings2 size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Checklist Alat</h3>
-                <p style={{ margin: "6px 0 0", fontSize: "0.85rem", color: "var(--muted)" }}>Pastikan semua alat siap untuk siaran Live/OB.</p>
+                <h3>Checklist Alat</h3>
+                <p>Pastikan semua alat siap untuk siaran Live/OB.</p>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="live-ob-checklist">
             {checklist.map((item, index) => (
               <button 
                 type="button"
                 key={item.label} 
                 onClick={() => toggleChecklist(index)}
-                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "12px", padding: "14px", borderRadius: "16px", background: item.done ? "rgba(17,163,106,0.05)" : "rgba(0,0,0,0.02)", border: item.done ? "1px solid rgba(17,163,106,0.12)" : "1px solid transparent", textAlign: "left", width: "100%" }}
+                className={item.done ? "done" : ""}
               >
-                <div style={{ color: item.done ? "#11a36a" : "var(--muted)" }}>
+                <div>
                   <CheckCircle2 size={20} />
                 </div>
-                <strong style={{ fontSize: "0.95rem", color: item.done ? "var(--ink)" : "var(--muted)", fontWeight: item.done ? 700 : 500 }}>{item.label}</strong>
+                <strong>{item.label}</strong>
               </button>
             ))}
           </div>
         </div>
 
         <div className="panel">
-          <div className="panel-title" style={{ alignItems: "flex-start" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ background: "rgba(255, 59, 59, 0.1)", color: "#FF3B3B", width: "40px", height: "40px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="panel-title live-ob-panel-title">
+            <div>
+              <div className="live-ob-title-icon danger">
                 <Video size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Jadwalkan Live</h3>
-                <p style={{ margin: "6px 0 0", fontSize: "0.85rem", color: "var(--muted)" }}>Buat event Live/OB dengan link streaming dan notifikasi kru.</p>
+                <h3>Jadwalkan Live</h3>
+                <p>Buat event Live/OB dengan link streaming dan notifikasi kru.</p>
               </div>
             </div>
           </div>
@@ -152,46 +229,41 @@ export function LiveObPage({ data }: { data: DashboardSnapshot }) {
           {notice && <p className="success-note">{notice}</p>}
           {error && <p className="form-error">{error}</p>}
 
-          <form onSubmit={handleCreateEvent} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <form onSubmit={handleCreateEvent} className="live-ob-form">
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Judul event"
               required
-              style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
             <input
               value={location}
               onChange={(event) => setLocation(event.target.value)}
               placeholder="Lokasi (Studio / Lapangan)"
               required
-              style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
             <input
               type="datetime-local"
               value={startsAt}
               onChange={(event) => setStartsAt(event.target.value)}
               required
-              style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
             <input
               value={youtubeUrl}
               onChange={(event) => setYoutubeUrl(event.target.value)}
               placeholder="Link YouTube Live (Opsional)"
-              style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
             <input
               value={discordRoomUrl}
               onChange={(event) => setDiscordRoomUrl(event.target.value)}
               placeholder="Link Discord Room (Opsional)"
-              style={{ width: "100%", padding: "14px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "0.95rem" }}
             />
 
-            <div className="panel-actions" style={{ marginTop: "12px", justifyContent: "space-between" }}>
-              <button type="submit" className="primary-action" style={{ flex: 1 }}>
+            <div className="live-ob-actions">
+              <button type="submit" className="primary-action">
                 <Plus size={18} /> Buat Event Live
               </button>
-              <button type="button" className="secondary-action" style={{ flex: 1, backgroundColor: "#25D366", color: "white", borderColor: "#25D366" }} onClick={handleCrewNotification}>
+              <button type="button" className="secondary-action whatsapp-action" onClick={handleCrewNotification}>
                 <WhatsAppIcon /> Kirim ke Grup WA
               </button>
             </div>
@@ -199,38 +271,38 @@ export function LiveObPage({ data }: { data: DashboardSnapshot }) {
         </div>
 
         {events.length > 0 && (
-          <div className="panel" style={{ gridColumn: "1 / -1" }}>
-            <div className="panel-title" style={{ alignItems: "flex-start" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ background: "rgba(17, 163, 106, 0.1)", color: "#11a36a", width: "40px", height: "40px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="panel live-ob-broadcast-panel">
+            <div className="panel-title live-ob-panel-title">
+              <div>
+                <div className="live-ob-title-icon success">
                   <CalendarDays size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Rundown Event Aktif</h3>
-                  <p style={{ margin: "6px 0 0", fontSize: "0.85rem", color: "var(--muted)" }}>Lihat status event dan akses cepat ke link kru.</p>
+                  <h3>Rundown Event Aktif</h3>
+                  <p>Lihat status event dan akses cepat ke link kru.</p>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="live-ob-event-list">
               {events.map((event) => (
-                <article key={event.id} style={{ padding: "18px", borderRadius: "18px", background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.04)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <h4 style={{ margin: "0 0 8px", fontSize: "1.05rem", color: "var(--ink)" }}>{event.title}</h4>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "var(--muted)", marginBottom: "8px" }}>
+                <article key={event.id} className="live-ob-event-card">
+                  <div>
+                    <div>
+                      <h4>{event.title}</h4>
+                      <div className="live-ob-location">
                         <MapPin size={14} /> {event.location}
                       </div>
-                      <div style={{ fontSize: "0.82rem", color: "var(--blue)", fontWeight: 700 }}>Status: {event.status}</div>
+                      <div className="live-ob-status">Status: {event.status}</div>
                     </div>
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", width: "100%", maxWidth: "320px" }}>
+                    <div className="live-ob-links">
                       {event.discordRoomUrl && (
-                        <a href={event.discordRoomUrl} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: "140px", padding: "10px", borderRadius: "12px", background: "#5865F2", color: "white", textDecoration: "none", fontSize: "0.85rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        <a href={event.discordRoomUrl} target="_blank" rel="noreferrer" className="discord">
                           <DiscordIcon /> Discord Room
                         </a>
                       )}
                       {event.youtubeUrl && (
-                        <a href={event.youtubeUrl} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: "140px", padding: "10px", borderRadius: "12px", background: "#FF0000", color: "white", textDecoration: "none", fontSize: "0.85rem", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        <a href={event.youtubeUrl} target="_blank" rel="noreferrer" className="youtube">
                           <YoutubeIcon /> YouTube Live
                         </a>
                       )}

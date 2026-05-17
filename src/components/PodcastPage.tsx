@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Pause, Play, Search } from "lucide-react";
+import {
+  CalendarClock,
+  Headphones,
+  ListMusic,
+  Pause,
+  Play,
+  Radio,
+  Search,
+  Sparkles
+} from "lucide-react";
 import {
   DEFAULT_PODCAST_EMBED_URL,
   DEFAULT_PODCAST_SOURCE_URL,
@@ -54,6 +63,23 @@ function formatDuration(value: string): string {
   }
 
   return value;
+}
+
+function getEpisodeMeta(episode: PodcastEpisode): string {
+  return [
+    episode.publishedAt ? formatDate(episode.publishedAt) : "",
+    formatDuration(episode.duration)
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function getDescriptionPreview(value: string): string {
+  if (!value) {
+    return "Episode podcast Radio SBL.";
+  }
+
+  return value.length > 118 ? `${value.slice(0, 118)}...` : value;
 }
 
 function getEpisodeTarget(episode: PodcastEpisode): string {
@@ -201,6 +227,20 @@ export function PodcastPage() {
   const recentEpisodes = filteredEpisodes.slice(2, 14);
   const hasEpisodes = filteredEpisodes.length > 0;
   const hasSearchResults = filteredEpisodes.length > 0;
+  const loadedEpisodeCount = feed.episodes.length;
+  const resultLabel = query.trim()
+    ? `${filteredEpisodes.length} hasil`
+    : `${loadedEpisodeCount} episode`;
+  const statusLabel = status === "loading"
+    ? "Sinkronisasi feed"
+    : status === "ready"
+      ? "Feed terbaru"
+      : "Fallback Spotify";
+  const statusCopy = status === "loading"
+    ? "Daftar lama tetap bisa diputar sambil feed terbaru dimuat."
+    : status === "ready"
+      ? "Episode sudah mengikuti sumber podcast yang terhubung."
+      : "Episode fallback tetap tersedia saat feed belum dikonfigurasi.";
   const shouldCollapseDescription = feed.description.length > 210;
   const heroDescription =
     descriptionExpanded || !shouldCollapseDescription
@@ -267,6 +307,27 @@ export function PodcastPage() {
           </div>
         </section>
 
+        <section className="podcast-command-panel" aria-label="Ringkasan podcast">
+          <article>
+            <ListMusic size={18} />
+            <small>Katalog</small>
+            <strong>{resultLabel}</strong>
+            <span>{query.trim() ? "Hasil pencarian aktif" : "Siap diputar dari halaman ini"}</span>
+          </article>
+          <article>
+            <Radio size={18} />
+            <small>Status feed</small>
+            <strong>{statusLabel}</strong>
+            <span>{statusCopy}</span>
+          </article>
+          <article>
+            <Headphones size={18} />
+            <small>Sedang dipilih</small>
+            <strong>{activeEpisode?.title ?? "Belum ada episode"}</strong>
+            <span>{activeEpisode ? "Player mengikuti pilihan terbaru" : "Pilih episode untuk memulai"}</span>
+          </article>
+        </section>
+
         <div className="podcast-search">
           <Search size={20} color="#64748B" />
           <input
@@ -278,7 +339,18 @@ export function PodcastPage() {
           />
         </div>
 
-        {status === "loading" && <p className="podcast-notice">Memuat feed podcast terbaru...</p>}
+        {status === "loading" && (
+          <section className="podcast-loading-strip" aria-label="Memuat feed podcast terbaru">
+            <div className="ui-skeleton-card">
+              <span className="ui-skeleton line short" />
+              <span className="ui-skeleton line" />
+            </div>
+            <div className="ui-skeleton-card">
+              <span className="ui-skeleton line medium" />
+              <span className="ui-skeleton line" />
+            </div>
+          </section>
+        )}
 
         {hasEpisodes ? (
           <>
@@ -288,6 +360,7 @@ export function PodcastPage() {
                   <div>
                     <p className="eyebrow">Sedang Diputar</p>
                     <h3>{activeEpisode.title}</h3>
+                    <span>{getEpisodeMeta(activeEpisode) || "SBL Podcast on Spotify"}</span>
                   </div>
                 </div>
                 {playerPaused ? (
@@ -337,7 +410,12 @@ export function PodcastPage() {
                         </button>
                       </span>
                       <span className="podcast-show-copy">
+                        <small>
+                          <Sparkles size={13} />
+                          Episode pilihan
+                        </small>
                         <strong>{episode.title}</strong>
+                        <em>{getDescriptionPreview(episode.description)}</em>
                       </span>
                     </article>
                   ))}
@@ -363,12 +441,11 @@ export function PodcastPage() {
                       </span>
                       <span className="podcast-episode-copy">
                         <strong>{episode.title}</strong>
+                        <em>{getDescriptionPreview(episode.description)}</em>
                         {(episode.publishedAt || episode.duration) && (
                           <small>
                             <CalendarClock size={14} />
-                            {[episode.publishedAt ? formatDate(episode.publishedAt) : "", formatDuration(episode.duration)]
-                              .filter(Boolean)
-                              .join(" - ")}
+                            {getEpisodeMeta(episode)}
                           </small>
                         )}
                       </span>
@@ -395,6 +472,9 @@ export function PodcastPage() {
             <Search size={38} />
             <h3>Tidak ada episode yang cocok</h3>
             <p>Coba gunakan kata kunci lain atau kosongkan pencarian untuk melihat semua episode.</p>
+            <button type="button" onClick={() => setQuery("")}>
+              Kosongkan pencarian
+            </button>
           </section>
         ) : (
           <section className="podcast-embed-panel" aria-label="Podcast Spotify Radio SBL">

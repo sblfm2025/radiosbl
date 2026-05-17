@@ -1,6 +1,7 @@
-import { Bell, LogIn, LogOut, ChevronLeft, ChevronRight, Volume2 } from "lucide-react";
+import { Bell, LogIn, LogOut, ChevronLeft, ChevronRight, Volume2, User } from "lucide-react";
 import { useCallback, useRef, useState, useEffect } from "react";
-import { bottomNav, primaryNav, type PageKey } from "../data/radioData";
+import { bottomNav, primaryNav, type NavItem, type PageKey } from "../data/radioData";
+import { MenuPage } from "./MenuPage";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import type { AuthSession } from "../services/auth.service";
 import { canUser, getRoleLabel } from "../utils/rbac";
@@ -20,23 +21,24 @@ type ShellProps = {
 
 const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   {
-    label: "Utama",
-    items: ["dashboard", "schedule", "streaming", "podcast", "requests"]
+    label: "Operasional",
+    items: ["dashboard", "attendance", "schedule", "requests", "scheduleSwap"]
   },
   {
-    label: "Siaran & Produksi",
-    items: [
-      "attendance",
-      "scheduleSwap",
-      "aiScript",
-      "liveOb",
-      "coverage",
-      "announcers"
-    ]
+    label: "Siaran",
+    items: ["streaming", "podcast", "announcers"]
   },
   {
-    label: "Manajemen",
-    items: ["users", "attendanceReport", "complaints"]
+    label: "Konten",
+    items: ["aiScript", "coverage", "liveOb", "complaints"]
+  },
+  {
+    label: "Administrasi",
+    items: ["attendanceReport", "users"]
+  },
+  {
+    label: "Sistem",
+    items: ["profile"]
   }
 ];
 
@@ -59,7 +61,13 @@ export function Shell({
   const { togglePlayback } = useGlobalAudio();
   const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(false);
-  const allowedNavItems = primaryNav.filter(
+  const profileNavItem: NavItem = {
+    key: "profile" as PageKey,
+    label: "Profil",
+    icon: User
+  };
+  const shellNavItems = [...primaryNav, profileNavItem];
+  const allowedNavItems = shellNavItems.filter(
     (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
   );
   const hideNavigation =
@@ -241,9 +249,8 @@ export function Shell({
                     return (
                       <button
                         key={item.key}
-                        className={isActive ? "active" : ""}
                         onClick={() => onNavigate(item.key)}
-                        style={{ position: 'relative' }}
+                        className={`shell-nav-button${isActive ? " active" : ""}`}
                       >
                         <Icon size={18} />
                         <span>{item.label}</span>
@@ -264,20 +271,21 @@ export function Shell({
           <span />
           {online ? "Online" : "Offline mode"}
         </div>
-        <div className="session-card">            <button
+        <div className="session-card">
+          <button
               type="button"
-              className="notification-button"
+              className="dashboard-notification-button shell-notification-button"
               onClick={() => session && onNavigate("scheduleSwap")}
               aria-label="Buka notifikasi pertukaran jadwal"
-              style={{ position: "relative", marginRight: "12px", background: "transparent", border: "none", cursor: "pointer", color: "inherit" }}
             >
               <Bell size={20} />
               {(session && pendingSwaps > 0) && (
-                <span style={{ position: "absolute", top: "-4px", right: "-4px", width: "16px", height: "16px", borderRadius: "999px", background: "#FF3B3B", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800 }}>
+                <span className="shell-notification-badge">
                   {pendingSwaps}
                 </span>
               )}
-            </button>          <button className="session-user" onClick={() => onNavigate("profile")}>
+            </button>
+          <button className="session-user" onClick={() => onNavigate("profile")}>
             <span className="session-avatar" aria-hidden="true">
               {session?.user.photoUrl ? (
                 <img src={session.user.photoUrl} alt="" />
@@ -286,8 +294,8 @@ export function Shell({
               )}
             </span>
             <div className="session-user-meta">
-              <strong style={{ fontSize: "0.9rem", color: "var(--ink)" }}>{session?.user.displayName ?? "Studio SBL"}</strong>
-              <small style={{ fontSize: "0.75rem", color: "var(--blue)", fontWeight: "bold" }}>
+              <strong>{session?.user.displayName ?? "Studio SBL"}</strong>
+              <small>
                 {session ? getRoleLabel(session.user.role) : "Tamu / Umum"}
               </small>
             </div>
@@ -301,62 +309,43 @@ export function Shell({
 
       <main className={`content content-${activePage}`}>
         {showAudioPrompt && !hideNavigation && (
-          <div style={{
-            position: "fixed",
-            bottom: hasMiniPlayer ? "140px" : "80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "calc(100% - 40px)",
-            maxWidth: "320px",
-            background: "rgba(22, 119, 237, 0.8)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            color: "white",
-            padding: "12px 16px",
-            borderRadius: "16px",
-            boxShadow: "0 12px 24px rgba(22, 119, 237, 0.25)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            zIndex: 100,
-            animation: "slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
-          }}>
-            <style>
-              {`
-                @keyframes slideUpFade {
-                  from { opacity: 0; transform: translate(-50%, 20px); }
-                  to { opacity: 1; transform: translate(-50%, 0); }
-                }
-              `}
-            </style>
-            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "12px", padding: "10px", display: "flex", flexShrink: 0 }}>
+          <div className={`shell-audio-prompt${hasMiniPlayer ? " with-mini-player" : ""}`}>
+            <div className="shell-audio-prompt-icon">
               <Volume2 size={20} color="white" />
             </div>
-            <div style={{ flex: 1 }}>
-              <strong style={{ display: "block", fontSize: "0.85rem", marginBottom: "2px" }}>Izinkan Suara</strong>
-              <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.9, lineHeight: 1.3 }}>
+            <div className="shell-audio-prompt-copy">
+              <strong>Izinkan Suara</strong>
+              <p>
                 Aktifkan audio untuk mendengar notifikasi.
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", flexShrink: 0 }}>
+            <div className="shell-audio-prompt-actions">
               <button 
                 type="button" 
                 onClick={handleAllowAudio}
-                style={{ background: "white", color: "var(--blue)", border: "none", padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
+                className="shell-audio-primary"
               >
                 Izinkan
               </button>
               <button
                 type="button"
                 onClick={() => setShowAudioPrompt(false)}
-                style={{ background: "transparent", color: "white", border: "1px solid rgba(255,255,255,0.4)", padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer" }}
+                className="shell-audio-secondary"
               >
                 Nanti
               </button>
             </div>
           </div>
         )}
-        {children}
+        {activePage === "menu" ? (
+          <MenuPage
+            activePage={activePage}
+            session={session}
+            pendingSwaps={pendingSwaps}
+            onNavigate={onNavigate}
+            onLogout={onLogout}
+          />
+        ) : children}
       </main>
 
       {hideNavigation ? null : (
@@ -387,10 +376,10 @@ export function Shell({
                 onClick={() => onNavigate(item.key)}
                 aria-label={item.label}
               >
-                <div style={{ position: 'relative' }}>
+                <div className="shell-bottom-nav-icon">
                   <Icon size={26} strokeWidth={isActive ? 2.5 : 2} />
-                  {item.key === "scheduleSwap" && pendingSwaps > 0 && (
-                    <span style={{ position: 'absolute', right: '-8px', top: '-4px', background: '#FF3B3B', color: 'white', fontSize: '9px', fontWeight: 'bold', padding: '1px 5px', borderRadius: '10px', border: '2px solid white' }}>
+                  {(item.key === "scheduleSwap" || item.key === "menu") && pendingSwaps > 0 && (
+                    <span className="shell-bottom-nav-badge">
                       {pendingSwaps}
                     </span>
                   )}

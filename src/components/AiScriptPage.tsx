@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type FormEvent } from "react";
-import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, Maximize, X, Play, Pause, FastForward, Rewind } from "lucide-react";
+import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript, rewriteProgramScript } from "../services/aiScript.service";
@@ -7,6 +7,23 @@ import { saveProgramScript, listProgramScripts } from "../services/programScript
 import type { BroadcastProgramSlot, ProgramScriptDraft } from "../types/domain";
 import { resolveAnnouncerText } from "../utils/announcerResolver";
 import { mergeScheduleSlots } from "../services/scheduleSlot.service";
+
+type StudioTab = "generator" | "drafts" | "review" | "ready";
+type RewriteMode = "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional";
+
+const studioTabs: Array<{ id: StudioTab; label: string; icon: typeof Wand2 }> = [
+  { id: "generator", label: "Generator", icon: Wand2 },
+  { id: "drafts", label: "Draft", icon: Save },
+  { id: "review", label: "Review", icon: FileText },
+  { id: "ready", label: "Siap Siaran", icon: Radio }
+];
+
+const rewriteModes: Array<{ id: RewriteMode; label: string }> = [
+  { id: "singkat", label: "Singkat" },
+  { id: "energik", label: "Energik" },
+  { id: "anak-muda", label: "Anak muda" },
+  { id: "formal", label: "Formal" }
+];
 
 export function AiScriptPage({
   data,
@@ -28,7 +45,7 @@ export function AiScriptPage({
   const [isRewriting, setIsRewriting] = useState(false);
 
   // --- Fitur Studio ---
-  const [activeTab, setActiveTab] = useState("generator"); // "generator", "drafts", "review", "ready"
+  const [activeTab, setActiveTab] = useState<StudioTab>("generator");
   const [scriptTemplate, setScriptTemplate] = useState("Opening"); // Kategori Naskah
   
   // --- Fitur Teleprompter ---
@@ -195,7 +212,7 @@ export function AiScriptPage({
     }
   }
 
-  async function handleRewrite(mode: "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional") {
+  async function handleRewrite(mode: RewriteMode) {
     if (!scriptDraft.trim()) return;
     setIsRewriting(true);
     setScriptError("");
@@ -209,6 +226,18 @@ export function AiScriptPage({
       setScriptNotice("");
     } finally {
       setIsRewriting(false);
+    }
+  }
+
+  async function handleCopyScript() {
+    if (!scriptDraft.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(scriptDraft);
+      setScriptNotice("Naskah berhasil disalin ke clipboard.");
+      setScriptError("");
+    } catch {
+      setScriptError("Gagal menyalin naskah. Pilih teks naskah lalu salin manual.");
     }
   }
 
@@ -243,28 +272,25 @@ export function AiScriptPage({
         </div>
       </section>
 
-      {/* TABS WORKSPACE */}
-      <div style={{ display: "flex", overflowX: "auto", borderBottom: "2px solid #f1f3f5", background: "white", padding: "0 20px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        {[
-          { id: "generator", label: "Studio Generator", icon: <Wand2 size={16} /> },
-          { id: "drafts", label: "Draft Saya", icon: <Save size={16} /> },
-          { id: "review", label: "Review", icon: <FileText size={16} /> },
-          { id: "ready", label: "Siap Siaran", icon: <Radio size={16} /> },
-        ].map(tab => (
+      <div className="ai-studio-tabs" role="tablist" aria-label="Ruang kerja naskah">
+        {studioTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: "12px 16px", background: "none", border: "none", borderBottom: activeTab === tab.id ? "3px solid var(--blue)" : "3px solid transparent",
-              color: activeTab === tab.id ? "var(--blue)" : "var(--muted)", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s", whiteSpace: "nowrap", flexShrink: 0
-            }}
+            className={activeTab === tab.id ? "active" : ""}
           >
-            {tab.icon} <span>{tab.label}</span>
+            <Icon size={16} /> <span>{tab.label}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
-      <main className="ai-script-container" style={{ paddingTop: "20px" }}>
+      <main className="ai-script-container">
         {activeTab === "generator" && (
         <div className="ai-layout-grid">
           {/* PANEL KIRI: KONFIGURASI */}
@@ -370,15 +396,21 @@ export function AiScriptPage({
 
           <section className="ai-result-panel">
             <div className="panel-inner">
-              <div className="panel-header" style={{ flexWrap: "wrap", gap: "10px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div className="panel-header ai-result-header">
+                <div className="ai-result-title">
                   <FileText size={18} />
                   <h2>Hasil Draft Naskah</h2>
                 </div>
                 
-                <div style={{ display: "flex", gap: "8px", marginLeft: "auto" }}>
+                <div className="ai-result-actions">
                   {scriptDraft && (
-                    <button type="button" onClick={() => setIsTeleprompter(true)} className="save-action-badge" style={{ background: "#f59e0b", color: "white" }}>
+                    <button type="button" onClick={handleCopyScript} className="save-action-badge secondary">
+                      <Copy size={14} />
+                      Salin
+                    </button>
+                  )}
+                  {scriptDraft && (
+                    <button type="button" onClick={() => setIsTeleprompter(true)} className="save-action-badge warning">
                       <MonitorPlay size={14} />
                       Teleprompter
                     </button>
@@ -396,26 +428,16 @@ export function AiScriptPage({
                 {scriptNotice && <div className="status-alert info">{scriptNotice}</div>}
                 {scriptError && <div className="status-alert error">{scriptError}</div>}
                 
-                <div className="editor-wrap" style={{ display: "flex", flexDirection: "column", width: "100%" }}>
+                <div className="editor-wrap">
                   {scriptDraft && !scriptLoading && (
-                    <div style={{ marginBottom: "16px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--muted)", marginRight: "4px" }}>AI Rewrite:</span>
-                      {[
-                        { id: "singkat", label: "Lebih Singkat" },
-                        { id: "energik", label: "Lebih Energik" },
-                        { id: "anak-muda", label: "Gaya Anak Muda" },
-                        { id: "formal", label: "Lebih Formal" }
-                      ].map((mode) => (
+                    <div className="ai-rewrite-bar">
+                      <span>AI Rewrite</span>
+                      {rewriteModes.map((mode) => (
                         <button
                           key={mode.id}
-                          onClick={() => handleRewrite(mode.id as any)}
+                          type="button"
+                          onClick={() => handleRewrite(mode.id)}
                           disabled={isRewriting}
-                          style={{
-                            background: "white", border: "1px solid var(--blue)", color: "var(--blue)",
-                            padding: "8px 14px", borderRadius: "99px", fontSize: "0.8rem", fontWeight: 800,
-                            cursor: isRewriting ? "not-allowed" : "pointer", opacity: isRewriting ? 0.5 : 1,
-                            flex: "1 1 auto", minWidth: "120px", textAlign: "center"
-                          }}
                         >
                           {mode.label}
                         </button>
@@ -427,26 +449,23 @@ export function AiScriptPage({
                     value={scriptDraft}
                     onChange={(e) => setScriptDraft(e.target.value)}
                     placeholder="Naskah AI akan muncul di sini..."
-                    className="premium-editor"
+                    className={`premium-editor ${isRewriting ? "is-rewriting" : ""}`}
                     readOnly={scriptLoading || isRewriting}
-                    style={{ minHeight: "400px", opacity: isRewriting ? 0.6 : 1, width: "100%", flex: "1 1 auto" }}
                   />
                   
                   {scriptStats && !scriptLoading && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "12px", padding: "12px 16px", background: "#f8f9fc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: "100px" }}>
-                        <span style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 700 }}>JUMLAH KATA</span>
-                        <span style={{ fontSize: "1rem", color: "var(--ink)", fontWeight: 900 }}>{scriptStats.words} <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>kata</span></span>
+                    <div className="ai-script-stats">
+                      <div>
+                        <span>Jumlah kata</span>
+                        <strong>{scriptStats.words} <small>kata</small></strong>
                       </div>
-                      <div style={{ width: "1px", background: "#cbd5e1", display: "none" /* hide on very small, let gap handle it if wrap */ }}></div>
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: "140px" }}>
-                        <span style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 700 }}>ESTIMASI DURASI BACA</span>
-                        <span style={{ fontSize: "1rem", color: "var(--blue)", fontWeight: 900 }}>{scriptStats.durationText}</span>
+                      <div>
+                        <span>Estimasi baca</span>
+                        <strong>{scriptStats.durationText}</strong>
                       </div>
-                      <div style={{ width: "1px", background: "#cbd5e1", display: "none" }}></div>
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: "100px" }}>
-                        <span style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 700 }}>KARAKTER</span>
-                        <span style={{ fontSize: "1rem", color: "var(--ink)", fontWeight: 900 }}>{scriptStats.chars}</span>
+                      <div>
+                        <span>Karakter</span>
+                        <strong>{scriptStats.chars}</strong>
                       </div>
                     </div>
                   )}
@@ -469,59 +488,55 @@ export function AiScriptPage({
         )}
         
         {activeTab === "drafts" && (
-          <div className="ai-layout-grid" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="ai-layout-grid ai-layout-single">
             <section className="ai-result-panel">
-              <div className="panel-inner" style={{ padding: "30px" }}>
-                <div className="panel-header" style={{ marginBottom: "20px" }}>
+              <div className="panel-inner ai-drafts-panel">
+                <div className="panel-header">
                   <Save size={20} />
                   <h2>Arsip Naskah & Draft</h2>
                 </div>
                 
                 {loadingScripts ? (
-                  <div style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>Memuat arsip naskah...</div>
+                  <div className="ai-draft-empty">Memuat arsip naskah...</div>
                 ) : savedScripts.length === 0 ? (
-                  <div style={{ padding: "40px", textAlign: "center", background: "#f8f9fc", borderRadius: "20px" }}>
-                    <FileText size={40} color="var(--muted)" style={{ margin: "0 auto 12px" }} />
-                    <h3 style={{ color: "var(--ink)", margin: "0 0 8px" }}>Belum Ada Naskah</h3>
-                    <p style={{ color: "var(--muted)", margin: 0 }}>Simpan naskah dari Studio Generator untuk melihatnya di sini.</p>
+                  <div className="ai-draft-empty">
+                    <Archive size={34} />
+                    <h3>Belum ada naskah</h3>
+                    <p>Simpan naskah dari Generator untuk melihatnya di sini.</p>
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
+                  <div className="ai-draft-grid">
                     {savedScripts.map(script => (
-                      <div key={script.id} style={{ border: "1px solid #e2e8f0", borderRadius: "16px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px", background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <article key={script.id} className="ai-draft-card">
+                        <div className="ai-draft-head">
                           <div>
-                            <div style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", padding: "4px 8px", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 800, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            <span>
                               {script.day} • {script.scheduleTime}
-                            </div>
-                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{script.programTitle}</h3>
+                            </span>
+                            <h3>{script.programTitle}</h3>
                           </div>
-                          <div style={{ background: script.status === "draft" ? "#fef3c7" : "#e0e7ff", color: script.status === "draft" ? "#d97706" : "#4338ca", padding: "4px 10px", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 800 }}>
-                            {script.status}
-                          </div>
+                          <strong>{script.status}</strong>
                         </div>
                         
-                        <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
+                        <p>
                           {script.content}
                         </p>
                         
-                        <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px dashed #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>
-                            Oleh: {script.createdByName}
-                          </div>
+                        <div className="ai-draft-foot">
+                          <span>Oleh: {script.createdByName}</span>
                           <button 
+                            type="button"
                             onClick={() => {
                               setScriptDraft(script.content);
                               setScriptTone(script.tone);
                               setScriptDuration(script.durationMinutes);
                               setActiveTab("generator");
                             }}
-                            style={{ background: "white", border: "1px solid var(--blue)", color: "var(--blue)", padding: "6px 12px", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}
                           >
                             Muat ke Editor
                           </button>
                         </div>
-                      </div>
+                      </article>
                     ))}
                   </div>
                 )}
@@ -531,49 +546,49 @@ export function AiScriptPage({
         )}
         
         {["review", "ready"].includes(activeTab) && (
-          <div style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ background: "white", padding: "40px", borderRadius: "24px", boxShadow: "0 8px 32px rgba(0,0,0,0.05)" }}>
-              <FileText size={48} color="var(--muted)" style={{ margin: "0 auto 16px" }} />
-              <h3 style={{ fontSize: "1.2rem", fontWeight: 800, margin: "0 0 8px", color: "var(--ink)" }}>Ruang Kerja Sedang Dibangun</h3>
-              <p style={{ color: "var(--muted)", margin: 0, fontSize: "0.95rem" }}>Fitur manajemen {tabLabel(activeTab)} akan segera hadir di pembaruan berikutnya.</p>
+          <div className="ai-workspace-empty">
+            <div>
+              <FileText size={42} />
+              <h3>Ruang kerja sedang disiapkan</h3>
+              <p>Fitur manajemen {tabLabel(activeTab)} akan menyusul di pembaruan berikutnya.</p>
             </div>
           </div>
         )}
       </main>
 
-      {/* TELEPROMPTER FULLSCREEN OVERLAY */}
       {isTeleprompter && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "#0f172a", color: "white", display: "flex", flexDirection: "column" }}>
-          {/* Teleprompter Toolbar */}
-          <div style={{ background: "#1e293b", padding: "12px 16px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "12px", borderBottom: "1px solid #334155" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <div style={{ background: "#ef4444", color: "white", fontWeight: 900, padding: "6px 12px", borderRadius: "6px", fontSize: "0.85rem", letterSpacing: "1px", animation: isPlaying ? "pulse 2s infinite" : "none" }}>
+        <div className="teleprompter-overlay">
+          <div className="teleprompter-toolbar">
+            <div className="teleprompter-controls">
+              <div className={`teleprompter-on-air ${isPlaying ? "playing" : ""}`}>
                 ON AIR
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.2)", padding: "4px", borderRadius: "10px" }}>
-                <button onClick={() => setPromptSpeed(Math.max(0.5, promptSpeed - 0.5))} style={{ background: "transparent", border: "none", color: "white", padding: "8px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center" }}><Rewind size={18} /></button>
-                <button onClick={() => setIsPlaying(!isPlaying)} style={{ background: "var(--blue)", border: "none", color: "white", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: 900, display: "flex", gap: "6px", alignItems: "center" }}>
+              <div className="teleprompter-speed-controls">
+                <button type="button" onClick={() => setPromptSpeed(Math.max(0.5, promptSpeed - 0.5))} aria-label="Perlambat teleprompter">
+                  <Rewind size={18} />
+                </button>
+                <button type="button" className="play" onClick={() => setIsPlaying(!isPlaying)}>
                   {isPlaying ? <><Pause size={18} /> PAUSE</> : <><Play size={18} /> PLAY</>}
                 </button>
-                <button onClick={() => setPromptSpeed(Math.min(5, promptSpeed + 0.5))} style={{ background: "transparent", border: "none", color: "white", padding: "8px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center" }}><FastForward size={18} /></button>
+                <button type="button" onClick={() => setPromptSpeed(Math.min(5, promptSpeed + 0.5))} aria-label="Percepat teleprompter">
+                  <FastForward size={18} />
+                </button>
               </div>
-              <span style={{ fontSize: "0.85rem", opacity: 0.8, fontWeight: 700, background: "rgba(255,255,255,0.1)", padding: "6px 10px", borderRadius: "6px" }}>{promptSpeed}x</span>
+              <span className="teleprompter-speed-badge">{promptSpeed}x</span>
             </div>
             
-            <button onClick={() => setIsTeleprompter(false)} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: 800, display: "flex", gap: "8px", alignItems: "center", marginLeft: "auto" }}>
+            <button type="button" className="teleprompter-exit" onClick={() => setIsTeleprompter(false)}>
               <X size={18} /> KELUAR
             </button>
           </div>
           
-          {/* Teleprompter Scroll View */}
-          <div ref={promptContainerRef} style={{ flex: 1, overflowY: "auto", padding: "80px 40px 300px", scrollBehavior: "smooth" }}>
-            <div style={{ maxWidth: "900px", margin: "0 auto", fontSize: "42px", fontWeight: 700, lineHeight: 1.6, color: "#f8fafc", whiteSpace: "pre-wrap", textAlign: "left", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+          <div ref={promptContainerRef} className="teleprompter-scroll">
+            <div className="teleprompter-script">
               {scriptDraft}
             </div>
           </div>
           
-          {/* Focus Line Guide (Garis bantu baca) */}
-          <div style={{ position: "absolute", top: "45%", left: "0", right: "0", height: "120px", background: "linear-gradient(to bottom, rgba(30, 41, 59, 0) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(30, 41, 59, 0) 100%)", pointerEvents: "none", borderLeft: "4px solid #ef4444", borderRight: "4px solid #ef4444" }}></div>
+          <div className="teleprompter-focus-line"></div>
         </div>
       )}
     </div>

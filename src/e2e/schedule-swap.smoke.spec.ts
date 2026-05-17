@@ -41,6 +41,21 @@ async function resetDemoState(page: Page) {
   });
 }
 
+async function openScheduleSwap(page: Page) {
+  const directButton = page.getByRole("button", { name: /^Tukar Jadwal$/i });
+  if (await directButton.isVisible().catch(() => false)) {
+    await directButton.click();
+    return;
+  }
+
+  await page.getByRole("button", { name: /^Menu$/i }).click();
+  await page.locator(".menu-tile").filter({ hasText: "Tukar Jadwal" }).click();
+}
+
+function swapCard(page: Page, status: string) {
+  return page.locator("article").filter({ hasText: status });
+}
+
 test("tombol tukar jadwal aman dari pengajuan sampai persetujuan langsung", async ({ page }) => {
   const requestedDate = "2026-05-18";
 
@@ -49,7 +64,7 @@ test("tombol tukar jadwal aman dari pengajuan sampai persetujuan langsung", asyn
   await setDemoSession(page, requesterSession);
   await page.reload();
 
-  await page.getByRole("button", { name: /^Tukar Jadwal$/i }).click();
+  await openScheduleSwap(page);
   await page.getByLabel("Tanggal Tukar").fill(requestedDate);
   await page.getByLabel("Pilih Jadwal Anda").selectOption({ index: 1 });
   await page.getByLabel("Pilih Penyiar Pengganti").selectOption({ index: 1 });
@@ -65,14 +80,14 @@ test("tombol tukar jadwal aman dari pengajuan sampai persetujuan langsung", asyn
 
   await expect(page.getByText(/Permintaan dikirim/i)).toBeVisible();
   await expect(page.getByText("Menunggu rekan penyiar")).toBeVisible();
-  await expect(page.getByText(new RegExp(requestedDate))).toBeVisible();
+  await expect(swapCard(page, "Menunggu rekan penyiar").getByText(new RegExp(requestedDate))).toBeVisible();
 
   await setDemoSession(page, targetSession);
   await page.reload();
 
-  await page.getByRole("button", { name: /^Tukar Jadwal$/i }).click();
+  await openScheduleSwap(page);
   await expect(page.getByText("Menunggu keputusan Anda")).toBeVisible();
-  await expect(page.getByText(new RegExp(requestedDate))).toBeVisible();
+  await expect(swapCard(page, "Menunggu keputusan Anda").getByText(new RegExp(requestedDate))).toBeVisible();
   await page.getByRole("button", { name: "Setujui" }).click();
 
   await expect(page.getByText("Pertukaran disetujui. Jadwal otomatis diperbarui.")).toBeVisible();
@@ -100,12 +115,12 @@ test("permintaan dan jawaban tukar jadwal tampil realtime tanpa refresh", async 
   await resetDemoState(requesterPage);
   await setDemoSession(requesterPage, requesterSession);
   await requesterPage.reload();
-  await requesterPage.getByRole("button", { name: /^Tukar Jadwal$/i }).click();
+  await openScheduleSwap(requesterPage);
 
   await targetPage.goto("/");
   await setDemoSession(targetPage, targetSession);
   await targetPage.reload();
-  await targetPage.getByRole("button", { name: /^Tukar Jadwal$/i }).click();
+  await openScheduleSwap(targetPage);
   await expect(targetPage.getByText("Belum ada aktivitas pertukaran jadwal.")).toBeVisible();
 
   await requesterPage.getByLabel("Tanggal Tukar").fill(requestedDate);
@@ -118,7 +133,7 @@ test("permintaan dan jawaban tukar jadwal tampil realtime tanpa refresh", async 
   await whatsappPage.close();
 
   await expect(targetPage.getByText("Menunggu keputusan Anda")).toBeVisible();
-  await expect(targetPage.getByText(new RegExp(requestedDate))).toBeVisible();
+  await expect(swapCard(targetPage, "Menunggu keputusan Anda").getByText(new RegExp(requestedDate))).toBeVisible();
   await targetPage.getByRole("button", { name: "Setujui" }).click();
 
   await expect(requesterPage.getByText("Disetujui, jadwal diperbarui")).toBeVisible();

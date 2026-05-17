@@ -918,3 +918,633 @@ npm run seed:import
   - Hosting release: `projects/671712527716/sites/radiosbl/channels/live/releases/1779028062546000`.
   - Verifikasi publik `https://radiosbl.web.app/?v=schedule-swap-realtime-20260517` merespons HTTP 200 dan memuat bundle `index-DKEk9RuI.js`.
   - Firestore rules tidak dideploy ulang pada update realtime karena tidak berubah.
+
+- Update fondasi UI `ARAHAN_UI.md` batch 1:
+  - bottom navigation mobile sekarang maksimal 5 item: `Beranda`, `Jadwal`, `Absensi`, `Request`, `Menu`;
+  - fitur lain pindah ke halaman `Menu Lengkap`, bukan dihapus;
+  - `Menu Lengkap` berisi grup Operasional, Siaran, Konten, Administrasi, dan Sistem;
+  - sidebar desktop dikelompokkan ulang agar sesuai arah UI modern dan tidak berupa list panjang;
+  - badge tukar jadwal tetap muncul di `Menu` mobile dan tile `Tukar Jadwal`;
+  - token CSS awal `.ui-card`, `.ui-button`, dan `.ui-badge` tersedia untuk batch refactor halaman berikutnya;
+  - test e2e `login.smoke.spec.ts` memvalidasi bottom nav 5 item/menu lengkap mobile dan sidebar desktop;
+  - test e2e `schedule-swap.smoke.spec.ts` sudah mengikuti jalur mobile baru lewat `Menu Lengkap`.
+- Verifikasi fondasi UI batch 1:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\data\radioData.ts src\components\Shell.tsx src\components\MenuPage.tsx src\App.tsx src\e2e\login.smoke.spec.ts src\e2e\schedule-swap.smoke.spec.ts` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-B5oAHb4b.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+- Catatan fondasi UI:
+  - perubahan ini belum dideploy ke hosting produksi pada saat catatan dibuat;
+  - tidak ada perubahan Firebase schema/service/rules;
+  - `docs/ARAHAN_UI.md` masih file arahan baru di working tree dan perlu ikut commit bila dijadikan dokumen resmi.
+
+- Update Dashboard mobile `ARAHAN_UI.md` batch 2:
+  - Dashboard sekarang punya papan aksi utama di bawah player ON AIR;
+  - kartu aksi: `Jadwal saya hari ini`, `Absensi`, `Request lagu`, dan `Notifikasi penting`;
+  - jadwal pribadi dihitung dari slot hari ini yang cocok dengan `airName`, `displayName`, atau awalan email user;
+  - status absensi hari ini memakai `attendanceRecords` yang sudah tersedia, tanpa query/service baru;
+  - tombol aksi tetap menuju halaman resmi yang sudah ada.
+- Verifikasi Dashboard batch 2:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\login.smoke.spec.ts` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-Drfdizqp.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+- Catatan Dashboard batch 2:
+  - belum dideploy ke hosting produksi;
+  - tidak ada perubahan schema Firebase, rules, atau service produksi.
+
+- Update Absensi mobile `ARAHAN_UI.md` batch 3:
+  - halaman Absensi kini punya ringkasan atas `Status hari ini`, `Lokasi dan GPS`, dan `Bukti selfie`;
+  - ringkasan membaca kondisi check-in/check-out, jarak kantor, akurasi GPS, dan status upload selfie;
+  - error check-out memakai pesan inline, bukan `alert()`;
+  - label status absensi diperluas untuk sakit, izin, tugas luar, luar radius, perlu tinjau, dan validasi admin;
+  - type `AttendanceType` mengganti cast `any` pada pilihan status.
+- Verifikasi Absensi batch 3:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\AttendancePage.tsx src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-1m8Aj1mq.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+- Catatan Absensi batch 3:
+  - belum dideploy ke hosting produksi;
+  - algoritma absensi, radius kantor, AI selfie, upload Google Drive, Firestore schema, rules, dan service tidak diubah.
+
+- Update Jadwal Siaran mobile `ARAHAN_UI.md` batch 4:
+  - halaman Jadwal kini punya ringkasan tanggal berisi hari/tanggal, jumlah slot, dan program live jika ada;
+  - empty state tampil saat tanggal yang dipilih belum memiliki jadwal;
+  - status slot distandarkan: `Reguler`, `Sedang Berjalan`, `Pengganti`, `Khusus`, `Tentative`, `Tentative Aktif`, dan `Dibatalkan`;
+  - program berformat `Program A / Program B` dipisahkan menjadi judul utama dan baris `Tentative`;
+  - detail program memakai judul utama agar cover/deskripsi tetap tepat;
+  - flow tukar jadwal dari halaman Jadwal tetap memakai jalur resmi yang sudah ada.
+- Verifikasi Jadwal batch 4:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\BroadcastSchedulePage.tsx src\components\AttendancePage.tsx src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-Dxrgnxoh.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+- Catatan Jadwal batch 4:
+  - belum dideploy ke hosting produksi;
+  - business logic jadwal, service jadwal, rules, schema Firebase, dan flow tukar jadwal tidak diubah.
+
+- Update Request Lagu mobile `ARAHAN_UI.md` batch 5:
+  - halaman Request Lagu kini berbasis card, bukan kumpulan panel inline style;
+  - request dikelompokkan menjadi `Masuk sekarang`, `Siap diputar`, dan `Riwayat`;
+  - ringkasan atas menampilkan jumlah request masuk, antrean, dan selesai;
+  - kartu request menampilkan pengirim, lagu/artis, nomor WhatsApp, pesan, status, dan tombol cepat;
+  - aksi tetap memakai status/service existing: simpan ke antrean, tandai diputar, balas WhatsApp, dan tolak;
+  - empty state tiap kelompok dibuat lebih manusiawi;
+  - mobile dibuat satu kolom dengan tombol mudah ditekan.
+- Verifikasi Request Lagu batch 5:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\SongRequestsPage.tsx src\components\BroadcastSchedulePage.tsx src\components\AttendancePage.tsx src\components\DashboardPage.tsx src\components\Shell.tsx src\components\MenuPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-5N8Rzx4u.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+- Catatan Request Lagu batch 5:
+  - belum dideploy ke hosting produksi;
+  - business logic request lagu, service, schema Firebase, rules, dan integrasi WhatsApp tidak diubah;
+  - `src\e2e\schedule-swap.smoke.spec.ts` ikut diperketat agar cek tanggal pada kartu permintaan, bukan dropdown.
+
+- Update Buat Naskah AI mobile `ARAHAN_UI.md` batch 6:
+  - tab workspace dibuat class-based dan lebih ringkas untuk mobile;
+  - panel generator tetap memakai service AI/arsip existing;
+  - aksi hasil naskah dirapikan menjadi `Salin`, `Teleprompter`, dan `Arsip`;
+  - tombol `Salin` ditambahkan memakai clipboard dengan feedback sukses/error;
+  - rewrite bar, statistik naskah, draft card, dan empty state dibuat lebih konsisten;
+  - arsip draft tampil sebagai card responsif dan mudah dimuat kembali ke editor;
+  - placeholder Review/Siap Siaran dirapikan tanpa menambah workflow baru.
+- Verifikasi Buat Naskah AI batch 6:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\AiScriptPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-IKJGTv0L.js`.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 6 test lulus.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+- Catatan Buat Naskah AI batch 6:
+  - belum dideploy ke hosting produksi;
+  - service AI, prompt backend, provider Gemini, Firestore schema, dan struktur draft naskah tidak diubah.
+
+- Update Manajemen User mobile `ARAHAN_UI.md` batch 7:
+  - halaman Manajemen User kini memiliki card list khusus mobile;
+  - card mobile menampilkan nama, air name/email, alert profil belum lengkap, ringkasan hadir/izin/terakhir absen, role, status, dan tombol detail;
+  - aksi cepat mobile tetap memakai handler existing untuk ubah role dan aktif/nonaktif user;
+  - desktop table tetap dipertahankan untuk workflow admin lama;
+  - CSS menyembunyikan tabel di layar kecil dan menampilkan card list dengan target sentuh yang lebih aman;
+  - lint lama di file ini dibersihkan untuk import/catch yang tidak terpakai.
+- Verifikasi Manajemen User batch 7:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\UsersManagementPage.tsx src\components\AiScriptPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-aH4QwXmK.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Manajemen User batch 7:
+  - belum dideploy ke hosting produksi;
+  - role, permission, auth, service user profile, Firestore schema, dan sinkronisasi staf tidak diubah.
+
+- Update Streaming dan Liputan `ARAHAN_UI.md` batch 8:
+  - `StreamingPage` tidak lagi menyimpan style/keyframes lokal besar di dalam komponen;
+  - halaman Streaming punya ringkasan `Status`, `Program`, dan `Penyiar` di atas player;
+  - audio context, metadata, play/pause, volume, dan request lagu tetap memakai alur lama;
+  - halaman Liputan punya ringkasan status `Ditugaskan`, `Berjalan`, dan `Review`;
+  - card liputan diberi class khusus agar lebih rapi di mobile;
+  - tombol upload bukti dibuat lebih aman untuk target sentuh mobile;
+  - import tidak terpakai di `CoveragePage` dibersihkan.
+- Verifikasi Streaming/Liputan batch 8:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\StreamingPage.tsx src\components\CoveragePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-CJuoVUGb.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Streaming/Liputan batch 8:
+  - belum dideploy ke hosting produksi;
+  - upload Google Drive, service request lagu, audio context, data liputan, dan schema Firebase tidak diubah.
+
+- Update Live/OB `ARAHAN_UI.md` batch 9:
+  - halaman Live/OB punya ringkasan progres checklist, jumlah event, dan status event aktif;
+  - checklist alat memakai class CSS dan state `done` yang lebih jelas;
+  - form jadwal Live/OB memakai class CSS untuk input dan tombol;
+  - tombol `Kirim ke Grup WA` tetap memakai alur lama, hanya dirapikan tampilannya;
+  - rundown event aktif memakai card class-based dengan link Discord/YouTube yang mudah ditekan;
+  - layout mobile dibuat lebih satu kolom dan lebih aman untuk target sentuh.
+- Verifikasi Live/OB batch 9:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\LiveObPage.tsx src\components\CoveragePage.tsx src\components\StreamingPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-c6vjBXmB.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Live/OB batch 9:
+  - belum dideploy ke hosting produksi;
+  - `liveOb.service`, schema `LiveEvent`, notifikasi WhatsApp, data checklist, dan logic pembuatan event tidak diubah.
+
+- Update Tukar Jadwal `ARAHAN_UI.md` batch 10:
+  - halaman Tukar Jadwal kini class-based dan lebih konsisten dengan design system;
+  - ringkasan atas menampilkan `Permintaan masuk`, `Menunggu rekan`, dan `Selesai`;
+  - form pengajuan dibuat lebih rapi di mobile dengan helper text, warning jadwal kosong, tombol submit penuh, dan error inline;
+  - daftar permintaan/riwayat tampil sebagai card dengan badge jenis permintaan, status, tanggal, target/pemohon, alasan, dan tombol `Setujui`/`Tolak`;
+  - error submit/response tidak lagi memakai `alert()`, sehingga klik tombol lebih aman dan tidak membuat pengalaman mobile patah;
+  - alur resmi tetap: pemohon -> penyiar pengganti setuju/tolak -> jika setuju jadwal langsung diperbarui, tanpa antrean admin.
+- Verifikasi Tukar Jadwal batch 10:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\ScheduleSwapPage.tsx src\e2e\schedule-swap.smoke.spec.ts` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-Cc7s19Ib.js`.
+  - `npx playwright test schedule-swap.smoke.spec.ts` berhasil, 4 test lulus.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Tukar Jadwal batch 10:
+  - belum dideploy ke hosting produksi;
+  - `scheduleSwap.service`, Firestore schema/rules, subscription realtime, status swap, logic WhatsApp, dan flow admin tidak diubah;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update Laporan Absensi `ARAHAN_UI.md` batch 11:
+  - halaman `Rekap Kehadiran Staf` kini memakai layout class-based dengan hero, tab, filter panel, stat cards, panel tabel, dan drawer detail;
+  - tab `Ringkasan`, `Harian`, `Penyiar / Staf`, dan `Izin & Cuti` tetap tersedia dengan filter periode/role lama;
+  - mobile sekarang memakai card list untuk rekap staf, daftar harian, dan izin/cuti, sedangkan desktop tetap memakai tabel detail;
+  - drawer detail absensi dirapikan untuk selfie, skor AI wajah, waktu/lokasi, device info, dan aksi validasi admin;
+  - error validasi admin tidak lagi memakai `alert()`, diganti notice inline; sukses validasi juga memberi feedback inline;
+  - export CSV tetap memakai format lama dan tombol `Export CSV`.
+- Verifikasi Laporan Absensi batch 11:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\AttendanceReportPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-BhZ7T8P0.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Laporan Absensi batch 11:
+  - belum dideploy ke hosting produksi;
+  - `attendance.service`, algoritma absensi, Firebase schema/rules, dan format CSV tidak diubah;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update Dashboard premium polish `LANJUTAN_UI.md` batch 12:
+  - `DashboardPage` kini memakai struktur class-based untuk topbar, radio player, action board, menu, panel jadwal, podcast, dan profile sheet;
+  - visual radio player tetap memakai logic/metadata lama, tetapi markup lebih rapi dan responsif;
+  - panel dashboard dibuat reusable agar section jadwal berikutnya dan podcast lebih konsisten;
+  - bottom sheet profil dipindahkan ke CSS class dan tidak lagi memakai `confirm()` browser untuk logout;
+  - logout sekarang memakai konfirmasi inline di profile sheet dengan tombol `Batal` dan `Keluar`;
+  - responsif mobile disesuaikan agar player/panel/sheet tidak overflow dan aman dari bottom nav.
+- Verifikasi Dashboard batch 12:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-b_-f2ZgO.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan Dashboard batch 12:
+  - belum dideploy ke hosting produksi;
+  - `useGlobalAudio`, metadata streaming, service jadwal, role/permission, navigasi page key, data absensi, dan algoritma jadwal berikutnya tidak diubah;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update cleanup inline UI `LANJUTAN_UI.md` batch 13:
+  - `AttendancePage` kini class-based untuk modal izin lokasi, kamera/selfie, status cards, form absen, check-out, receipt, dan info list;
+  - `UsersManagementPage` kini class-based untuk header, summary, tabs, desktop table, mobile cards, drawer detail, form profil, notice, dan dialog konfirmasi;
+  - popup `alert()`/`confirm()` di manajemen user diganti notice/dialog inline untuk role/status/export/sinkronisasi/reset sandi;
+  - teleprompter `AiScriptPage` dibersihkan dari inline style besar dan memakai class CSS untuk toolbar, speed/play controls, teks naskah, scroll area, dan focus line;
+  - `CoveragePage` dibersihkan dari sisa inline kecil pada panel, pencarian, card, upload, status, dan empty state;
+  - `StreamingPage` dibersihkan dari inline besar pada header, player visual, metadata, play row, volume, history card, request toggle, form, dan alert;
+  - `BroadcastSchedulePage` tidak lagi memakai `alert()` saat gagal mengirim tukar jadwal dari halaman jadwal, melainkan notice inline;
+  - date picker/helper/default slot di halaman Jadwal juga dipindahkan ke class CSS.
+- Verifikasi cleanup inline batch 13:
+  - `rg -n "style=|alert\\(|confirm\\(" src/components/AttendancePage.tsx src/components/UsersManagementPage.tsx src/components/AiScriptPage.tsx src/components/CoveragePage.tsx src/components/StreamingPage.tsx src/components/BroadcastSchedulePage.tsx` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\AttendancePage.tsx src\components\UsersManagementPage.tsx src\components\AiScriptPage.tsx src\components\CoveragePage.tsx src\components\StreamingPage.tsx src\components\BroadcastSchedulePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-DnnbzAVW.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan cleanup inline batch 13:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, algoritma absensi, logic AI, Google Drive, audio context, request lagu, dan flow tukar jadwal tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update global inline sweep `LANJUTAN_UI.md` batch 14:
+  - `ProfilePage` kini class-based untuk topbar, tabs, hero profil, form akun, filter absensi, stat cards, daftar absensi, empty/loading state, dan link maps;
+  - `Shell` dibersihkan dari inline style pada sidebar, tombol notifikasi, badge, session user, prompt izin audio, dan badge bottom nav;
+  - `SplashPage` memindahkan delay/keyframes wave/equalizer ke CSS;
+  - `LoginPage` tidak lagi memakai blok `<style>` lokal untuk showcase logo dan wrapper logo mobile;
+  - `Waveform` tidak lagi memakai inline style dinamis untuk bar audio;
+  - `DashboardPage` mengganti CSS variable inline menu shortcut dengan tone class;
+  - `AttendanceReportPage` memakai elemen `progress` untuk rasio kehadiran, bukan width inline;
+  - `App` loading fallback dan `AnnouncerProfilePage` cursor statis dipindahkan ke class CSS;
+  - scan global `src` untuk `style=`, `<style>`, `alert()`, dan `confirm()` sudah bersih.
+- Verifikasi global inline sweep batch 14:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\components\LoginPage.tsx src\components\Waveform.tsx src\components\AnnouncerProfilePage.tsx src\components\AttendanceReportPage.tsx src\components\DashboardPage.tsx src\components\Shell.tsx src\components\SplashPage.tsx src\components\ProfilePage.tsx src\components\LiveObPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-B-iEOwMK.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan global inline sweep batch 14:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, audio context, algoritma jadwal, algoritma absensi, logic login, dan flow tukar jadwal tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update microinteraction & skeleton loading `LANJUTAN_UI.md` batch 15:
+  - token global untuk focus ring, press scale, easing, dan skeleton ditambahkan di `src/styles/app.css`;
+  - tombol, link, input, select, textarea, role button, dan elemen focusable sekarang punya focus ring konsisten;
+  - press feedback tombol/link dibuat ringan dan disabled state global lebih jelas;
+  - reduced motion guard global ditambahkan untuk menghormati `prefers-reduced-motion`;
+  - utility skeleton `ui-skeleton`, `ui-skeleton-card`, `ui-skeleton-row`, dan `ui-skeleton-copy` tersedia;
+  - loading daftar `UsersManagementPage`, `ScheduleSwapPage`, `ProfilePage`, dan `AttendanceReportPage` memakai skeleton ringan, bukan spinner-only;
+  - ukuran skeleton dirapikan agar stabil di panel mobile/desktop.
+- Verifikasi microinteraction batch 15:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\UsersManagementPage.tsx src\components\ScheduleSwapPage.tsx src\components\ProfilePage.tsx src\components\AttendanceReportPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-BbmO8nDt.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan microinteraction batch 15:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, auth, query data, dan workflow produksi tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update menu search & quick actions `LANJUTAN_UI.md` batch 16:
+  - `MenuPage` sekarang punya pencarian cepat fitur/menu berdasarkan label, grup, deskripsi, dan alias operasional;
+  - hasil pencarian tetap dikelompokkan dan tetap menghormati role/permission existing;
+  - empty state pencarian ditambahkan bila tidak ada fitur yang cocok;
+  - quick actions kontekstual ditambahkan untuk fitur yang diizinkan user: absen, tukar jadwal, request, naskah, Live OB, dan liputan;
+  - badge pending tukar jadwal tetap muncul pada quick action dan tile menu;
+  - CSS panel search/quick action dibuat responsif, mobile dua kolom;
+  - smoke test menu mobile diperluas untuk validasi search, quick action, hasil filter, dan empty search state.
+- Verifikasi menu search batch 16:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\MenuPage.tsx src\e2e\login.smoke.spec.ts` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-DSNqyDm_.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan menu search batch 16:
+  - belum dideploy dan belum push ke GitHub;
+  - router, service, Firebase schema/rules, role/permission, auth, query data, dan workflow produksi tidak diubah;
+  - semua aksi tetap memakai `onNavigate` existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update adaptive dashboard focus `LANJUTAN_UI.md` batch 17:
+  - `DashboardPage` punya panel `Fokus Operasional` yang membaca konteks existing: jadwal user aktif, jadwal pribadi hari ini, status absensi, dan program berjalan;
+  - mode dashboard memberi arahan ringan untuk `Persiapan siaran`, `Mode On-Air`, `Mode kerja aktif`, atau `Setelah siaran`;
+  - panel menampilkan aksi berikutnya via `onNavigate` existing: absen, request, absensi, atau profil;
+  - visual tone panel berubah halus berdasarkan mode: prep, live, wrap, done;
+  - CSS responsif ditambahkan agar dashboard mobile tetap satu fokus dan tidak overload.
+- Verifikasi adaptive dashboard batch 17:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-CxGcGf3l.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan adaptive dashboard batch 17:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, auth, query data, audio context, algoritma jadwal, dan workflow produksi tidak diubah;
+  - semua aksi tetap memakai `onNavigate` existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update request lagu realtime polish `LANJUTAN_UI.md` batch 18:
+  - `SongRequestsPage` punya live strip untuk status antrean aktif/menunggu request;
+  - live strip menampilkan request terbaru dan waktu masuk, plus tombol `Sinkronkan`;
+  - kartu request menampilkan timestamp `Masuk HH.mm` dengan helper timestamp aman untuk Date/string/number dan objek Firestore-like;
+  - loading tiap grup request memakai skeleton list;
+  - empty/loading state tetap per grup: Masuk sekarang, Siap diputar, Riwayat;
+  - CSS live strip, timestamp, dan skeleton list dibuat responsif mobile.
+- Verifikasi request lagu batch 18:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\SongRequestsPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil, bundle `index-B_iW6vak.js`.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+- Catatan request lagu batch 18:
+  - belum dideploy dan belum push ke GitHub;
+  - `songRequest.service`, status flow request, localStorage/Firestore schema, WhatsApp URL, auth, role/permission, dan workflow produksi tidak diubah;
+  - aksi status tetap memakai `updateSongRequestStatus` existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin;
+  - warning Vite dynamic/static import pada build masih warning lama dan bukan error.
+
+- Update penyiar page polish `LANJUTAN_UI.md` batch 19:
+  - `AnnouncersPage` di `src/App.tsx` punya search cepat untuk nama udara, nama lengkap, alias jadwal, hari, program, dan jam;
+  - panel fokus menampilkan jumlah penyiar aktif serta penyiar dengan slot terpadat;
+  - kartu penyiar sekarang membuka halaman `Profil Penyiar` lewat navigasi existing, bukan hanya tampil seperti kartu klik;
+  - kartu menampilkan status aktif, statistik hari/jam/slot, jadwal pertama, preview slot, dan affordance `Lihat profil`;
+  - empty state pencarian ditambahkan saat tidak ada hasil;
+  - `AnnouncerProfilePage` menampilkan badge frekuensi/status, ringkasan jadwal terdekat, chip hari siaran, dan slot yang dikelompokkan per hari;
+  - CSS baru untuk search, focus row, kartu, empty state, dan detail profil sudah responsif mobile.
+- Verifikasi penyiar batch 19:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\components\AnnouncerProfilePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=announcers`, cari `Amar`, klik kartu `Buka profil Amar`, profil tampil, tidak ada horizontal overflow.
+- Catatan penyiar batch 19:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, auth, query data, algoritma jadwal, dan workflow produksi tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update podcast premium polish `LANJUTAN_UI.md` batch 20:
+  - `PodcastPage` punya panel ringkasan: katalog/hasil pencarian, status feed, dan episode aktif;
+  - status feed membedakan sinkronisasi, feed terbaru, dan fallback Spotify tanpa mengubah service;
+  - saat feed loading, halaman menampilkan skeleton strip ringan sambil tetap memakai daftar fallback;
+  - player aktif menampilkan metadata episode;
+  - kartu episode menampilkan preview deskripsi agar lebih mudah dipindai;
+  - empty state pencarian punya tombol `Kosongkan pencarian`;
+  - CSS responsif ditambahkan untuk panel ringkasan, skeleton strip, metadata player, preview episode, dan empty state.
+- Verifikasi podcast batch 20:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PodcastPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=podcast`, cari `Guru`, putar episode, uji empty search dan tombol `Kosongkan pencarian`, tidak ada horizontal overflow.
+- Catatan podcast batch 20:
+  - belum dideploy dan belum push ke GitHub;
+  - `podcast.service`, konfigurasi RSS/Spotify endpoint, embed/source URL, auth, role/permission, dan workflow produksi tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update aduan operational polish `LANJUTAN_UI.md` batch 21:
+  - `ComplaintsPage` punya pencarian aduan berdasarkan pelapor, kategori, pesan, status, dan tanggal;
+  - filter status dan kategori ditambahkan di presentation layer;
+  - panel prioritas menampilkan jumlah hasil aktif, aduan butuh atensi, dan prioritas tindak lanjut berikutnya;
+  - counter daftar mengikuti hasil filter aktif;
+  - empty state filter punya tombol `Reset filter`;
+  - tiap tiket menampilkan progres `Baru -> Terverifikasi -> Diproses -> Selesai`;
+  - CSS responsif ditambahkan untuk search, filter, focus row, progress tiket, dan tombol reset filter.
+- Verifikasi aduan batch 21:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\ComplaintsPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=complaints`, uji pencarian kosong + `Reset filter`, submit laporan dummy, progress tiket tampil, tidak ada horizontal overflow.
+- Catatan aduan batch 21:
+  - belum dideploy dan belum push ke GitHub;
+  - `complaint.service`, schema Firestore/localStorage, status flow aduan, role/permission, auth, dan workflow produksi tidak diubah;
+  - aksi status tetap memakai `updateComplaintStatus` existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update profil personalization polish `LANJUTAN_UI.md` batch 22:
+  - `ProfilePage` punya panel `Kesiapan profil` dengan persentase kelengkapan data utama;
+  - ringkasan `Kontak operasional` dan `Akses akun` ditambahkan agar user cepat melihat status kontak/role;
+  - progress kelengkapan memakai elemen `progress` native;
+  - panel kesiapan responsif satu kolom di mobile;
+  - kondisi simpan profil diperbaiki agar perubahan `airName` ikut tersimpan lewat `upsertUserProfile` existing.
+- Verifikasi profil batch 22:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\ProfilePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=profile`, pindah tab riwayat/info akun, panel kesiapan 3 kartu tampil, tidak ada horizontal overflow.
+- Catatan profil batch 22:
+  - belum dideploy dan belum push ke GitHub;
+  - `auth.service`, `userProfile.service`, Firestore schema/rules, role/permission, session flow, dan workflow produksi tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update event coverage operational polish `LANJUTAN_UI.md` batch 23:
+  - `CoveragePage` punya filter status untuk tugas liputan;
+  - pencarian mencakup judul, deskripsi, reporter, status, dan deadline;
+  - ringkasan liputan menambahkan metrik `Hari ini`;
+  - panel `Prioritas lapangan` menampilkan tugas paling perlu perhatian berdasarkan deadline dan status;
+  - deadline dibuat human-friendly dengan state `today`/`overdue`;
+  - empty state filter punya tombol `Reset filter`;
+  - CSS responsif ditambahkan untuk command panel, filter, prioritas, deadline, dan empty state.
+- Verifikasi event coverage batch 23:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\CoveragePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=coverage`, uji pencarian kosong + `Reset filter`, cari `UMKM`, summary 4 kartu dan prioritas tampil, tidak ada horizontal overflow.
+- Catatan event coverage batch 23:
+  - belum dideploy dan belum push ke GitHub;
+  - Google Drive upload, data mock liputan, Firestore schema/rules, auth, role/permission, dan workflow produksi tidak diubah;
+  - tidak menambahkan `coverage.service`;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update Live OB readiness polish `LANJUTAN_UI.md` batch 24:
+  - `LiveObPage` punya panel kesiapan operasional berisi progres checklist, status link siaran, dan event berikutnya;
+  - progres checklist memakai elemen `progress` native;
+  - status link siaran membaca input YouTube/Discord yang sudah ada tanpa mengubah payload event;
+  - event berikutnya dihitung dari daftar event existing;
+  - CSS responsif ditambahkan untuk readiness cards dan progress agar mobile satu kolom.
+- Verifikasi Live OB batch 24:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\LiveObPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=liveOb`, checklist ditoggle, link YouTube/Discord diisi, event dibuat, readiness 3 kartu dan rundown tampil, tidak ada horizontal overflow.
+- Catatan Live OB batch 24:
+  - belum dideploy dan belum push ke GitHub;
+  - `liveOb.service`, schema `LiveEvent`, localStorage/Firestore flow, notifikasi WhatsApp, data checklist, dan logic pembuatan event tidak diubah;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update attendance report scanability polish `LANJUTAN_UI.md` batch 25:
+  - `AttendanceReportPage` punya pencarian rekap lintas nama, nama udara, email, role, status, tanggal, jam, alasan, dan catatan AI;
+  - pencarian diterapkan pada daftar harian, izin/cuti, dan ringkasan staf di presentation layer;
+  - ringkasan mendapat panel fokus: rasio tepat lokasi, jumlah catatan perlu atensi, dan status filter aktif;
+  - prioritas atensi membaca status absensi existing seperti `needs_review`, `outside_radius`, `late`, `rejected`, izin/sakit/tugas luar;
+  - empty state memiliki tombol `Reset filter`;
+  - CSS responsif ditambahkan untuk search field, focus cards, dan reset filter.
+- Verifikasi attendance report batch 25:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\AttendanceReportPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844: `?page=attendanceReport`, uji pencarian kosong + `Reset filter`, pindah tab `Harian`, pencarian `admin`, focus cards 3 tampil, tidak ada horizontal overflow.
+- Catatan attendance report batch 25:
+  - belum dideploy dan belum push ke GitHub;
+  - `attendance.service`, `userProfile.service`, Firestore schema/rules, role/permission, status absensi, validasi admin, dan workflow produksi tidak diubah;
+  - export CSV tetap memakai hasil filter aktif existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update broadcast schedule operational polish `LANJUTAN_UI.md` batch 26:
+  - `BroadcastSchedulePage` punya pencarian jadwal berdasarkan program, penyiar, jam, deskripsi, status, dan program tentative;
+  - filter status jadwal ditambahkan di presentation layer: semua, sedang berjalan, reguler, tentative, pengganti, khusus, dan dibatalkan;
+  - ringkasan tanggal menampilkan jumlah slot terlihat saat filter aktif;
+  - panel fokus jadwal menampilkan prioritas slot, slot user hari itu, dan jumlah slot tentative;
+  - empty state filter punya tombol `Reset filter`;
+  - tombol ikon tukar/edit jadwal diberi `aria-label` spesifik program;
+  - urutan deklarasi `menuItems` di `DashboardPage` diperbaiki agar typecheck tidak gagal saat `recentMenuItems` dibuat.
+- Verifikasi broadcast schedule batch 26:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\BroadcastSchedulePage.tsx src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: `?page=schedule`, uji pencarian kosong + `Reset filter`, tidak ada horizontal overflow dan tidak ada tombol tanpa label.
+- Catatan broadcast schedule batch 26:
+  - belum dideploy dan belum push ke GitHub;
+  - `scheduleSlot.service`, `scheduleSwap.service`, Firestore schema/rules, role/permission, auth, query data, dan workflow produksi tidak diubah;
+  - filter/pencarian jadwal hanya presentation layer;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update dashboard operational briefing `LANJUTAN_UI_2.md` batch 27:
+  - `DashboardPage` punya panel `Operational Briefing`;
+  - briefing memisahkan prioritas `Critical`, `Important`, dan `Passive`;
+  - item briefing membaca konteks existing: slot on-air user, absensi hari ini, jadwal pribadi mendekat, role admin, permission AI, dan status streaming;
+  - setiap briefing punya aksi langsung ke halaman relevan seperti Request, Absensi, Jadwal, Rekap Absen, Naskah AI, atau Streaming;
+  - CSS briefing responsif ditambahkan agar mobile satu kolom dan tetap sesuai design system dashboard.
+- Verifikasi dashboard briefing batch 27:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: dashboard menampilkan `Operational Briefing`, tidak ada horizontal overflow dan tidak ada tombol tanpa label.
+- Catatan dashboard briefing batch 27:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission, auth, query data, audio context, dan workflow produksi tidak diubah;
+  - briefing hanya presentation layer dari data dashboard existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update schedule cross-module workflow `LANJUTAN_UI_2.md` batch 28:
+  - modal detail program di `BroadcastSchedulePage` punya aksi lanjutan program;
+  - dari jadwal, user bisa langsung membuka `Buat naskah`, `Request`, `Streaming`, dan `Live/OB`;
+  - navigasi memakai page key/router existing dari `App`, tanpa route atau service baru;
+  - modal detail program ditutup otomatis saat aksi lanjutan dipilih;
+  - CSS workflow detail program responsif: empat kolom desktop dan dua kolom mobile.
+- Verifikasi schedule workflow batch 28:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\components\BroadcastSchedulePage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: `?page=schedule`, klik kartu jadwal, aksi workflow tampil, tidak ada horizontal overflow, tidak ada tombol tanpa label, dan tombol `Buat naskah` berpindah ke halaman naskah.
+- Catatan schedule workflow batch 28:
+  - belum dideploy dan belum push ke GitHub;
+  - service jadwal, AI, request lagu, streaming, Live/OB, Firestore schema/rules, role/permission, auth, dan workflow produksi tidak diubah;
+  - perubahan hanya presentation/navigation layer;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update dashboard live context & role-aware actions `LANJUTAN_UI_2.md` batch 29:
+  - konteks waktu dashboard refresh otomatis tiap 60 detik agar countdown/jadwal mendekat tidak stale;
+  - action board dashboard sekarang berubah berdasarkan role:
+    - penyiar: request, naskah AI, jadwal, streaming;
+    - admin/super admin: rekap absensi, kelola user, tukar jadwal, aduan;
+    - reporter: liputan, absensi, jadwal, naskah AI jika diizinkan;
+    - operator: streaming, Live/OB, request bila diizinkan, jadwal;
+  - action board tetap memfilter aksi memakai permission/menu existing;
+  - struktur `DashboardActionItem` ditambahkan agar prioritas role mudah dikembangkan.
+- Verifikasi dashboard role-aware batch 29:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: dashboard admin menampilkan 4 action card role-aware (`Rekap absensi`, `Kelola user`, `Tukar jadwal`, `Tindak lanjut publik`), tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Catatan dashboard role-aware batch 29:
+  - belum dideploy dan belum push ke GitHub;
+  - service, Firebase schema/rules, role/permission definition, auth, query data, audio context, dan workflow produksi tidak diubah;
+  - perubahan hanya presentation-layer di `DashboardPage`;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update dashboard realtime request brief `LANJUTAN_UI_2.md` batch 30:
+  - `DashboardPage` subscribe ke request lagu memakai `subscribeSongRequests` existing;
+  - panel `Request Terkini` menampilkan request aktif terbaru, nama pendengar, waktu masuk, dan tombol langsung ke halaman Request;
+  - panel menampilkan statistik request aktif, antrean, dan request diputar hari ini;
+  - operational briefing dan timeline ikut membaca request terbaru saat ada request aktif;
+  - CSS panel request responsif ditambahkan agar mobile satu kolom.
+- Verifikasi dashboard request batch 30:
+  - `rg -n "style=|<style>|alert\\(|confirm\\(" src` tidak menemukan sisa target.
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npx playwright test login.smoke.spec.ts schedule-swap.smoke.spec.ts` berhasil, 10 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test dengan request demo localStorage: panel `Request Terkini` tampil, request `Lagu Semangat Pagi` tampil, statistik `1,0,0`, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Catatan dashboard request batch 30:
+  - belum dideploy dan belum push ke GitHub;
+  - `songRequest.service`, status flow request, Firestore/localStorage schema, WhatsApp URL, auth, role/permission, dan workflow produksi tidak diubah;
+  - perubahan hanya presentation-layer dashboard dengan subscription existing;
+  - alur tukar jadwal tetap langsung antar penyiar: pemohon -> penyiar pengganti setuju/tolak -> jadwal langsung diperbarui bila setuju, tanpa antrean admin.
+
+- Update dashboard smart panel visual fix batch 31:
+  - memperbaiki panel `Aksi Cepat` dan `Aktivitas Terbaru` yang sempat tampil seperti tombol browser default abu-abu di mobile;
+  - CSS khusus ditambahkan untuk shortcut card, icon shortcut, timeline item, dot status, dan recent strip;
+  - tone visual shortcut request, absensi, jadwal, naskah AI, liputan, dan user dibuat konsisten dengan design system;
+  - mobile dibuat satu kolom dan recent strip menjadi grid dua kolom;
+  - screenshot audit lokal tersimpan di `tmp/dashboard-smart-panel-audit.png`.
+- Verifikasi dashboard smart panel fix batch 31:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - `npm run build` berhasil; warning Vite dynamic/static import lama tetap warning.
+  - `npm run test` berhasil, 17 file test / 58 test lulus.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: tidak ada horizontal overflow, 4 shortcut card tampil, 3 timeline item tampil, styling card/timeline/recent strip aktif, dan tidak ada tombol tanpa label.
+- Catatan dashboard smart panel fix batch 31:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan logic dashboard, service, schema, role/permission, atau workflow produksi;
+  - perubahan hanya CSS visual dashboard.
+
+- Update dokumentasi role & screenshot workflow batch 32:
+  - struktur dokumentasi dari `docs/ARAHAN_BUAT_DOKUMENTASI.md` mulai diisi dengan panduan `user-guide`, `admin-guide`, `broadcaster-guide`, `reporter-guide`, `operator-guide`, dan `developer-guide`;
+  - portal dokumentasi HTML tersedia di `docs/index.html`;
+  - script `npm run docs:screenshots` ditambahkan dan menyimpan screenshot ke `docs/screenshots`;
+  - screenshot yang tersedia: login mobile, dashboard mobile/desktop, absensi, jadwal, request lagu, naskah AI, manajemen user, profil, menu mobile, dan menu desktop;
+  - folder `docs/assets` dan `docs/screenshots` punya README keamanan/pemakaian;
+  - launcher screenshot menjalankan Vite langsung lewat Node/Vite dengan `--strictPort` agar proses server tidak tertinggal di Windows.
+- Verifikasi dokumentasi batch 32:
+  - `node --check scripts/capture-docs-screenshots.mjs` berhasil.
+  - `npm run docs:screenshots` berhasil menghasilkan screenshot dokumentasi.
+  - `npm run typecheck` berhasil.
+- Catatan dokumentasi batch 32:
+  - belum dideploy dan belum push ke GitHub;
+  - dokumentasi dan screenshot memakai data demo/dummy, bukan data user asli;
+  - tidak ada perubahan Firebase schema/rules, service, auth, role/permission, atau workflow produksi.

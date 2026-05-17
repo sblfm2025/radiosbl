@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dokumentasi RadioSBL App</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --blue: #1677ed;
+      --green: #0f766e;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #dbe7f5;
+      --soft: #f7faff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--soft);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    header {
+      padding: 48px 20px 28px;
+      background: linear-gradient(135deg, #ffffff, #eef6ff);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap { width: min(1120px, 100%); margin: 0 auto; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 28px;
+      align-items: center;
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+    h2 { margin: 0 0 14px; font-size: 1.35rem; }
+    h3 { margin: 0 0 8px; font-size: 1rem; }
+    p { margin: 0; color: var(--muted); }
+    a { color: var(--blue); text-decoration: none; font-weight: 800; }
+    .logo {
+      width: 180px;
+      max-width: 100%;
+      margin-inline: auto;
+      border-radius: 28px;
+      background: #fff;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+    }
+    main { padding: 28px 20px 56px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
+    }
+    .section { margin-top: 30px; }
+    .shots {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    figure { margin: 0; }
+    figure img {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .pill {
+      display: inline-flex;
+      margin-bottom: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--green);
+      font-size: 0.8rem;
+      font-weight: 900;
+    }
+    code {
+      padding: 2px 5px;
+      border-radius: 6px;
+      background: #eaf2ff;
+      color: #0f3f8a;
+    }
+    @media (max-width: 760px) {
+      .hero, .grid, .shots { grid-template-columns: minmax(0, 1fr); }
+      header { padding-top: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap hero">
+      <div>
+        <span class="pill">Dokumentasi Operasional</span>
+        <h1>RadioSBL App</h1>
+        <p>Panduan lengkap untuk user baru, penyiar, admin, reporter, operator, dan developer internal.</p>
+      </div>
+      <img class="logo" src="../public/LogoSBL.svg" alt="Radio SBL">
+    </div>
+  </header>
+  <main class="wrap">
+    <section>
+      <h2>Mulai Dari Sini</h2>
+      <div class="grid">
+        <article class="card"><h3>User Guide</h3><p>Login, dashboard, absensi, jadwal, request, profil.</p><a href="user-guide/README.md">Buka panduan</a></article>
+        <article class="card"><h3>Penyiar</h3><p>Jadwal, request lagu, naskah AI, dan tukar jadwal.</p><a href="broadcaster-guide/README.md">Buka panduan</a></article>
+        <article class="card"><h3>Admin</h3><p>Kelola user, rekap absensi, jadwal, dan aduan.</p><a href="admin-guide/README.md">Buka panduan</a></article>
+        <article class="card"><h3>Reporter</h3><p>Tugas liputan, deadline, dan dokumentasi lapangan.</p><a href="reporter-guide/README.md">Buka panduan</a></article>
+        <article class="card"><h3>Operator</h3><p>Streaming, Live/OB, request, dan koordinasi teknis.</p><a href="operator-guide/README.md">Buka panduan</a></article>
+        <article class="card"><h3>Developer</h3><p>Struktur kode, command, screenshot, dan keamanan.</p><a href="developer-guide/README.md">Buka panduan</a></article>
+      </div>
+    </section>
+    <section class="section">
+      <h2>Screenshot Utama</h2>
+      <p>Jalankan <code>npm run docs:screenshots</code> untuk memperbarui gambar di bawah.</p>
+      <div class="shots">
+        <figure><img src="screenshots/dashboard-mobile.png" alt="Dashboard mobile"><figcaption>Dashboard mobile</figcaption></figure>
+        <figure><img src="screenshots/dashboard-desktop.png" alt="Dashboard desktop"><figcaption>Dashboard desktop</figcaption></figure>
+        <figure><img src="screenshots/schedule-mobile.png" alt="Jadwal mobile"><figcaption>Jadwal siaran</figcaption></figure>
+        <figure><img src="screenshots/song-request-mobile.png" alt="Request lagu mobile"><figcaption>Request lagu</figcaption></figure>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+

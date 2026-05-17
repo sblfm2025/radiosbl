@@ -1,11 +1,80 @@
 import { useState, useEffect } from "react";
-import { Radio, Clock, PlayCircle, XCircle, RefreshCw, MessageCircle } from "lucide-react";
+import { Radio, Clock, PlayCircle, XCircle, RefreshCw, MessageCircle, Inbox, CheckCircle2 } from "lucide-react";
 import type { SongRequest } from "../types/domain";
 import {
   listSongRequests,
   subscribeSongRequests,
   updateSongRequestStatus
 } from "../services/songRequest.service";
+
+type RequestGroup = "new" | "queued" | "done";
+
+const groupMeta: Record<RequestGroup, { title: string; label: string; tone: string; empty: string }> = {
+  new: {
+    title: "Masuk sekarang",
+    label: "Butuh diproses",
+    tone: "danger",
+    empty: "Belum ada request lagu masuk."
+  },
+  queued: {
+    title: "Siap diputar",
+    label: "Dalam antrean",
+    tone: "primary",
+    empty: "Antrean putar masih kosong."
+  },
+  done: {
+    title: "Riwayat",
+    label: "Selesai",
+    tone: "muted",
+    empty: "Belum ada request yang selesai diproses."
+  }
+};
+
+function getSongTitle(request: SongRequest): string {
+  return [request.artist, request.title].filter(Boolean).join(" - ");
+}
+
+function getStatusLabel(status: SongRequest["status"]): string {
+  switch (status) {
+    case "notified":
+      return "Terkirim WA";
+    case "queued":
+      return "Antrean";
+    case "played":
+      return "Diputar";
+    case "rejected":
+      return "Ditolak";
+    default:
+      return "Baru";
+  }
+}
+
+function toDate(value: SongRequest["createdAt"] | { toDate?: () => Date; seconds?: number }): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (value && typeof value === "object") {
+    if ("toDate" in value && typeof value.toDate === "function") {
+      return value.toDate();
+    }
+    if ("seconds" in value && typeof value.seconds === "number") {
+      return new Date(value.seconds * 1000);
+    }
+  }
+
+  return null;
+}
+
+function formatRequestTime(value: SongRequest["createdAt"]): string {
+  const date = toDate(value);
+  if (!date) {
+    return "Baru masuk";
+  }
+
+  return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+}
 
 export function SongRequestsPage() {
   const [requests, setRequests] = useState<SongRequest[]>([]);
@@ -35,10 +104,8 @@ export function SongRequestsPage() {
     setRequests((current) =>
       current.map((item) => (item.id === updated.id ? updated : item))
     );
-    setNotice(`Request "${updated.title}" diperbarui menjadi ${status}.`);
-    
-    // Clear notice after 3 seconds
-    setTimeout(() => setNotice(""), 3000);
+    setNotice(`Request "${updated.title}" diperbarui menjadi ${getStatusLabel(status)}.`);
+    window.setTimeout(() => setNotice(""), 3000);
   }
 
   const groupedRequests = {
@@ -46,11 +113,108 @@ export function SongRequestsPage() {
     queued: requests.filter((request) => request.status === "queued"),
     done: requests.filter((request) => ["played", "rejected"].includes(request.status))
   };
+  const activeRequestCount = groupedRequests.new.length + groupedRequests.queued.length;
+  const latestRequest = requests[0];
+  const latestRequestLabel = latestRequest
+    ? `${getSongTitle(latestRequest)} - ${formatRequestTime(latestRequest.createdAt)}`
+    : "Belum ada request terbaru";
+
+  const renderRequestCard = (request: SongRequest, group: RequestGroup) => (
+    <article className={`song-request-card ${group}`} key={request.id}>
+      <div className="song-request-icon">
+        {group === "queued" ? <Clock size={20} /> : group === "done" ? <CheckCircle2 size={20} /> : <Radio size={20} />}
+      </div>
+
+      <div className="song-request-copy">
+        <div className="song-request-title-row">
+          <h3>{getSongTitle(request)}</h3>
+          <span className={`song-request-status ${request.status}`}>{getStatusLabel(request.status)}</span>
+        </div>
+        <p>
+          Dari <strong>{request.requesterName}</strong>
+          {request.announcerName && <span> untuk {request.announcerName}</span>}
+        </p>
+        <time className="song-request-time" dateTime={toDate(request.createdAt)?.toISOString()}>
+          Masuk {formatRequestTime(request.createdAt)}
+        </time>
+        {request.requesterWhatsapp && (
+          <span className="song-request-whatsapp">
+            <MessageCircle size={14} /> {request.requesterWhatsapp}
+          </span>
+        )}
+        {request.message && (
+          <blockquote>{request.message}</blockquote>
+        )}
+
+        <div className="song-request-actions">
+          {group === "new" && (
+            <button type="button" className="primary" onClick={() => handleStatus(request, "queued")}>
+              <Clock size={16} /> Simpan ke antrean
+            </button>
+          )}
+          {group === "queued" && (
+            <button type="button" className="success" onClick={() => handleStatus(request, "played")}>
+              <PlayCircle size={17} /> Tandai diputar
+            </button>
+          )}
+          {request.whatsappUrl && (
+            <a href={request.whatsappUrl} target="_blank" rel="noreferrer" aria-label={`Balas WhatsApp ${request.requesterName}`}>
+              <MessageCircle size={17} /> Balas
+            </a>
+          )}
+          {group !== "done" && (
+            <button type="button" className="danger" onClick={() => handleStatus(request, "rejected")}>
+              <XCircle size={17} /> Tolak
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+
+  const renderGroup = (group: RequestGroup, items: SongRequest[]) => {
+    const meta = groupMeta[group];
+    const visibleItems = group === "done" ? items.slice(0, 5) : items;
+
+    return (
+      <section className="song-request-section" aria-label={meta.title}>
+        <div className="song-request-section-head">
+          <span className={`song-request-dot ${meta.tone}`} />
+          <div>
+            <h2>{meta.title}</h2>
+            <p>{meta.label}</p>
+          </div>
+          <strong>{items.length}</strong>
+        </div>
+
+        {loading ? (
+          <div className="song-request-skeleton-list" aria-label={`Memuat ${meta.title}`}>
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div className="ui-skeleton-card" key={index}>
+                <span className="ui-skeleton line short" />
+                <span className="ui-skeleton line" />
+                <span className="ui-skeleton line medium" />
+              </div>
+            ))}
+          </div>
+        ) : visibleItems.length === 0 ? (
+          <div className="song-request-empty">
+            <Inbox size={24} />
+            <p>{meta.empty}</p>
+          </div>
+        ) : (
+          <div className="song-request-list">
+            {visibleItems.map((request) => renderRequestCard(request, group))}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   return (
-    <div style={{ background: "#f8f9fc", minHeight: "100vh", paddingBottom: "100px" }}>
+    <main className="song-requests-page">
       <div className="schedule-page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+        <div className="song-requests-header">
           <div className="schedule-title-lockup">
             <img src="/LogoSBL.svg" alt="Radio SBL" />
             <div>
@@ -58,167 +222,56 @@ export function SongRequestsPage() {
               <h1>Request Lagu</h1>
             </div>
           </div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={loadRequests}
-            style={{ background: "rgba(22, 119, 237, 0.1)", border: "none", color: "var(--blue)", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
-            aria-label="Muat Ulang Request"
+            className="song-request-refresh"
+            aria-label="Muat ulang request lagu"
           >
             <RefreshCw size={18} className={loading ? "spin" : ""} />
           </button>
         </div>
       </div>
 
-      <div style={{ padding: "20px" }}>
-        {notice && <p style={{ background: "rgba(17,163,106,0.1)", color: "#11a36a", padding: "12px", borderRadius: "12px", fontSize: "0.85rem", marginBottom: "20px" }}>{notice}</p>}
+      <div className="song-request-content">
+        {notice && <p className="song-request-notice">{notice}</p>}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          
-          {/* Incoming Requests */}
+        <section className="song-request-live-strip" aria-label="Status realtime request lagu">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-              <div style={{ background: "#FF3B3B", width: "8px", height: "8px", borderRadius: "50%" }}></div>
-              <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Masuk Sekarang</h3>
-              <span style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B", padding: "2px 8px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold" }}>{groupedRequests.new.length}</span>
-            </div>
-            
-            {groupedRequests.new.length === 0 ? (
-              <div style={{ background: "white", borderRadius: "16px", padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "0.9rem", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>Belum ada request baru.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {groupedRequests.new.map((request) => (
-                  <div key={request.id} style={{ background: "white", borderRadius: "16px", padding: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <div style={{ background: "rgba(22, 119, 237, 0.1)", color: "var(--blue)", width: "42px", height: "42px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Radio size={20} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <h4 style={{ margin: "0 0 4px", fontSize: "1.1rem", color: "var(--ink)" }}>
-                          {request.artist ? `${request.artist} - ` : ""}{request.title}
-                        </h4>
-                        <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginBottom: "4px", lineHeight: "1.4" }}>
-                          Dari: <strong style={{ color: "var(--ink)" }}>{request.requesterName}</strong>
-                          {request.announcerName && <span> untuk {request.announcerName}</span>}
-                        </div>
-                        {request.requesterWhatsapp && (
-                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                            <MessageCircle size={14} color="#25D366" /> {request.requesterWhatsapp}
-                          </div>
-                        )}
-                        {request.message && (
-                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", background: "#f8f9fc", padding: "10px 14px", borderRadius: "8px", fontStyle: "italic", borderLeft: "3px solid var(--blue)", marginTop: "8px" }}>"{request.message}"</div>
-                        )}
-                        
-                        <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                          <button 
-                            type="button" 
-                            onClick={() => handleStatus(request, "queued")}
-                            style={{ flex: 1, padding: "10px", borderRadius: "10px", background: "var(--blue)", color: "white", border: "none", fontWeight: "bold", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" }}
-                          >
-                            <Clock size={16} /> Antrekan
-                          </button>
-                          {request.whatsappUrl && (
-                            <a 
-                              href={request.whatsappUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              style={{ padding: "10px", borderRadius: "10px", background: "#25D366", color: "white", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", width: "42px" }}
-                              aria-label="Balas WA"
-                            >
-                              <MessageCircle size={18} />
-                            </a>
-                          )}
-                          <button 
-                            type="button" 
-                            onClick={() => handleStatus(request, "rejected")}
-                            style={{ padding: "10px", borderRadius: "10px", background: "rgba(255, 59, 59, 0.1)", color: "#FF3B3B", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                            aria-label="Tolak"
-                          >
-                            <XCircle size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <span className={activeRequestCount > 0 ? "is-live" : ""} />
+            <strong>{activeRequestCount > 0 ? "Antrean aktif" : "Menunggu request"}</strong>
+            <small>{latestRequestLabel}</small>
           </div>
+          <button type="button" onClick={loadRequests}>
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+            Sinkronkan
+          </button>
+        </section>
 
-          {/* Queued Requests */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-              <div style={{ background: "var(--blue)", width: "8px", height: "8px", borderRadius: "50%" }}></div>
-              <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Siap Diputar</h3>
-              <span style={{ background: "rgba(22, 119, 237, 0.1)", color: "var(--blue)", padding: "2px 8px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "bold" }}>{groupedRequests.queued.length}</span>
-            </div>
-            
-            {groupedRequests.queued.length === 0 ? (
-              <div style={{ background: "white", borderRadius: "16px", padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "0.9rem", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>Antrean putar kosong.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {groupedRequests.queued.map((request) => (
-                  <div key={request.id} style={{ background: "white", borderRadius: "16px", padding: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ flex: 1, paddingRight: "12px" }}>
-                        <h4 style={{ margin: "0 0 4px", fontSize: "1.1rem", color: "var(--ink)" }}>
-                          {request.artist ? `${request.artist} - ` : ""}{request.title}
-                        </h4>
-                        <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
-                          Dari: <strong style={{ color: "var(--ink)" }}>{request.requesterName}</strong>
-                        </div>
-                        {request.message && (
-                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", background: "#f8f9fc", padding: "8px 12px", borderRadius: "8px", fontStyle: "italic", borderLeft: "3px solid var(--blue)", marginTop: "8px" }}>"{request.message}"</div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button 
-                          type="button" 
-                          onClick={() => handleStatus(request, "played")}
-                          style={{ background: "rgba(17,163,106,0.1)", color: "#11a36a", border: "none", padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                        >
-                          <PlayCircle size={24} />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => handleStatus(request, "rejected")}
-                          style={{ background: "rgba(255, 59, 59, 0.1)", color: "#FF3B3B", border: "none", padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                        >
-                          <XCircle size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <section className="song-request-summary" aria-label="Ringkasan request lagu">
+          <article>
+            <small>Realtime</small>
+            <strong>{groupedRequests.new.length}</strong>
+            <span>Request masuk</span>
+          </article>
+          <article>
+            <small>Antrean</small>
+            <strong>{groupedRequests.queued.length}</strong>
+            <span>Siap diputar</span>
+          </article>
+          <article>
+            <small>Riwayat</small>
+            <strong>{groupedRequests.done.length}</strong>
+            <span>Selesai</span>
+          </article>
+        </section>
 
-          {/* History / Done */}
-          {groupedRequests.done.length > 0 && (
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <div style={{ background: "var(--muted)", width: "8px", height: "8px", borderRadius: "50%" }}></div>
-                <h3 style={{ margin: 0, fontSize: "1.1rem", color: "var(--ink)" }}>Riwayat (5 Terakhir)</h3>
-              </div>
-              
-              <div style={{ background: "white", borderRadius: "16px", padding: "8px 16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                {groupedRequests.done.slice(0, 5).map((request, idx) => (
-                  <div key={request.id} style={{ padding: "12px 0", borderBottom: idx < Math.min(4, groupedRequests.done.length - 1) ? "1px solid rgba(0,0,0,0.05)" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ overflow: "hidden" }}>
-                      <div style={{ fontSize: "0.9rem", color: "var(--ink)", fontWeight: 500, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{request.title}</div>
-                    </div>
-                    <span style={{ fontSize: "0.75rem", padding: "4px 8px", borderRadius: "6px", background: request.status === "played" ? "rgba(17,163,106,0.1)" : "rgba(255, 59, 59, 0.1)", color: request.status === "played" ? "#11a36a" : "#FF3B3B", fontWeight: "bold" }}>
-                      {request.status === "played" ? "Diputar" : "Ditolak"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div className="song-request-stack">
+          {renderGroup("new", groupedRequests.new)}
+          {renderGroup("queued", groupedRequests.queued)}
+          {renderGroup("done", groupedRequests.done)}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

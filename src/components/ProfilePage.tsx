@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, type CSSProperties, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type FormEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
+  BadgeCheck,
   CalendarDays,
   Camera,
   CheckCircle2,
@@ -25,6 +26,7 @@ import { upsertUserProfile } from "../services/userProfile.service";
 import { getRoleLabel } from "../utils/rbac";
 
 type PeriodMode = "week" | "month" | "year";
+type StatTone = "blue" | "green" | "amber" | "red";
 
 function toDate(value: TimestampLike | { toDate?: () => Date; seconds?: number }): Date {
   if (value && typeof value === "object") {
@@ -51,6 +53,10 @@ function statusLabel(status: AttendanceStatus): string {
     leave: "Izin"
   };
   return labels[status];
+}
+
+function statusClass(status: AttendanceStatus): string {
+  return status.replace(/_/g, "-");
 }
 
 function toWeekInputValue(date: Date): string {
@@ -125,20 +131,6 @@ function formatPeriodLabel(start: Date, end: Date, mode: PeriodMode): string {
   return `${start.toLocaleDateString("id-ID", { day: "numeric", month: "short" })} - ${inclusiveEnd.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
-function statusColor(status: AttendanceStatus) {
-  const colors: Record<AttendanceStatus, { bg: string; text: string; icon: string }> = {
-    present: { bg: "rgba(17,163,106,0.1)", text: "#059669", icon: "#11a36a" },
-    outside_radius: { bg: "rgba(245,158,11,0.12)", text: "#b45309", icon: "#f59e0b" },
-    late: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", icon: "#ef4444" },
-    valid: { bg: "rgba(17,163,106,0.1)", text: "#059669", icon: "#11a36a" },
-    needs_review: { bg: "rgba(245,158,11,0.12)", text: "#b45309", icon: "#f59e0b" },
-    rejected: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", icon: "#ef4444" },
-    sick: { bg: "rgba(2,132,199,0.1)", text: "#0284c7", icon: "#0284c7" },
-    leave: { bg: "rgba(126,34,206,0.1)", text: "#7e22ce", icon: "#7e22ce" }
-  };
-  return colors[status];
-}
-
 export function ProfilePage({ session, onLogout }: { session: AuthSession; onLogout: () => void }) {
   const today = useMemo(() => new Date(), []);
   const [displayName, setDisplayName] = useState(session.user.displayName || "");
@@ -157,7 +149,6 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
   const [monthValue, setMonthValue] = useState(toMonthInputValue(today));
   const [yearValue, setYearValue] = useState(today.getFullYear());
 
-  // Pastikan form selalu sinkron jika data user di sesi berubah (misal setelah auto-link)
   useEffect(() => {
     setDisplayName(session.user.displayName || "");
     setWhatsapp(session.user.whatsapp || "");
@@ -170,9 +161,7 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
       setAttendanceLoading(true);
       listMyAttendanceRecords(session.user.id)
         .then((records) => {
-          setMyRecords(
-            records.sort((a, b) => toDate(b.checkInAt).getTime() - toDate(a.checkInAt).getTime())
-          );
+          setMyRecords(records.sort((a, b) => toDate(b.checkInAt).getTime() - toDate(a.checkInAt).getTime()));
         })
         .finally(() => setAttendanceLoading(false));
     }
@@ -198,12 +187,23 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
     outside: filteredMyRecords.filter((record) => record.status === "outside_radius").length,
     late: filteredMyRecords.filter((record) => record.status === "late").length
   };
-  const attendanceRate =
-    attendanceStats.total > 0
-      ? Math.round((attendanceStats.present / attendanceStats.total) * 100)
-      : 0;
+  const attendanceRate = attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0;
   const latestAttendance = filteredMyRecords[0];
   const periodLabel = formatPeriodLabel(periodRange.start, periodRange.end, periodMode);
+  const canUseAirName = ["super_admin", "admin", "announcer"].includes(session.user.role);
+  const profileChecklist = useMemo(
+    () => [
+      { label: "Nama", complete: Boolean(displayName.trim()) },
+      { label: "Email", complete: Boolean(session.user.email.trim()) },
+      { label: "WhatsApp", complete: Boolean(whatsapp.trim()) },
+      ...(canUseAirName ? [{ label: "Nama udara", complete: Boolean(airName.trim()) }] : []),
+      { label: "Foto", complete: Boolean(photoUrl.trim() || session.user.photoUrl) }
+    ],
+    [airName, canUseAirName, displayName, photoUrl, session.user.email, session.user.photoUrl, whatsapp]
+  );
+  const profileCompleteCount = profileChecklist.filter((item) => item.complete).length;
+  const profileCompletion = Math.round((profileCompleteCount / profileChecklist.length) * 100);
+  const roleLabel = getRoleLabel(session.user.role);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -215,6 +215,7 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
       if (
         displayName !== session.user.displayName ||
         whatsapp !== session.user.whatsapp ||
+        airName !== session.user.airName ||
         photoUrl !== session.user.photoUrl
       ) {
         await upsertUserProfile(session.user.id, {
@@ -244,171 +245,149 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
   }
 
   return (
-    <div style={{ background: "#f8f9fc", minHeight: "100vh", paddingBottom: "100px" }}>
-      <div style={{ background: "white", padding: "16px 20px 0", borderBottom: "1px solid rgba(0,0,0,0.05)", position: "sticky", top: 0, zIndex: 10 }}>
-        <h1 style={{ fontSize: "1.4rem", margin: "0 0 16px", color: "var(--ink)", fontWeight: 700 }}>Profil Saya</h1>
-        <div style={{ display: "flex", gap: "24px" }}>
-          <button 
+    <div className="profile-page">
+      <div className="profile-topbar">
+        <h1>Profil Saya</h1>
+        <div className="profile-tabs" role="tablist" aria-label="Menu profil">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "info"}
+            className={activeTab === "info" ? "active" : ""}
             onClick={() => setActiveTab("info")}
-            style={{ padding: "0 4px 12px", border: "none", background: "none", fontSize: "0.95rem", fontWeight: activeTab === "info" ? 800 : 500, color: activeTab === "info" ? "var(--blue)" : "var(--muted)", borderBottom: activeTab === "info" ? "3px solid var(--blue)" : "3px solid transparent", cursor: "pointer" }}
           >
             Informasi Akun
           </button>
-          <button 
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "attendance"}
+            className={activeTab === "attendance" ? "active" : ""}
             onClick={() => setActiveTab("attendance")}
-            style={{ padding: "0 4px 12px", border: "none", background: "none", fontSize: "0.95rem", fontWeight: activeTab === "attendance" ? 800 : 500, color: activeTab === "attendance" ? "var(--blue)" : "var(--muted)", borderBottom: activeTab === "attendance" ? "3px solid var(--blue)" : "3px solid transparent", cursor: "pointer" }}
           >
             Riwayat Absensi
           </button>
         </div>
       </div>
 
-      <div style={{ padding: "24px 20px" }}>
-        
-        {/* Profile Card (Header) */}
-        <div style={{ background: "white", borderRadius: "32px", padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", boxShadow: "0 8px 32px rgba(12, 36, 70, 0.05)", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "120px", background: "linear-gradient(135deg, var(--blue), #8b5cf6)", zIndex: 0 }}></div>
-          
-          <div style={{ position: "relative", zIndex: 1, marginTop: "24px", textAlign: "center" }}>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img
-                src={session.user.photoUrl || "/iconSBL.svg"}
-                alt="Foto Profil"
-                style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover", border: "4px solid white", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", backgroundColor: "white" }}
-              />
-              <div style={{ position: "absolute", bottom: "4px", right: "4px", background: "var(--blue)", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", border: "3px solid white" }}>
+      <main className="profile-content">
+        <section className="profile-hero-card">
+          <div className="profile-hero-band"></div>
+          <div className="profile-identity">
+            <div className="profile-avatar-wrap">
+              <img src={session.user.photoUrl || "/iconSBL.svg"} alt="Foto Profil" />
+              <span>
                 <Camera size={14} />
-              </div>
+              </span>
             </div>
-            
-            <h2 style={{ margin: "16px 0 4px", fontSize: "1.6rem", color: "var(--ink)", fontWeight: 800 }}>{session.user.displayName}</h2>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--muted)", fontSize: "0.9rem", marginBottom: "12px" }}>
+
+            <h2>{session.user.displayName}</h2>
+            <div className="profile-email">
               <Mail size={14} /> {session.user.email}
             </div>
-            
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(22, 119, 237, 0.1)", color: "var(--blue)", padding: "6px 14px", borderRadius: "99px", fontSize: "0.85rem", fontWeight: "bold" }}>
-              <Shield size={14} /> {getRoleLabel(session.user.role)}
+
+            <div className="profile-role-badge">
+              <Shield size={14} /> {roleLabel}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Edit Form */}
+        <section className="profile-readiness-panel" aria-label="Kesiapan profil akun">
+          <article className="profile-readiness-card is-primary">
+            <div>
+              <BadgeCheck size={18} />
+              <span>Kelengkapan profil</span>
+            </div>
+            <strong>{profileCompletion}%</strong>
+            <progress value={profileCompletion} max={100} aria-label={`Kelengkapan profil ${profileCompletion}%`} />
+            <p>{profileCompleteCount} dari {profileChecklist.length} data utama sudah terisi.</p>
+          </article>
+          <article className="profile-readiness-card">
+            <div>
+              <Phone size={18} />
+              <span>Kontak operasional</span>
+            </div>
+            <strong>{whatsapp.trim() ? "Siap dihubungi" : "Lengkapi WA"}</strong>
+            <p>{whatsapp.trim() ? whatsapp : "Nomor WhatsApp membantu notifikasi dan koordinasi jadwal."}</p>
+          </article>
+          <article className="profile-readiness-card">
+            <div>
+              <Shield size={18} />
+              <span>Akses akun</span>
+            </div>
+            <strong>{roleLabel}</strong>
+            <p>{session.user.active ? "Akun aktif dan siap digunakan." : "Akun belum aktif penuh."}</p>
+          </article>
+        </section>
+
         {activeTab === "info" ? (
-          <div style={{ background: "white", borderRadius: "32px", padding: "32px 24px", boxShadow: "0 8px 32px rgba(12, 36, 70, 0.05)" }}>
-            <h3 style={{ margin: "0 0 24px", fontSize: "1.2rem", color: "var(--ink)", fontWeight: 700 }}>Informasi Pribadi</h3>
-            
-            {error && <p style={{ background: "rgba(255, 59, 59, 0.1)", color: "#FF3B3B", padding: "12px 16px", borderRadius: "16px", fontSize: "0.85rem", marginBottom: "20px", fontWeight: "bold" }}>{error}</p>}
-            {message && <p style={{ background: "rgba(17,163,106,0.1)", color: "#11a36a", padding: "12px 16px", borderRadius: "16px", fontSize: "0.85rem", marginBottom: "20px", fontWeight: "bold" }}>{message}</p>}
+          <section className="profile-panel">
+            <h3>Informasi Pribadi</h3>
 
-            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <User size={16} color="var(--blue)" /> Nama Lengkap
-                </label>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                  style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "1rem", background: "rgba(0,0,0,0.02)" }}
-                />
-              </div>
+            {error && <p className="profile-alert error">{error}</p>}
+            {message && <p className="profile-alert success">{message}</p>}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Phone size={16} color="var(--blue)" /> Nomor WhatsApp
-                </label>
-                <input
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="Contoh: 08123456789"
-                  style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "1rem", background: "rgba(0,0,0,0.02)" }}
-                />
-              </div>
+            <form onSubmit={handleSave} className="profile-form">
+              <ProfileField label="Nama Lengkap" icon={<User size={16} />}>
+                <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+              </ProfileField>
+
+              <ProfileField label="Nomor WhatsApp" icon={<Phone size={16} />}>
+                <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="Contoh: 08123456789" />
+              </ProfileField>
 
               {["super_admin", "admin", "announcer"].includes(session.user.role) && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Mic2 size={16} color="var(--blue)" /> Nama Udara (Air Name)
-                  </label>
-                  <input
-                    value={airName}
-                    onChange={(e) => setAirName(e.target.value)}
-                    placeholder="Contoh: Amar SBL"
-                    style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "1rem", background: "rgba(0,0,0,0.02)" }}
-                  />
-                  <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>Nama ini akan muncul pada jadwal dan pembuat naskah AI.</small>
-                </div>
+                <ProfileField label="Nama Udara (Air Name)" icon={<Mic2 size={16} />} helper="Nama ini akan muncul pada jadwal dan pembuat naskah AI.">
+                  <input value={airName} onChange={(e) => setAirName(e.target.value)} placeholder="Contoh: Amar SBL" />
+                </ProfileField>
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Camera size={16} color="var(--blue)" /> URL Foto Profil
-                </label>
-                <input
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="https://.../foto.jpg"
-                  style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "1rem", background: "rgba(0,0,0,0.02)" }}
-                />
-              </div>
+              <ProfileField label="URL Foto Profil" icon={<Camera size={16} />}>
+                <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://.../foto.jpg" />
+              </ProfileField>
 
-              <div style={{ height: "1px", background: "rgba(0,0,0,0.05)", margin: "12px 0" }}></div>
+              <div className="profile-divider"></div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <KeyRound size={16} color="var(--blue)" /> Ganti Password
-                </label>
+              <ProfileField label="Ganti Password" icon={<KeyRound size={16} />}>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Kosongkan jika tidak ingin ganti sandi"
-                  style={{ width: "100%", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.1)", outline: "none", fontSize: "1rem", background: "rgba(0,0,0,0.02)" }}
                 />
-              </div>
+              </ProfileField>
 
-              <button type="submit" disabled={loading} style={{ padding: "18px", borderRadius: "99px", background: "var(--blue)", color: "white", border: "none", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "16px", cursor: "pointer", fontSize: "1rem", boxShadow: "0 12px 24px rgba(22, 119, 237, 0.25)" }}>
+              <button type="submit" disabled={loading} className="profile-save-button">
                 <CheckCircle2 size={20} />
                 {loading ? "Menyimpan..." : "Simpan Perubahan"}
               </button>
             </form>
-            
-            <button 
-              type="button" 
-              onClick={onLogout} 
-              style={{ width: "100%", padding: "18px", borderRadius: "99px", background: "rgba(255, 59, 59, 0.1)", color: "#FF3B3B", border: "none", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "16px", cursor: "pointer", fontSize: "1rem" }}
-            >
+
+            <button type="button" onClick={onLogout} className="profile-logout-button">
               <LogOut size={20} /> Keluar dari Akun
             </button>
-          </div>
+          </section>
         ) : (
-          <div style={{ background: "white", borderRadius: "32px", padding: "32px 24px", boxShadow: "0 8px 32px rgba(12, 36, 70, 0.05)" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "24px" }}>
+          <section className="profile-panel">
+            <div className="profile-panel-head">
               <div>
-                <h3 style={{ margin: "0 0 6px", fontSize: "1.2rem", color: "var(--ink)", fontWeight: 700 }}>Kehadiran Saya</h3>
-                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>Statistik dan detail absensi untuk {periodLabel}.</p>
+                <h3>Kehadiran Saya</h3>
+                <p>Statistik dan detail absensi untuk {periodLabel}.</p>
               </div>
               {latestAttendance && (
-                <span style={{ flex: "0 0 auto", borderRadius: "99px", padding: "7px 12px", background: "#eef5ff", color: "var(--blue)", fontSize: "0.78rem", fontWeight: 800 }}>
-                  Update terakhir {toDate(latestAttendance.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                </span>
+                <span>Update terakhir {toDate(latestAttendance.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span>
               )}
             </div>
 
-            <div style={{ borderRadius: "22px", padding: "16px", background: "#f8fafc", border: "1px solid rgba(15,23,42,0.06)", marginBottom: "24px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", color: "var(--ink)", fontWeight: 800, fontSize: "0.92rem" }}>
-                <Filter size={17} color="var(--blue)" />
+            <div className="profile-filter-panel">
+              <div className="profile-filter-title">
+                <Filter size={17} />
                 Filter Rekap Absensi
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", alignItems: "end" }}>
-                <label style={attendanceFilterLabelStyle}>
+              <div className="profile-filter-grid">
+                <label>
                   Periode
-                  <select
-                    value={periodMode}
-                    onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
-                    style={attendanceFilterControlStyle}
-                  >
+                  <select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}>
                     <option value="week">Minggu</option>
                     <option value="month">Bulan</option>
                     <option value="year">Tahun</option>
@@ -416,31 +395,21 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
                 </label>
 
                 {periodMode === "week" && (
-                  <label style={attendanceFilterLabelStyle}>
+                  <label>
                     Pilih Minggu
-                    <input
-                      type="week"
-                      value={weekValue}
-                      onChange={(event) => setWeekValue(event.target.value)}
-                      style={attendanceFilterControlStyle}
-                    />
+                    <input type="week" value={weekValue} onChange={(event) => setWeekValue(event.target.value)} />
                   </label>
                 )}
 
                 {periodMode === "month" && (
-                  <label style={attendanceFilterLabelStyle}>
+                  <label>
                     Pilih Bulan
-                    <input
-                      type="month"
-                      value={monthValue}
-                      onChange={(event) => setMonthValue(event.target.value)}
-                      style={attendanceFilterControlStyle}
-                    />
+                    <input type="month" value={monthValue} onChange={(event) => setMonthValue(event.target.value)} />
                   </label>
                 )}
 
                 {periodMode === "year" && (
-                  <label style={attendanceFilterLabelStyle}>
+                  <label>
                     Pilih Tahun
                     <input
                       type="number"
@@ -448,44 +417,49 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
                       max="2100"
                       value={yearValue}
                       onChange={(event) => setYearValue(Number(event.target.value) || today.getFullYear())}
-                      style={attendanceFilterControlStyle}
                     />
                   </label>
                 )}
 
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "42px", borderRadius: "14px", padding: "10px 12px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, fontSize: "0.82rem" }}>
+                <div className="profile-period-pill">
                   <CalendarDays size={16} />
                   <span>{periodLabel}</span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", marginBottom: "24px" }}>
-              <AttendanceStatCard icon={<CalendarDays size={18} />} label="Total" value={attendanceStats.total} color="var(--blue)" />
-              <AttendanceStatCard icon={<CheckCircle2 size={18} />} label="Tepat Lokasi" value={attendanceStats.present} color="#11a36a" />
-              <AttendanceStatCard icon={<MapPin size={18} />} label="Luar Radius" value={attendanceStats.outside} color="#f59e0b" />
-              <AttendanceStatCard icon={<AlertTriangle size={18} />} label="Terlambat" value={attendanceStats.late} color="#ef4444" />
+            <div className="profile-stat-grid">
+              <AttendanceStatCard icon={<CalendarDays size={18} />} label="Total" value={attendanceStats.total} tone="blue" />
+              <AttendanceStatCard icon={<CheckCircle2 size={18} />} label="Tepat Lokasi" value={attendanceStats.present} tone="green" />
+              <AttendanceStatCard icon={<MapPin size={18} />} label="Luar Radius" value={attendanceStats.outside} tone="amber" />
+              <AttendanceStatCard icon={<AlertTriangle size={18} />} label="Terlambat" value={attendanceStats.late} tone="red" />
             </div>
 
-            <div style={{ marginBottom: "24px", padding: "18px", borderRadius: "22px", background: "linear-gradient(135deg, rgba(22,119,237,0.08), rgba(17,163,106,0.08))", border: "1px solid rgba(22,119,237,0.08)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "center", marginBottom: "10px" }}>
-                <span style={{ color: "var(--ink)", fontWeight: 800, fontSize: "0.95rem" }}>Rasio tepat lokasi</span>
-                <strong style={{ color: "var(--blue)", fontSize: "1.15rem" }}>{attendanceRate}%</strong>
+            <div className="profile-attendance-rate">
+              <div>
+                <span>Rasio tepat lokasi</span>
+                <strong>{attendanceRate}%</strong>
               </div>
-              <div style={{ height: "10px", borderRadius: "99px", background: "rgba(15,23,42,0.08)", overflow: "hidden" }}>
-                <div style={{ width: `${attendanceRate}%`, height: "100%", borderRadius: "99px", background: "linear-gradient(90deg, var(--blue), #11a36a)" }} />
-              </div>
+              <progress value={attendanceRate} max={100} aria-label={`Rasio tepat lokasi ${attendanceRate}%`} />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="profile-history-list">
               {attendanceLoading ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)" }}>
-                  <div className="spinner-small" style={{ margin: "0 auto 12px" }}></div>
+                <div className="profile-empty-state">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div className="ui-skeleton-row" key={index}>
+                      <span className="ui-skeleton avatar" />
+                      <span className="ui-skeleton-copy">
+                        <span className="ui-skeleton line medium" />
+                        <span className="ui-skeleton line short" />
+                      </span>
+                    </div>
+                  ))}
                   <p>Memuat riwayat absensi...</p>
                 </div>
               ) : filteredMyRecords.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)" }}>
-                  <History size={48} style={{ opacity: 0.1, marginBottom: "12px" }} />
+                <div className="profile-empty-state">
+                  <History size={48} />
                   <p>Belum ada riwayat absensi pada periode ini.</p>
                 </div>
               ) : (
@@ -494,80 +468,70 @@ export function ProfilePage({ session, onLogout }: { session: AuthSession; onLog
                 ))
               )}
             </div>
-          </div>
+          </section>
         )}
-      </div>
+      </main>
     </div>
   );
 }
 
-function AttendanceStatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
+function ProfileField({
+  label,
+  icon,
+  helper,
+  children
+}: {
+  label: string;
+  icon: ReactNode;
+  helper?: string;
+  children: ReactNode;
+}) {
   return (
-    <div style={{ borderRadius: "18px", padding: "16px", background: "#f8fafc", border: "1px solid rgba(15,23,42,0.06)" }}>
-      <div style={{ color, marginBottom: "10px" }}>{icon}</div>
-      <div style={{ fontSize: "1.55rem", fontWeight: 900, color: "var(--ink)", lineHeight: 1 }}>{value}</div>
-      <div style={{ color: "var(--muted)", fontSize: "0.78rem", fontWeight: 800, marginTop: "6px" }}>{label}</div>
-    </div>
+    <label className="profile-field">
+      <span>{icon} {label}</span>
+      {children}
+      {helper && <small>{helper}</small>}
+    </label>
   );
 }
 
-const attendanceFilterLabelStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "6px",
-  color: "var(--muted)",
-  fontSize: "0.78rem",
-  fontWeight: 800
-};
-
-const attendanceFilterControlStyle: CSSProperties = {
-  minHeight: "42px",
-  borderRadius: "12px",
-  border: "1px solid rgba(15,23,42,0.12)",
-  background: "white",
-  color: "var(--ink)",
-  outline: "none",
-  padding: "9px 11px",
-  fontWeight: 700
-};
+function AttendanceStatCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: StatTone }) {
+  return (
+    <article className={`profile-stat-card ${tone}`}>
+      <div>{icon}</div>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
+  );
+}
 
 function AttendanceDetailRow({ record }: { record: AttendanceRecord }) {
   const date = toDate(record.checkInAt);
-  const colors = statusColor(record.status);
   const mapsUrl = `https://www.google.com/maps?q=${record.latitude},${record.longitude}`;
+  const normalizedStatus = statusClass(record.status);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "14px", alignItems: "center", padding: "14px", borderRadius: "20px", background: "#fff", border: "1px solid rgba(15,23,42,0.07)", boxShadow: "0 6px 18px rgba(12, 36, 70, 0.04)" }}>
-      <div style={{ background: colors.bg, color: colors.icon, width: "42px", height: "42px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <article className="profile-attendance-row">
+      <div className={`profile-attendance-icon ${normalizedStatus}`}>
         {record.status === "present" ? <CheckCircle2 size={21} /> : record.status === "late" ? <AlertTriangle size={21} /> : <MapPin size={21} />}
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "5px" }}>
-          <strong style={{ color: "var(--ink)", fontSize: "0.95rem" }}>
-            {date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}
-          </strong>
-          <span style={{ padding: "4px 9px", borderRadius: "99px", background: colors.bg, color: colors.text, fontSize: "0.72rem", fontWeight: 800 }}>
-            {statusLabel(record.status)}
-          </span>
+      <div className="profile-attendance-copy">
+        <div>
+          <strong>{date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</strong>
+          <span className={`profile-attendance-status ${normalizedStatus}`}>{statusLabel(record.status)}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--muted)", fontSize: "0.8rem", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+        <p>
+          <span>
             <Clock size={13} /> {date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
           </span>
           {record.airName && <span>{record.airName}</span>}
           {record.selfieDriveFileId && <span>ID foto: {record.selfieDriveFileId}</span>}
-        </div>
+        </p>
       </div>
-      <a
-        href={mapsUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Buka lokasi absensi di Google Maps"
-        style={{ width: "40px", height: "40px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", background: "#eef5ff", color: "var(--blue)", textDecoration: "none" }}
-      >
+      <a href={mapsUrl} target="_blank" rel="noreferrer" aria-label="Buka lokasi absensi di Google Maps" className="profile-map-link">
         <Navigation size={17} />
-        <ExternalLink size={11} style={{ marginLeft: "-2px", marginTop: "-10px" }} />
+        <ExternalLink size={11} />
       </a>
-    </div>
+    </article>
   );
 }
