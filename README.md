@@ -1,86 +1,116 @@
-![RADIO-SBL logo](assets/logo.svg)
+# Radio SBL Management System
 
-# RADIO-SBL
+![Radio SBL cover](public/coverSBL.jpg)
 
-Project RADIO-SBL — frontend and Cloud Functions for the RADIO-SBL application.
+**Radio SBL Management System** adalah Progressive Web App untuk mendukung
+operasional LPPL Radio Suara Bumi Lasinrang 92,4 FM: absensi, jadwal siaran,
+profil penyiar, liputan, streaming, pengaduan, naskah AI, dan administrasi
+pengguna.
 
-Quick start
------------
+Tagline: **Suara Pinrang, Suara Kita**
 
-Prerequisites: Node.js, npm/yarn, Firebase CLI (for functions).
+## Tampilan Identitas
 
-Install and run (frontend):
+| Logo aplikasi | Cover utama | Studio login |
+|---|---|---|
+| ![Logo aplikasi](public/logoapp.png) | ![Cover Radio SBL](public/coverartsbl.jpg) | ![Studio Radio SBL](public/sbl-auth-studio-bg.png) |
 
-1. Install deps
+## Modul Utama
+
+- **Dashboard operasional:** ringkasan siaran, absensi, request lagu, dan status
+  layanan.
+- **Absensi staf:** check-in berbasis lokasi, selfie, radius kantor, review
+  admin, dan rekap periode.
+- **Jadwal siaran:** daftar slot program, penyiar, operator, dan pengajuan tukar
+  jadwal.
+- **Profil penyiar:** data kru, foto, program, role, dan status aktif.
+- **Streaming:** audio player, info siaran aktif, mini player, dan waveform.
+- **Liputan dan OB:** pengelolaan agenda lapangan, dokumentasi, dan koordinasi.
+- **Pengaduan publik:** form aspirasi masyarakat dan tindak lanjut admin.
+- **AI naskah siaran:** generator draft naskah berbasis proxy Gemini/OpenAI.
+- **Manajemen pengguna:** role, hak akses, verifikasi admin, dan profil staf.
+
+Dokumentasi lengkap tersedia di
+[docs/DOKUMENTASI_LENGKAP.md](docs/DOKUMENTASI_LENGKAP.md).
+
+## Galeri Program
+
+| Program | Poster | Program | Poster |
+|---|---|---|---|
+| Aga Kareba | ![Aga Kareba](public/program/Aga_Kareba.jpg) | Informasi Seputar Pinrang | ![Informasi Seputar Pinrang](public/program/Informasi_Seputar_Pinrang.jpg) |
+| Info Terkini | ![Info Terkini](public/program/Info_Terkini.jpg) | Jumat Ceria | ![Jumat Ceria](public/program/Jumat_Ceria.jpg) |
+| Lasinrang Preneur | ![Lasinrang Preneur](public/program/Lasinrang_Preneur.jpg) | Pinrang Berkabar | ![Pinrang Berkabar](public/program/Pinrang_Berkabar.jpg) |
+| Pinrang Creative Network | ![Pinrang Creative Network](public/program/Pinrang_Creative_Network.jpg) | Podcast SBL | ![Podcast SBL](public/program/PODCAST_SBL.jpg) |
+| Salam Bumi Lasinrang | ![Salam Bumi Lasinrang](public/program/Salam_Bumi_lasinrang.jpg) | SBL Goes To School | ![SBL Goes To School](public/program/SBL_Goes_To_School.jpg) |
+| SBL On Stage | ![SBL On Stage](public/program/SBL_On_Stage.jpg) | SBL Peduli | ![SBL Peduli](public/program/SBL_Peduli.jpg) |
+| Siporio Siporennu | ![Siporio Siporennu](public/program/Siporio_Siporennu.jpg) |  |  |
+
+## Galeri Kru
+
+| Amar | Azhar | Hendra |
+|---|---|---|
+| ![Amar](public/crew/amar.png) | ![Azhar](public/crew/azhar.png) | ![Hendra](public/crew/hendra.png) |
+
+| Miah | Muhas | Ria |
+|---|---|---|
+| ![Miah](public/crew/Miah.png) | ![Muhas](public/crew/muhas.png) | ![Ria](public/crew/ria.png) |
+
+| Riska | Sul | Wiwik |
+|---|---|---|
+| ![Riska](public/crew/riska.png) | ![Sul](public/crew/sul.png) | ![Wiwik](public/crew/wiwik.png) |
+
+## Teknologi
+
+- React 19, Vite 7, TypeScript
+- Firebase Auth, Firestore, Storage, Hosting
+- Firebase Functions untuk proxy produksi
+- Google Drive API untuk arsip file
+- Gemini/OpenAI proxy untuk naskah siaran
+- Playwright dan Vitest untuk pengujian
+
+## Mulai Cepat
 
 ```bash
 npm install
-```
-
-2. Start dev server
-
-```bash
 npm run dev
 ```
 
-Repository
-----------
+Buat `.env.local` dari `.env.example`, lalu isi konfigurasi Firebase dan proxy
+yang dipakai.
 
-This repository was pushed to https://github.com/sblfm2025/radiosbl
-
-Snapshot
---------
-
-![Screenshot](assets/screenshot.svg)
-# LPPL Radio Suara Bumi Lasinrang Management System
-
-**Tagline:** "Suara Pinrang, Suara Kita"
-
-Aplikasi Progressive Web App (PWA) untuk manajemen operasional LPPL Radio
-Suara Bumi Lasinrang, mencakup absensi, penyiar, jadwal siaran, liputan,
-Outside Broadcast (OB), streaming, YouTube, Discord, pengaduan, arsip digital,
-dan dukungan AI.
-
-## Stack
-
-- React
-- Vite
-- TypeScript
-- Firebase Auth, Firestore, dan Firebase Hosting
-- Google Drive API
-- Gemini AI
-
-## Instalasi
+## Verifikasi Lokal
 
 ```bash
-npm install
-npm run dev
-```
-
-## Verifikasi
-
-```bash
-npm run lint
 npm run typecheck
 npm run test
 npm run build
 ```
 
+`npm run lint` tersedia, tetapi repo saat ini masih memiliki lint debt pada
+beberapa script scratch dan file lama. Lihat catatan status di
+[docs/HANDOFF.md](docs/HANDOFF.md).
+
 ## Deploy
 
 ```bash
-firebase deploy
+npm run build
+npx firebase-tools deploy --only hosting --project radiosbl
 ```
 
-Dokumentasi lanjutan tersedia di folder `docs/`.
+Deploy Functions membutuhkan Firebase Blaze Plan:
 
-## Melanjutkan Dari Sesi/Akun Lain
+```bash
+npm run functions:deploy
+```
 
-Baca terlebih dahulu:
+## Dokumentasi Penting
 
-- `docs/HANDOFF.md` untuk ringkasan status terbaru dan prioritas berikutnya.
-- `docs/CODEX_SESSION_LOG.md` untuk riwayat perubahan lengkap.
-- `docs/DATABASE_SCHEMA.md` untuk schema dan service.
-
-Setiap perubahan signifikan wajib dicatat kembali ke `docs/CODEX_SESSION_LOG.md`
-dan, bila mengubah status besar project, ringkas juga di `docs/HANDOFF.md`.
+- [Dokumentasi lengkap](docs/DOKUMENTASI_LENGKAP.md)
+- [Panduan aset visual](docs/PANDUAN_ASET_VISUAL.md)
+- [Setup Firebase](docs/FIREBASE_SETUP.md)
+- [Setup Gemini](docs/GEMINI_SETUP.md)
+- [Setup Google Drive](docs/GOOGLE_DRIVE_SETUP.md)
+- [Deployment](docs/DEPLOYMENT_GUIDE.md)
+- [Database schema](docs/DATABASE_SCHEMA.md)
+- [Hak akses role](docs/ROLE_ACCESS.md)
+- [Handoff pengembangan](docs/HANDOFF.md)
