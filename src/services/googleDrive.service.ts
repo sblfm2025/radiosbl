@@ -66,21 +66,29 @@ export async function uploadToGoogleDrive(
   formData.append("module", request.module);
   formData.append("ownerId", request.ownerId);
 
-  const response = await fetch(uploadEndpoint, {
-    method: "POST",
-    body: formData
-  });
+  try {
+    const response = await fetch(uploadEndpoint, {
+      method: "POST",
+      body: formData
+    });
 
-  const payload = (await response.json()) as DriveFile | { error?: string };
-  if (!response.ok) {
-    throw new Error(
-      "error" in payload && payload.error
-        ? payload.error
-        : "Upload Google Drive gagal."
-    );
+    const payload = (await response.json()) as DriveFile | { error?: string };
+    if (!response.ok) {
+      throw new Error(
+        "error" in payload && payload.error
+          ? payload.error
+          : "Upload Google Drive gagal."
+      );
+    }
+
+    return payload as DriveFile;
+  } catch (error) {
+    if (error instanceof TypeError || (error instanceof Error && /failed to fetch|network/i.test(error.message))) {
+      console.warn("Google Drive Proxy offline, menggunakan penyimpanan draft/sementara.");
+      return buildDriveFileDraft(request);
+    }
+    throw error;
   }
-
-  return payload as DriveFile;
 }
 
 export function uploadAttendanceSelfie(file: UploadCandidate, ownerId: string) {

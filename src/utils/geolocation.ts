@@ -1,6 +1,7 @@
 export type GeoPoint = {
   latitude: number;
   longitude: number;
+  accuracy?: number;
 };
 
 const EARTH_RADIUS_METERS = 6_371_000;
@@ -32,7 +33,7 @@ export function isWithinRadius(
   return distanceInMeters(position, center) <= radiusMeters;
 }
 
-export function getCurrentPosition(fallback: GeoPoint = { latitude: -3.7931, longitude: 119.6522 }): Promise<GeoPoint> {
+export function getCurrentPosition(fallback: GeoPoint = { latitude: -3.7931, longitude: 119.6522, accuracy: 9999 }): Promise<GeoPoint> {
   if (!navigator.geolocation) {
     return Promise.resolve(fallback);
   }
@@ -42,10 +43,11 @@ export function getCurrentPosition(fallback: GeoPoint = { latitude: -3.7931, lon
       (position) =>
         resolve({
           latitude: position.coords.latitude,
-          longitude: position.coords.longitude
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy
         }),
       () => resolve(fallback),
-      { enableHighAccuracy: true, timeout: 7000, maximumAge: 30_000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 }

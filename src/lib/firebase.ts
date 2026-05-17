@@ -36,3 +36,10 @@ export function getFirebaseFirestore(): Firestore {
   firestore ??= getFirestore(getFirebaseApp());
   return firestore;
 }
+
+import { getStorage, type FirebaseStorage } from "firebase/storage";
+let storage: FirebaseStorage | null = null;
+export function getFirebaseStorage(): FirebaseStorage {
+  storage ??= getStorage(getFirebaseApp());
+  return storage;
+}

@@ -1,9 +1,9 @@
 import type { AttendanceRecord } from "../types/domain";
-import { createDocument, listDocuments, queryDocuments, subscribeDocuments } from "./firestore.service";
-import { isWithinRadius, type GeoPoint } from "../utils/geolocation";
+import { createDocument, listDocuments, queryDocuments, subscribeDocuments, updateDocument } from "./firestore.service";
+import { isWithinRadius, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { shouldUseLocalFallback } from "../lib/env";
 import { moduleFileRules, validateFile, type UploadCandidate } from "../utils/fileValidation";
-import { uploadAttendanceSelfie } from "./googleDrive.service";
+import { uploadAttendanceSelfieToStorage } from "./storage.service";
 
 const ATTENDANCE_CACHE_KEY = "radio-sbl-attendance-records";
 const MAX_LOCAL_ATTENDANCE = 50;
@@ -16,6 +16,12 @@ export type AttendanceCheckInInput = {
   officeCenter: GeoPoint;
   radiusMeters: number;
   selfieDriveFileId: string;
+  aiVerificationText?: string;
+  isAiValid?: boolean;
+  clientTime?: string;
+  userAgent?: string;
+  outOfOfficeReason?: string;
+  attendanceType?: "present" | "sick" | "leave" | "out_of_office";
 };
 
 function getSafeLocalStorage(): Storage | null {
@@ -71,18 +77,61 @@ export type AttendanceSelfieCheckInInput = Omit<
 export function buildAttendanceRecordDraft(
   input: AttendanceCheckInInput
 ): Omit<AttendanceRecord, "id"> {
-  const status = isWithinRadius(input.position, input.officeCenter, input.radiusMeters)
-    ? "present"
-    : "outside_radius";
+  const isInsideOfficeRadius = isWithinRadius(input.position, input.officeCenter, input.radiusMeters);
+  const distanceToCenter = Math.round(distanceInMeters(input.position, input.officeCenter));
+  const accuracyMeters = Math.round(input.position.accuracy || 9999);
+  
+  let score = 0;
+
+  // 1. Lokasi (Maks 40)
+  if (distanceToCenter <= input.radiusMeters) {
+    score += 40;
+  } else if (distanceToCenter <= input.radiusMeters + 150) {
+    score += 20;
+  }
+
+  // 2. Akurasi (Maks 20)
+  if (accuracyMeters < 30) score += 20;
+  else if (accuracyMeters <= 100) score += 10;
+
+  // 3. AI (Maks 25)
+  if (input.isAiValid) score += 25;
+  else if (input.aiVerificationText) score += 10;
+
+  // 4. Perangkat (Maks 15)
+  if (input.clientTime) {
+    const diff = Math.abs(new Date(input.clientTime).getTime() - Date.now());
+    if (diff < 120_000) score += 5;
+  }
+  if (input.userAgent) score += 10;
+
+  let status: AttendanceRecord["status"] = isInsideOfficeRadius ? "present" : "outside_radius";
+
+  if (input.attendanceType === "sick") {
+    status = "sick";
+  } else if (input.attendanceType === "leave") {
+    status = "leave";
+  } else if (input.isAiValid === false) {
+    status = "rejected";
+  } else if (input.outOfOfficeReason && status === "outside_radius") {
+    status = "needs_review";
+  }
 
   return {
     userId: input.userId,
-    displayName: input.displayName,
-    airName: input.airName,
+    displayName: input.displayName || "",
+    airName: input.airName || "",
     checkInAt: new Date().toISOString(),
+    clientTime: input.clientTime || "",
     latitude: input.position.latitude,
     longitude: input.position.longitude,
-    selfieDriveFileId: input.selfieDriveFileId,
+    accuracyMeters,
+    distanceToCenter,
+    userAgent: input.userAgent || "",
+    confidenceScore: score,
+    aiVerificationText: input.aiVerificationText || "",
+    outOfOfficeReason: input.outOfOfficeReason || "",
+    selfieDriveFileId: input.selfieDriveFileId || "",
     status
   };
 }
@@ -108,25 +157,46 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     throw new Error(validation.reason);
   }
 
-  const driveFile = await uploadAttendanceSelfie(input.selfieFile, input.userId);
-  const checkInInput = {
+  const checkInInput: AttendanceCheckInInput = {
     userId: input.userId,
     displayName: input.displayName,
     airName: input.airName,
     position: input.position,
     officeCenter: input.officeCenter,
     radiusMeters: input.radiusMeters,
-    selfieDriveFileId: driveFile.driveFileId
+    selfieDriveFileId: "uploading...",
+    aiVerificationText: input.aiVerificationText,
+    isAiValid: input.isAiValid,
+    clientTime: input.clientTime,
+    userAgent: input.userAgent,
+    outOfOfficeReason: input.outOfOfficeReason,
+    attendanceType: input.attendanceType
   };
+  
   const attendanceRecordId = await checkIn(checkInInput);
+  
   writeLocalAttendanceRecord({
     id: attendanceRecordId,
     ...buildAttendanceRecordDraft(checkInInput)
   });
 
+  // Eksekusi upload di background agar tidak memblokir loading UI
+  uploadAttendanceSelfieToStorage(input.selfieFile, input.userId)
+    .then((driveFile) => {
+      if (!shouldUseLocalFallback()) {
+        updateDocument("attendanceRecords", attendanceRecordId, { selfieDriveFileId: driveFile.driveFileId }).catch(() => {});
+      }
+    })
+    .catch((err) => {
+      console.error("Background upload gagal:", err);
+      if (!shouldUseLocalFallback()) {
+        updateDocument("attendanceRecords", attendanceRecordId, { selfieDriveFileId: "gagal_upload" }).catch(() => {});
+      }
+    });
+
   return {
     attendanceRecordId,
-    selfieDriveFileId: driveFile.driveFileId
+    selfieDriveFileId: "uploading..."
   };
 }
 
@@ -170,4 +240,50 @@ export function subscribeAttendanceRecords(
     onChange(listLocalAttendanceRecords());
     return () => undefined;
   }
+}
+
+export async function updateAttendanceStatus(
+  recordId: string,
+  newStatus: AttendanceRecord["status"]
+): Promise<void> {
+  if (shouldUseLocalFallback()) {
+    const records = readLocalAttendanceRecords();
+    const index = records.findIndex(r => r.id === recordId);
+    if (index !== -1) {
+      records[index].status = newStatus;
+      getSafeLocalStorage()?.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(records));
+    }
+    return Promise.resolve();
+  }
+
+  return updateDocument("attendanceRecords", recordId, { status: newStatus });
+}
+
+export async function getTodayAttendance(userId: string): Promise<AttendanceRecord | null> {
+  const records = await listMyAttendanceRecords(userId);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Cari absen hari ini
+  const todayRecord = records.find(r => {
+    const checkInDate = new Date(r.checkInAt as string | number | Date);
+    checkInDate.setHours(0, 0, 0, 0);
+    return checkInDate.getTime() === today.getTime();
+  });
+
+  return todayRecord || null;
+}
+
+export async function checkOut(recordId: string): Promise<void> {
+  if (shouldUseLocalFallback()) {
+    const records = readLocalAttendanceRecords();
+    const index = records.findIndex(r => r.id === recordId);
+    if (index !== -1) {
+      records[index].checkOutAt = new Date().toISOString();
+      getSafeLocalStorage()?.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(records));
+    }
+    return Promise.resolve();
+  }
+
+  return updateDocument("attendanceRecords", recordId, { checkOutAt: new Date().toISOString() });
 }

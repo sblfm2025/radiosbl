@@ -12,14 +12,11 @@ describe("firestore seed builder", () => {
   it("builds announcer documents from official profiles", () => {
     const announcers = buildAnnouncerSeed();
 
-    expect(announcers).toHaveLength(7);
+    expect(announcers).toHaveLength(6);
     expect(announcers.find((item) => item.id === "miah")).toMatchObject({
       fullName: "Salmiah",
       airName: "Miah",
       totalHours: 10
-    });
-    expect(announcers.find((item) => item.id === "hendra")).toMatchObject({
-      totalHours: 0
     });
   });
 

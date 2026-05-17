@@ -1,6 +1,6 @@
 import { Pause, Play, Radio, Volume2 } from "lucide-react";
-import { useRef, useState } from "react";
 import { Waveform } from "./Waveform";
+import { useGlobalAudio } from "../contexts/useGlobalAudio";
 
 type AudioPlayerProps = {
   streamUrl: string;
@@ -10,59 +10,20 @@ type AudioPlayerProps = {
 };
 
 export function AudioPlayer({
-  streamUrl,
   frequency,
   programTitle,
   announcer
 }: AudioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [error, setError] = useState("");
-
-  async function togglePlayback() {
-    const audio = audioRef.current;
-    if (!audio) {
-      return;
-    }
-
-    setError("");
-
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
-      return;
-    }
-
-    try {
-      await audio.play();
-      setPlaying(true);
-    } catch {
-      setError("Stream belum bisa diputar. Coba ulangi dari tombol play.");
-      setPlaying(false);
-    }
-  }
+  const { playing, togglePlayback, error } = useGlobalAudio();
 
   return (
-    <section className="audio-player" aria-label="Pemutar radio">
-      <audio
-        ref={audioRef}
-        preload="none"
-        src={streamUrl}
-        onPause={() => setPlaying(false)}
-        onPlaying={() => setPlaying(true)}
-        onError={() => {
-          setError("Stream tidak merespons.");
-          setPlaying(false);
-        }}
-      >
-        <track kind="captions" />
-      </audio>
+    <section className={`audio-player${playing ? " playing" : ""}`} aria-label="Pemutar radio">
       <div>
         <p className="eyebrow">ON AIR {frequency}</p>
         <h3>{programTitle}</h3>
         <p className="muted">{announcer}</p>
       </div>
-      <Waveform />
+      <Waveform playing={playing} />
       {error && <p className="player-error">{error}</p>}
       <div className="player-controls">
         <span className="icon-button" aria-label="Status stream">

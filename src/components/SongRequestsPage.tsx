@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Radio, Clock, PlayCircle, XCircle, RefreshCw } from "lucide-react";
+import { Radio, Clock, PlayCircle, XCircle, RefreshCw, MessageCircle } from "lucide-react";
 import type { SongRequest } from "../types/domain";
 import {
   listSongRequests,
@@ -49,13 +49,20 @@ export function SongRequestsPage() {
 
   return (
     <div style={{ background: "#f8f9fc", minHeight: "100vh", paddingBottom: "100px" }}>
-      <div style={{ background: "white", padding: "16px 20px 24px", borderBottom: "1px solid rgba(0,0,0,0.05)", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0, color: "var(--ink)", fontWeight: 700 }}>Request Lagu</h1>
+      <div className="schedule-page-header">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+          <div className="schedule-title-lockup">
+            <img src="/LogoSBL.svg" alt="Radio SBL" />
+            <div>
+              <p className="eyebrow">Interaksi Pendengar</p>
+              <h1>Request Lagu</h1>
+            </div>
+          </div>
           <button 
             type="button" 
             onClick={loadRequests}
-            style={{ background: "rgba(22, 119, 237, 0.1)", border: "none", color: "var(--blue)", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            style={{ background: "rgba(22, 119, 237, 0.1)", border: "none", color: "var(--blue)", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+            aria-label="Muat Ulang Request"
           >
             <RefreshCw size={18} className={loading ? "spin" : ""} />
           </button>
@@ -86,14 +93,20 @@ export function SongRequestsPage() {
                         <Radio size={20} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <h4 style={{ margin: "0 0 4px", fontSize: "1rem", color: "var(--ink)" }}>
+                        <h4 style={{ margin: "0 0 4px", fontSize: "1.1rem", color: "var(--ink)" }}>
                           {request.artist ? `${request.artist} - ` : ""}{request.title}
                         </h4>
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "4px" }}>
-                          Dari <strong>{request.requesterName}</strong> {request.announcerName ? `untuk ${request.announcerName}` : ""}
+                        <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginBottom: "4px", lineHeight: "1.4" }}>
+                          Dari: <strong style={{ color: "var(--ink)" }}>{request.requesterName}</strong>
+                          {request.announcerName && <span> untuk {request.announcerName}</span>}
                         </div>
+                        {request.requesterWhatsapp && (
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <MessageCircle size={14} color="#25D366" /> {request.requesterWhatsapp}
+                          </div>
+                        )}
                         {request.message && (
-                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", background: "#f8f9fc", padding: "8px 12px", borderRadius: "8px", fontStyle: "italic", marginTop: "8px" }}>"{request.message}"</div>
+                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", background: "#f8f9fc", padding: "10px 14px", borderRadius: "8px", fontStyle: "italic", borderLeft: "3px solid var(--blue)", marginTop: "8px" }}>"{request.message}"</div>
                         )}
                         
                         <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
@@ -109,9 +122,10 @@ export function SongRequestsPage() {
                               href={request.whatsappUrl} 
                               target="_blank" 
                               rel="noreferrer"
-                              style={{ padding: "10px 16px", borderRadius: "10px", background: "#25D366", color: "white", textDecoration: "none", fontWeight: "bold", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              style={{ padding: "10px", borderRadius: "10px", background: "#25D366", color: "white", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", width: "42px" }}
+                              aria-label="Balas WA"
                             >
-                              WA
+                              <MessageCircle size={18} />
                             </a>
                           )}
                           <button 
@@ -146,11 +160,16 @@ export function SongRequestsPage() {
                 {groupedRequests.queued.map((request) => (
                   <div key={request.id} style={{ background: "white", borderRadius: "16px", padding: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <h4 style={{ margin: "0 0 4px", fontSize: "1rem", color: "var(--ink)" }}>
+                      <div style={{ flex: 1, paddingRight: "12px" }}>
+                        <h4 style={{ margin: "0 0 4px", fontSize: "1.1rem", color: "var(--ink)" }}>
                           {request.artist ? `${request.artist} - ` : ""}{request.title}
                         </h4>
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Dari <strong>{request.requesterName}</strong></div>
+                        <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                          Dari: <strong style={{ color: "var(--ink)" }}>{request.requesterName}</strong>
+                        </div>
+                        {request.message && (
+                          <div style={{ fontSize: "0.85rem", color: "var(--ink)", background: "#f8f9fc", padding: "8px 12px", borderRadius: "8px", fontStyle: "italic", borderLeft: "3px solid var(--blue)", marginTop: "8px" }}>"{request.message}"</div>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: "8px" }}>
                         <button 

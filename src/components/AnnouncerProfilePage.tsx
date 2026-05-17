@@ -1,5 +1,6 @@
-import { ArrowLeft, CalendarClock, Mic2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, Mic2, X } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
+import { getProgramInfo } from "../data/radioData";
 import { findAnnouncerProfile, getAnnouncerWorkload } from "../utils/announcerResolver";
 
 type AnnouncerProfilePageProps = {
@@ -15,12 +16,11 @@ export function AnnouncerProfilePage({
 }: AnnouncerProfilePageProps) {
   const profile = findAnnouncerProfile(airName);
   const workload = getAnnouncerWorkload(airName);
-
   if (!profile) {
     return (
       <div className="announcer-profile-page">
-        <div className="schedule-page-header">
-          <div className="schedule-title-lockup">
+        <div className="announcer-profile-header">
+          <div className="announcers-title-lockup">
             <img src="/LogoSBL.svg" alt="Radio SBL" />
             <div>
               <p className="eyebrow">Penyiar Radio SBL</p>
@@ -44,8 +44,8 @@ export function AnnouncerProfilePage({
 
   return (
     <div className="announcer-profile-page">
-      <div className="schedule-page-header">
-        <div className="schedule-title-lockup">
+      <div className="announcer-profile-header">
+        <div className="announcers-title-lockup">
           <img src="/LogoSBL.svg" alt="Radio SBL" />
           <div>
             <p className="eyebrow">Penyiar Radio SBL</p>
@@ -62,7 +62,9 @@ export function AnnouncerProfilePage({
 
         <article className="announcer-profile-card">
           <div className="announcer-profile-hero">
-            <img src={profile.photoUrl} alt={`Foto ${profile.airName}`} />
+            <div className="announcer-profile-photo-wrap">
+              <img src={profile.photoUrl} alt={`Foto ${profile.airName}`} />
+            </div>
             <div>
               <p>{data.station.frequency}</p>
               <h2>{profile.airName}</h2>
@@ -89,19 +91,27 @@ export function AnnouncerProfilePage({
           <section className="announcer-profile-slots" aria-label={`Jadwal siaran ${profile.airName}`}>
             <h3>Jadwal Siaran</h3>
             {workload.slots.length > 0 ? (
-              workload.slots.map((slot) => (
-                <div key={`${slot.day}-${slot.time}-${slot.program}`}>
-                  <Mic2 size={16} />
-                  <span>
-                    <strong>{slot.program}</strong>
-                    <small>{slot.day}</small>
-                  </span>
-                  <time>
-                    <CalendarClock size={15} />
-                    {slot.time} WITA
-                  </time>
-                </div>
-              ))
+              workload.slots.map((slot) => {
+                const programInfo = getProgramInfo(slot.program);
+
+                return (
+                  <div
+                    key={`${slot.day}-${slot.time}-${slot.program}`}
+                    className="announcer-profile-slot-button"
+                    style={{ cursor: "default" }}
+                  >
+                    <Mic2 size={16} />
+                    <span>
+                      <strong>{slot.program}</strong>
+                      <small>{slot.day}</small>
+                    </span>
+                    <time>
+                      <CalendarClock size={15} />
+                      {slot.time} WITA
+                    </time>
+                  </div>
+                );
+              })
             ) : (
               <p>Belum ada slot utama pada jadwal siaran.</p>
             )}
@@ -110,6 +120,8 @@ export function AnnouncerProfilePage({
           {profile.note && <p className="announcer-profile-note">{profile.note}</p>}
         </article>
       </div>
+
+      {/* Modal dinonaktifkan atas permintaan pengguna */}
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { useState, type ChangeEvent } from "react";
 import { FileText, Plus, Clock, Search, Wand2, Loader2, UploadCloud } from "lucide-react";
 import { PageHeader } from "./PageHeader";
 import type { CoverageAssignment, CoverageStatus } from "../types/domain";
-import { generateDraft } from "../services/gemini.service";
 import { uploadToGoogleDrive } from "../services/googleDrive.service";
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -57,8 +56,7 @@ const statusConfig: Record<CoverageStatus, { color: string; bg: string }> = {
 
 export function CoveragePage() {
   const [search, setSearch] = useState("");
-  const [aiDraft, setAiDraft] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -85,20 +83,6 @@ export function CoveragePage() {
     }
   };
 
-  const handleTestGemini = async () => {
-    setIsGenerating(true);
-    setAiDraft("");
-    setNotice("");
-    setError("");
-    try {
-      const draft = await generateDraft({ prompt: "Buatkan 1 kalimat sapaan radio singkat untuk pendengar Radio SBL 92.4 FM." });
-      setAiDraft(draft);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, "Gemini gagal memproses permintaan."));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleNewAssignment = () => {
     setError("");
@@ -123,10 +107,7 @@ export function CoveragePage() {
           <div className="panel-title" style={{ marginBottom: "16px" }}>
             <h3>Daftar Tugas Liputan</h3>
             <div className="panel-actions">
-              <button className="secondary-action" onClick={handleTestGemini} disabled={isGenerating}>
-                {isGenerating ? <Loader2 size={16} className="spin" /> : <Wand2 size={16} />} 
-                {isGenerating ? "Menunggu AI..." : "Test Gemini"}
-              </button>
+
               <button type="button" className="primary-action" onClick={handleNewAssignment}>
                 <Plus size={16} /> Penugasan Baru
               </button>
@@ -149,14 +130,6 @@ export function CoveragePage() {
             </div>
           </div>
 
-          {aiDraft && (
-            <div style={{ marginBottom: "20px", padding: "16px", background: "rgba(245, 180, 0, 0.08)", borderRadius: "16px", border: "1px solid rgba(245, 180, 0, 0.2)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", color: "var(--yellow)", fontWeight: "bold" }}>
-                <Wand2 size={18} /> Hasil Test Gemini AI
-              </div>
-              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.5 }}>{aiDraft}</p>
-            </div>
-          )}
 
           <div className="program-list">
             {filtered.map(cov => (

@@ -20,7 +20,6 @@ import type { LucideIcon } from "lucide-react";
 
 export type PageKey =
   | "splash"
-  | "onboarding"
   | "login"
   | "dashboard"
   | "announcers"
@@ -36,7 +35,6 @@ export type PageKey =
   | "aiScript"
   | "users"
   | "scheduleSwap"
-  | "adminVerification"
   | "attendanceReport"
   | "profile";
 
@@ -62,8 +60,7 @@ export const primaryNav: NavItem[] = [
   { key: "announcers", label: "Penyiar", icon: Mic2, requiredPermission: "schedule:read" },
   { key: "attendance", label: "Absensi", icon: ClipboardCheck, requiredPermission: "attendance:self" },
   { key: "users", label: "Kelola User", icon: UsersRound, requiredPermission: "users:manage" },
-  { key: "adminVerification", label: "Verifikasi Swap", icon: ShieldCheck, requiredPermission: "schedule:manage" },
-  { key: "attendanceReport", label: "Rekap Absen", icon: BarChart3, requiredPermission: "users:manage" },
+  { key: "attendanceReport", label: "Rekap Absen", icon: BarChart3, requiredPermission: "attendance:manage" },
   { key: "complaints", label: "Aduan", icon: Bell, requiredPermission: "complaints:submit" }
 ];
 
@@ -110,6 +107,146 @@ export type BroadcastProgramSlot = {
   description: string;
   announcer: string;
 };
+
+export type ProgramInfo = {
+  title: string;
+  description: string;
+  imageUrl: string;
+};
+
+const programFallbackInfo: ProgramInfo = {
+  title: "Radio SBL 92.4 FM",
+  description:
+    "Program Radio SBL yang menghadirkan informasi, hiburan, edukasi, dan interaksi hangat untuk masyarakat Pinrang.",
+  imageUrl: "/LogoSBL.svg"
+};
+
+const programCatalog: Array<ProgramInfo & { match: string[] }> = [
+  {
+    title: "Salam Subuh Lasinrang",
+    match: ["Salam Subuh"],
+    imageUrl: "/program/Info_Terkini.jpg",
+    description:
+      "Program religi pagi yang menghadirkan tausiah, doa subuh, dan kabar inspiratif dari masjid serta masyarakat Pinrang untuk menemani awal hari dengan suasana sejuk dan penuh motivasi."
+  },
+  {
+    title: "Salam Bumi Lasinrang",
+    match: ["Salam Bumi Lasinrang"],
+    imageUrl: "/program/Salam_Bumi_lasinrang.jpg",
+    description:
+      "Program pagi informatif dan interaktif berisi berita lokal, info lalu lintas, tips kehidupan, motivasi, serta sapaan hangat untuk menemani aktivitas masyarakat Pinrang setiap pagi."
+  },
+  {
+    title: "Informasi Seputar Pinrang",
+    match: ["Informasi Seputar Pinrang"],
+    imageUrl: "/program/Informasi_Seputar_Pinrang.jpg",
+    description:
+      "Majalah udara siang yang menyajikan berita pemerintahan, informasi publik, aktivitas komunitas, info lalu lintas, edukasi, dan dialog interaktif seputar perkembangan Kabupaten Pinrang."
+  },
+  {
+    title: "Siporio Siporennu",
+    match: ["Siporio Siporennu"],
+    imageUrl: "/program/Siporio_Siporennu.jpg",
+    description:
+      "Program musik dan budaya Bugis yang menghadirkan lagu daerah, cerita tradisi, petuah lokal, serta interaksi pendengar dengan nuansa khas budaya Pinrang."
+  },
+  {
+    title: "Halo Bumi Lasinrang (Podcast SBL)",
+    match: ["Halo Bumi Lasinrang", "Podcast SBL", "Podcast / Siaran Reguler"],
+    imageUrl: "/program/PODCAST_SBL.jpg",
+    description:
+      "Program podcast dan live outdoor broadcasting yang menghadirkan dialog santai, inspiratif, dan interaktif bersama tokoh, komunitas, maupun narasumber pilihan dari berbagai bidang."
+  },
+  {
+    title: "Aga Kareba?",
+    match: ["Aga Kareba"],
+    imageUrl: "/program/Aga_Kareba.jpg",
+    description:
+      "Program malam santai berisi berita ringan, tips inspiratif, cerita masyarakat, lagu populer, dan interaksi hangat bersama pendengar untuk menutup hari dengan suasana akrab."
+  },
+  {
+    title: "Lasinrang Preneur",
+    match: ["Lasinrang Preneur"],
+    imageUrl: "/program/Lasinrang_Preneur.jpg",
+    description:
+      "Talkshow bisnis kreatif yang mengangkat kisah UMKM, pelaku usaha lokal, produk unggulan Pinrang, serta tips bisnis dan kewirausahaan."
+  },
+  {
+    title: "Keluarga Berdaya (PKK)",
+    match: ["Keluarga Berdaya", "PKK"],
+    imageUrl: "/program/Pinrang_Berkabar.jpg",
+    description:
+      "Program edukasi keluarga yang membahas parenting, kesehatan, gizi, pemberdayaan perempuan, dan kisah inspiratif keluarga Pinrang."
+  },
+  {
+    title: "Program Religi",
+    match: ["Program Religi"],
+    imageUrl: "/program/Info_Terkini.jpg",
+    description:
+      "Program bernuansa Islami yang menghadirkan rekaman tausiah, dakwah, dan lagu religi untuk menambah ketenangan dan wawasan spiritual pendengar."
+  },
+  {
+    title: "Jumat Ceria",
+    match: ["Jumat Ceria"],
+    imageUrl: "/program/Jumat_Ceria.jpg",
+    description:
+      "Program edukatif dengan suasana santai dan menyenangkan yang membahas dunia pendidikan, literasi, kreativitas pelajar, dan inspirasi anak muda Pinrang."
+  },
+  {
+    title: "Pinrang Creative Network (PCN)",
+    match: ["Pinrang Creative Network", "PCN"],
+    imageUrl: "/program/Pinrang_Creative_Network.jpg",
+    description:
+      "Program kolaborasi komunitas kreatif yang membahas seni, budaya, pendidikan, ekonomi kreatif, dan perkembangan komunitas lokal di Pinrang."
+  },
+  {
+    title: "Pinrang KEREN!",
+    match: ["Pinrang KEREN"],
+    imageUrl: "/program/Pinrang_Berkabar.jpg",
+    description:
+      "Program inspiratif yang menghadirkan tokoh, komunitas, dan generasi muda berprestasi untuk berbagi pengalaman, motivasi, dan ide positif bagi masyarakat."
+  },
+  {
+    title: "SBL on Stage",
+    match: ["SBL on Stage"],
+    imageUrl: "/program/SBL_On_Stage.jpg",
+    description:
+      "Program hiburan dan live performance yang menghadirkan musik, interaksi pendengar, komunitas kreatif, dan suasana panggung khas Radio SBL."
+  },
+  {
+    title: "Playlist Lagu-Lagu Terbaik",
+    match: ["Lagu-lagu Terbaik", "Playlist Lagu-Lagu Terbaik"],
+    imageUrl: "/program/Info_Terkini.jpg",
+    description:
+      "Program auto-playlist pilihan yang memutarkan lagu-lagu terbaik dan segmen favorit sebagai penutup siaran Radio SBL setiap malam."
+  },
+  {
+    title: "SBL Goes to School",
+    match: ["SBL Goes to School"],
+    imageUrl: "/program/SBL_Goes_To_School.jpg",
+    description:
+      "Siaran edukatif dan live outdoor broadcasting dari lingkungan sekolah untuk menyapa pelajar, guru, serta komunitas pendidikan Pinrang."
+  }
+];
+
+function normalizeProgramName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function getProgramInfo(programName: string): ProgramInfo {
+  const normalizedName = normalizeProgramName(programName);
+  const match = programCatalog.find((program) =>
+    program.match.some((keyword) => normalizedName.includes(normalizeProgramName(keyword)))
+  );
+
+  return match ?? {
+    ...programFallbackInfo,
+    title: programName || programFallbackInfo.title
+  };
+}
 
 export const weeklyBroadcastSchedule: BroadcastProgramSlot[] = [
   {
@@ -394,13 +531,6 @@ export const announcerBreakdown = [
     days: ["Senin", "Selasa", "Rabu", "Jumat", "Sabtu"],
     totalDays: 5,
     totalHours: 10
-  },
-  {
-    name: "Hendra",
-    days: ["Setiap Hari"],
-    totalDays: 7,
-    totalHours: 0,
-    note: "Setup RadioBoss untuk program sisipan/tanpa penyiar"
   }
 ];
 
@@ -427,67 +557,58 @@ export const directorProfile = {
 export const announcers = [
   {
     id: "085397286112",
-    fullName: "AKHMAD AMIRUDDIN",
-    airName: "AMAR",
+    fullName: "Akhmad Amiruddin",
+    airName: "Amar",
     scheduleNames: ["Amar"],
-    photoUrl: "https://radiosbl.web.app/crew/AMAR%20(6).png",
+    photoUrl: "/crew/amar.png",
     decreeOrder: 1,
     active: true
   },
   {
     id: "085343820280",
-    fullName: "SULAIMAN",
-    airName: "SUL",
+    fullName: "Sulaiman",
+    airName: "Sul",
     scheduleNames: ["Sul"],
-    photoUrl: "https://radiosbl.web.app/crew/SUL%20(5).png",
+    photoUrl: "/crew/sul.png",
     decreeOrder: 2,
     active: true
   },
   {
     id: "081342103115",
-    fullName: "WIWIK",
-    airName: "RENA THABITA",
+    fullName: "Wiwik",
+    airName: "Wiwik",
     scheduleNames: ["Rena", "Wiwik"],
-    photoUrl: "https://radiosbl.web.app/crew/WIWIK%20(2).png",
+    photoUrl: "/crew/wiwik.png",
     decreeOrder: 3,
     active: true
   },
   {
     id: "082323334842",
-    fullName: "RISKA DWIYANTI",
-    airName: "RISKA",
+    fullName: "Riska Dwiayanti",
+    airName: "Riska",
     scheduleNames: ["Riska"],
-    photoUrl: "https://radiosbl.web.app/crew/RISKA%20(2).png",
+    photoUrl: "/crew/riska.png",
     decreeOrder: 4,
     active: true
   },
   {
     id: "085242918411",
-    fullName: "ST. RUKIAH",
-    airName: "RIA FINGKY",
+    fullName: "St. Rukiah",
+    airName: "Ria",
     scheduleNames: ["Ria"],
-    photoUrl: "https://radiosbl.web.app/crew/RIA%20(4).png",
+    photoUrl: "/crew/ria.png",
     decreeOrder: 5,
     active: true
   },
   {
     id: "08114441006",
-    fullName: "SALMIAH",
-    airName: "MIAH JUFRI",
+    fullName: "Salmiah",
+    airName: "Miah",
     scheduleNames: ["Miah"],
-    photoUrl: "https://radiosbl.web.app/crew/Miah.png",
+    photoUrl: "/crew/Miah.png",
     decreeOrder: 6,
     active: true
   },
-  {
-    id: "085255300670",
-    fullName: "MUHAMMAD CHENDRA BURHAN",
-    airName: "HENDRA",
-    scheduleNames: ["Hendra"],
-    photoUrl: "https://radiosbl.web.app/crew/PROF%20(1).png",
-    decreeOrder: 7,
-    active: true
-  }
 ];
 
 export const stationInfo = {
@@ -508,9 +629,9 @@ export const stationInfo = {
 export const employees = [
   { id: "emp-fajar", name: "FAJAR BAKRI", role: "Direktur Utama", wa: "081343511099" },
   { id: "emp-widy", name: "ANDI HASWIDY RUSTAM", role: "Ketua Dewan Pengawas", wa: "08114221001" },
-  { id: "emp-hendra", name: "MUHAMMAD CHENDRA BURHAN", role: "Engineer", wa: "085255300670" },
-  { id: "emp-azhar", name: "ANDI AZHAR", role: "IT", wa: "085156919530" },
-  { id: "emp-muhas", name: "MUHAMMAD SALEH", role: "Reporter Lapangan", wa: "085242640984" },
+  { id: "emp-hendra", name: "MUHAMMAD CHENDRA BURHAN", role: "Engineer", wa: "085255300670", photoUrl: "/crew/hendra.png" },
+  { id: "emp-azhar", name: "ANDI AZHAR", role: "IT", wa: "085156919530", photoUrl: "/crew/azhar.png" },
+  { id: "emp-muhas", name: "MUHAMMAD SALEH", role: "Reporter Lapangan", wa: "085242640984", photoUrl: "/crew/muhas.png" },
   { id: "emp-chia", name: "FAUZIAH ABBAS", role: "Finance", wa: "081346353287" },
   { id: "emp-occo", name: "Tri Amri Maramat", role: "Sekretaris Diskominfosandi", wa: "081355393997" },
   { id: "emp-iqbal", name: "MUH. IQBAL", role: "Kabid Humas", wa: "08114444970" },

@@ -49,7 +49,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "dashboard:read",
     "attendance:self",
     "coverage:manage",
-    "complaints:submit"
+    "complaints:submit",
+    "schedule:read"
   ],
   operator: [
     "dashboard:read",
@@ -60,11 +61,13 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   employee: [
     "dashboard:read",
     "attendance:self",
-    "complaints:submit"
+    "complaints:submit",
+    "schedule:read"
   ],
   public: [
     "dashboard:read",
-    "complaints:submit"
+    "complaints:submit",
+    "schedule:read"
   ]
 };
 

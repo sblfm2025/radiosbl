@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
-import { ArrowLeftRight, Clock, User, CheckCircle2, XCircle, Send, AlertCircle, Calendar } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Clock, CheckCircle2, Send, AlertCircle, Calendar } from "lucide-react";
+import { PageHeader } from "./PageHeader";
 import { createSwapRequest, getMySwapRequests, updateSwapStatus } from "../services/scheduleSwap.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import type { AuthSession } from "../services/auth.service";
-import type { ScheduleSwapRequest, AppUser, BroadcastProgramSlot } from "../types/domain";
-import { weeklyBroadcastSchedule } from "../data/radioData";
+import type { ScheduleSwapRequest, AppUser } from "../types/domain";
+import { announcers as localAnnouncers, weeklyBroadcastSchedule } from "../data/radioData";
+import { findAnnouncerProfile } from "../utils/announcerResolver";
 
 export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
   const [swaps, setSwaps] = useState<ScheduleSwapRequest[]>([]);
@@ -18,49 +20,109 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
   const [targetAnnouncerId, setTargetAnnouncerId] = useState("");
   const [reason, setReason] = useState("");
 
+  const extractWaNumber = (value: string | undefined) => {
+    if (!value) return null;
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return null;
+    // radioData.ts id announcer = nomor WA tanpa 0 depan (contoh: 085397286112)
+    // kalau digits diawali 0, buang leading 0
+    return digits.replace(/^0+/, "");
+  };
+
   // Filter jadwal milik penyiar yang sedang login
   const mySlots = useMemo(() => {
     if (!session) return [];
-    // Dalam simulasi ini kita cari berdasarkan nama udara atau manual. 
-    // Di produksi kita filter berdasarkan userId.
-    return weeklyBroadcastSchedule.filter(slot => 
-      slot.announcer.toLowerCase().includes(session.user.displayName.toLowerCase()) ||
-      (session.user.airName && slot.announcer.includes(session.user.airName))
-    );
-  }, [session]);
 
-  useEffect(() => {
-    if (session) {
-      loadData();
+    const profile = findAnnouncerProfile(session.user.airName || session.user.displayName || "");
+    const candidateNames = new Set<string>();
+
+    if (profile?.airName) candidateNames.add(profile.airName.toLowerCase());
+    if (profile?.fullName) candidateNames.add(profile.fullName.toLowerCase());
+    if (session.user.displayName) candidateNames.add(session.user.displayName.toLowerCase());
+    if (session.user.airName) candidateNames.add(session.user.airName.toLowerCase());
+
+    const fromWhatsapp = extractWaNumber(session.user.whatsapp);
+    if (fromWhatsapp) {
+      const local = localAnnouncers.find((a) => a.id === fromWhatsapp);
+      if (local?.airName) candidateNames.add(local.airName.toLowerCase());
     }
+
+    if (candidateNames.size === 0) return [];
+
+    return weeklyBroadcastSchedule.filter((slot) => {
+      const slotText = slot.announcer.toLowerCase();
+      return Array.from(candidateNames).some((needle) => needle && slotText.includes(needle));
+    });
   }, [session]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const [swapData, userData] = await Promise.all([
-        getMySwapRequests(session!.user.id),
-        listUserProfiles()
+        getMySwapRequests(session.user.id).catch((err) => {
+          console.error("Gagal memuat data swap (fallback ke kosong):", err);
+          return [] as ScheduleSwapRequest[];
+        }),
+        listUserProfiles().catch((err) => {
+          console.error("Gagal memuat profil user (fallback ke announcers lokal):", err);
+          return [] as AppUser[];
+        })
       ]);
       setSwaps(swapData);
-      setAnnouncers(userData.filter(u => u.id !== session!.user.id && (u.role === "announcer" || u.role === "admin")));
+
+      const filtered = userData.filter((user) => {
+        return user.role === "announcer" && user.id !== session.user.id && user.active;
+      });
+
+      // Kalau Firestore/local profile tidak menghasilkan kandidat, fallback ke announcers lokal
+      if (filtered.length > 0) {
+        setAnnouncers(filtered);
+      } else {
+        setAnnouncers(
+          localAnnouncers
+            .filter((a) => a.id !== session.user.id && a.active)
+            .map((a) => {
+              const waId = `wa-${a.id}`;
+              return {
+                id: waId,
+                email: `${a.id}@radiosbl.com`,
+                displayName: a.fullName,
+                role: "announcer" as const,
+                airName: a.airName,
+                announcerNames: a.scheduleNames,
+                photoUrl: a.photoUrl,
+                whatsapp: a.id,
+                active: a.active,
+                employeeId: undefined
+              };
+            })
+        );
+      }
     } catch (err) {
       console.error("Gagal memuat data swap:", err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [session]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSlotKey || !targetAnnouncerId || !reason) return;
+    if (!session || !selectedSlotKey || !targetAnnouncerId || !reason) return;
 
     setSubmitting(true);
     try {
-      const [day, time, program] = selectedSlotKey.split("|");
       await createSwapRequest({
         scheduleId: selectedSlotKey, // Menggunakan key sebagai ID sementara
-        requesterId: session!.user.id,
+        requesterId: session.user.id,
         targetAnnouncerId,
         reason
       });
@@ -68,9 +130,9 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
       setSelectedSlotKey("");
       setTargetAnnouncerId("");
       setReason("");
-      loadData();
+      await loadData();
       setTimeout(() => setMessage(""), 3000);
-    } catch (err) {
+    } catch {
       alert("Gagal mengirim permintaan.");
     } finally {
       setSubmitting(false);
@@ -79,26 +141,22 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
 
   async function handleResponse(swapId: string, approve: boolean) {
     try {
-      await updateSwapStatus(swapId, approve ? "pending_admin" : "rejected");
-      loadData();
-      setMessage(approve ? "Anda menyetujui pertukaran. Menunggu verifikasi admin." : "Pertukaran ditolak.");
+      await updateSwapStatus(swapId, approve ? "approved" : "rejected");
+      await loadData();
+      setMessage(approve ? "Penyiar setuju. Jadwal otomatis diperbarui." : "Pertukaran ditolak.");
       setTimeout(() => setMessage(""), 3000);
-    } catch (err) {
+    } catch {
       alert("Gagal menanggapi permintaan.");
     }
   }
 
   return (
     <div className="schedule-swap-page" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh", paddingBottom: "100px" }}>
-      <header style={{ marginBottom: "28px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-          <div style={{ background: "var(--blue)", padding: "10px", borderRadius: "12px", color: "white" }}>
-            <ArrowLeftRight size={24} />
-          </div>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: 0 }}>Tukar Jadwal</h1>
-        </div>
-        <p style={{ color: "var(--muted)", margin: 0 }}>Ajukan atau tanggapi permintaan pertukaran jam siaran.</p>
-      </header>
+      <PageHeader
+        eyebrow="Tukar Jadwal"
+        title="Pengajuan Jadwal Siaran"
+        description="Ajukan permintaan pengganti slot siaran dan tanggapi permintaan masuk dari rekan penyiar."
+      />
 
       {message && (
         <div style={{ background: "#11a36a", color: "white", padding: "14px 20px", borderRadius: "16px", marginBottom: "24px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
@@ -106,7 +164,7 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
         
         {/* Form Pengajuan */}
         <section style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
@@ -144,6 +202,11 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
                   <option key={ann.id} value={ann.id}>{ann.airName || ann.displayName}</option>
                 ))}
               </select>
+              {announcers.length === 0 && (
+                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.85rem" }}>
+                  Daftar penyiar pengganti belum tersedia. Periksa kembali data profil atau hubungi admin.
+                </p>
+              )}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -197,14 +260,24 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
                       <span style={{ fontSize: "0.75rem", fontWeight: "bold", background: isIncoming ? "#e7f5ef" : "#f1f3f5", color: isIncoming ? "#11a36a" : "var(--muted)", padding: "4px 10px", borderRadius: "99px" }}>
                         {isIncoming ? "PERMINTAAN MASUK" : "PENGAJUAN SAYA"}
                       </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{swap.status.replace("_", " ").toUpperCase()}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
+                        {swap.status === "pending_target"
+                          ? "Menunggu Konfirmasi Anda"
+                          : swap.status === "approved"
+                          ? "Disetujui"
+                          : "Ditolak"}
+                      </span>
                     </div>
 
                     <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
                       <Calendar size={18} color="var(--blue)" />
                       <div>
                         <div style={{ fontWeight: "bold", fontSize: "0.95rem" }}>{swap.scheduleId.split("|").join(" • ")}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>{isIncoming ? `Dari: ${requester?.displayName || "Penyiar"}` : `Target: ${targetAnnouncer?.airName || "Penyiar"}`}</div>
+                        <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                          {isIncoming
+                            ? `Dari: ${requester?.airName || requester?.displayName || swap.requesterId}`
+                            : `Target: ${targetAnnouncer?.airName || targetAnnouncer?.displayName || swap.targetAnnouncerId}`}
+                        </div>
                       </div>
                     </div>
 

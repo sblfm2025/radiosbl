@@ -20,8 +20,12 @@ function buildGeminiPrompt(request) {
 }
 
 async function testScriptGeneration() {
-  const apiKey = "REMOVED_API_KEY";
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   const modelName = "gemini-2.5-flash";
+
+  if (!apiKey) {
+    throw new Error("Set GEMINI_API_KEY atau VITE_GEMINI_API_KEY sebelum menjalankan test ini.");
+  }
 
   console.log(`--- Mengetes Pembuatan Naskah Radio SBL dengan ${modelName} ---`);
 

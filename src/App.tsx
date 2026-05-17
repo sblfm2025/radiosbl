@@ -4,12 +4,11 @@ import {
   useMemo,
   useState
 } from "react";
-import { Mic2 } from "lucide-react";
+import { CalendarClock, ChevronRight, Mic2, Radio, UsersRound } from "lucide-react";
 
 // Components
 import { Shell } from "./components/Shell";
 import { AudioProvider } from "./contexts/AudioContext";
-import { PageHeader } from "./components/PageHeader";
 import { GlobalAudioPlayer } from "./components/GlobalAudioPlayer";
 import { LoginPage } from "./components/LoginPage";
 import { DashboardPage } from "./components/DashboardPage";
@@ -22,13 +21,11 @@ import { ProfilePage } from "./components/ProfilePage";
 import { ComplaintsPage } from "./components/ComplaintsPage";
 import { AttendancePage } from "./components/AttendancePage";
 import { StreamingPage } from "./components/StreamingPage";
-import { OnboardingPage } from "./components/OnboardingPage";
 import { SplashPage } from "./components/SplashPage";
 import { PodcastPage } from "./components/PodcastPage";
 import { CoveragePage } from "./components/CoveragePage";
 import { UsersManagementPage } from "./components/UsersManagementPage";
 import { ScheduleSwapPage } from "./components/ScheduleSwapPage";
-import { AdminVerificationPage } from "./components/AdminVerificationPage";
 import { AttendanceReportPage } from "./components/AttendanceReportPage";
 
 // Data & Repository
@@ -72,33 +69,85 @@ import { useCurrentBroadcastSlot } from "./hooks/useCurrentBroadcastSlot";
 // Styles
 import "./styles/app.css";
 
-function AnnouncersPage({ data }: { data: DashboardSnapshot }) {
+function AnnouncersPage({
+  data,
+  onOpenAnnouncerProfile
+}: {
+  data: DashboardSnapshot;
+  onOpenAnnouncerProfile: (airName: string) => void;
+}) {
+  const totalSlots = data.announcerProfiles.reduce(
+    (sum, announcer) => sum + getAnnouncerWorkload(announcer.airName).slotCount,
+    0
+  );
+  const totalHours = data.announcerProfiles.reduce(
+    (sum, announcer) => sum + getAnnouncerWorkload(announcer.airName).totalHours,
+    0
+  );
+
   return (
-    <>
-      <PageHeader
-        eyebrow="Announcer Roster"
-        title="Penyiar"
-        description="Data penyiar Radio SBL."
-      />
-      <section className="announcer-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "24px" }}>
-        {data.announcerProfiles.map((announcer, i) => {
+    <main className="announcers-page">
+      <section className="announcers-hero" aria-label="Ringkasan penyiar Radio SBL">
+        <div className="announcers-hero-copy">
+          <div className="announcers-title-lockup">
+            <img src="/LogoSBL.svg" alt="Radio SBL" />
+            <div>
+              <p className="eyebrow">Suara Pinrang, Suara Kita!</p>
+              <h1>Daftar Penyiar</h1>
+            </div>
+          </div>
+          <p>
+            Kenali kru siaran Radio SBL, jadwal utama, dan beban siaran tiap penyiar
+            dalam satu tampilan yang mudah dipindai.
+          </p>
+        </div>
+
+        <div className="announcers-summary-grid" aria-label="Ringkasan data penyiar">
+          <span>
+            <UsersRound size={20} />
+            <strong>{data.announcerProfiles.length}</strong>
+            Penyiar aktif
+          </span>
+          <span>
+            <CalendarClock size={20} />
+            <strong>{totalSlots}</strong>
+            Slot jadwal
+          </span>
+          <span>
+            <Radio size={20} />
+            <strong>{totalHours}</strong>
+            Jam siaran
+          </span>
+        </div>
+      </section>
+
+      <section className="announcer-grid" aria-label="Daftar profil penyiar">
+        {data.announcerProfiles.map((announcer) => {
           const workload = getAnnouncerWorkload(announcer.airName);
+          const daysText = workload.days.length > 0
+            ? workload.days.join(", ")
+            : "Belum ada jadwal utama";
 
           return (
-            <article className="announcer-card" key={announcer.fullName} style={{ animation: `fadeSlideUp 0.6s ease-out forwards`, animationDelay: `${i * 0.1}s`, opacity: 0, transform: "translateY(20px)" }}>
-              <div className="announcer-photo-wrap" style={{ width: "100%", aspectRatio: "1 / 1", overflow: "hidden", borderRadius: "16px 16px 0 0" }}>
+            <div
+              className="announcer-card"
+              key={announcer.fullName}
+            >
+              <span className="announcer-status-pill">
+                {announcer.active ? "Aktif" : "Tidak aktif"}
+              </span>
+              <div className="announcer-photo-wrap">
                 <img
                   src={announcer.photoUrl}
                   alt={`Foto ${announcer.airName}`}
                   className="announcer-photo"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </div>
               <div className="announcer-card-head">
-                <span>{announcer.airName.slice(0, 1)}</span>
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
-                  <strong style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{announcer.airName}</strong>
-                  <small style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{announcer.fullName}</small>
+                <span aria-hidden="true">{announcer.airName.slice(0, 1)}</span>
+                <div>
+                  <strong>{announcer.airName}</strong>
+                  <small>{announcer.fullName}</small>
                 </div>
                 <em>#{announcer.decreeOrder}</em>
               </div>
@@ -116,8 +165,9 @@ function AnnouncersPage({ data }: { data: DashboardSnapshot }) {
                   Slot
                 </span>
               </div>
+              <p className="announcer-days">{daysText}</p>
               <div className="slot-list">
-                {workload.slots.slice(0, 4).map((slot) => (
+                {workload.slots.slice(0, 3).map((slot) => (
                   <div key={`${announcer.airName}-${slot.day}-${slot.time}`}>
                     <Mic2 size={15} />
                     <span>
@@ -126,12 +176,13 @@ function AnnouncersPage({ data }: { data: DashboardSnapshot }) {
                     <strong>{slot.program}</strong>
                   </div>
                 ))}
+                {workload.slots.length === 0 && <p>Belum ada slot siaran utama.</p>}
               </div>
-            </article>
+            </div>
           );
         })}
       </section>
-    </>
+    </main>
   );
 }
 
@@ -163,16 +214,6 @@ export default function App() {
           ...data,
           weeklySchedule: dynamicWeekly
         });
-
-        // AUTO-INJECTION LOGIC UNTUK SUPER ADMIN
-        if (session?.user.email === "sblfm2025@gmail.com" || session?.user.email === "sablfm2025@gmail.com" || session?.user.role === "super_admin") {
-          console.log("Super Admin/Direktur terdeteksi, mulai sinkronisasi 16 staf...");
-          const { syncSblStaff } = await import("./services/userProfile.service");
-          const result = await syncSblStaff();
-          if (result.success) {
-            console.log(`Sinkronisasi ${result.count} staf selesai otomatis!`);
-          }
-        }
       } catch (err) {
         console.error("Gagal sinkron data otomatis:", err);
       }
@@ -206,7 +247,7 @@ export default function App() {
         setActivePage("dashboard");
       } else {
         setActivePage((prev) => {
-          if (prev === "splash" || prev === "onboarding") return prev;
+          if (prev === "splash") return prev;
           return "login";
         });
       }
@@ -234,8 +275,6 @@ export default function App() {
     switch (activePage) {
       case "splash":
         return <SplashPage onNavigate={setActivePage} />;
-      case "onboarding":
-        return <OnboardingPage onNavigate={setActivePage} />;
       case "login":
         return (
           <LoginPage
@@ -248,7 +287,15 @@ export default function App() {
       case "attendance":
         return <AttendancePage data={dashboardData} session={session} onAttendanceRecorded={refreshAttendanceRecords} />;
       case "announcers":
-        return <AnnouncersPage data={dashboardData} />;
+        return (
+          <AnnouncersPage
+            data={dashboardData}
+            onOpenAnnouncerProfile={(airName) => {
+              setSelectedAnnouncerAirName(airName);
+              setActivePage("announcerProfile");
+            }}
+          />
+        );
       case "announcerProfile":
         return (
           <AnnouncerProfilePage
@@ -279,17 +326,15 @@ export default function App() {
       case "podcast":
         return <PodcastPage />;
       case "complaints":
-        return <ComplaintsPage data={dashboardData} />;
+        return <ComplaintsPage data={dashboardData} session={session} />;
       case "aiScript":
         return <AiScriptPage data={dashboardData} session={session} />;
       case "users":
         return <UsersManagementPage />;
       case "scheduleSwap":
         return <ScheduleSwapPage session={session} />;
-      case "adminVerification":
-        return <AdminVerificationPage />;
       case "attendanceReport":
-        return <AttendanceReportPage />;
+        return <AttendanceReportPage session={session} />;
       case "profile":
         return session ? (
           <ProfilePage session={session} onLogout={handleLogout} />
@@ -332,7 +377,7 @@ export default function App() {
     );
   }
 
-  const showMiniPlayer = session && !["splash", "onboarding", "login", "dashboard", "streaming", "podcast"].includes(activePage);
+  const showMiniPlayer = session && !["splash", "login", "dashboard", "streaming", "podcast"].includes(activePage);
 
   return (
     <AudioProvider

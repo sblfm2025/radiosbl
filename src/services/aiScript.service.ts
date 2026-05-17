@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGenAIClient } from "./gemini.service";
 
 export type AiScriptProvider = "openai" | "gemini";
 
@@ -42,8 +42,10 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
   return [
     "Susun naskah siaran radio profesional untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
     "Gunakan bahasa Indonesia yang hangat, natural, singkat, dan siap dibaca penyiar.",
-    "Jangan mengarang fakta spesifik di luar konteks. Jika butuh data, tulis placeholder yang mudah diisi penyiar.",
+    "ATURAN MUTLAK: JANGAN gunakan kalimat basa-basi pengantar (seperti 'Tentu, ini naskahnya'). JANGAN mencetak ulang Header/Metadata (seperti Judul Program, Nama Penyiar, Hari, Jam, Durasi).",
+    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang fakta spesifik di luar konteks. Jika butuh data riil, tulis placeholder yang mudah diisi penyiar.",
     "",
+    `[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:`,
     `Program: ${request.programTitle}`,
     `Hari/Jam: ${request.day}, ${request.scheduleTime}`,
     `Penyiar aktif: ${request.announcerName || "Belum terdeteksi"}`,
@@ -52,7 +54,7 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
     `Deskripsi program: ${request.description || "-"}`,
     request.intervention ? `Arahan penyiar: ${request.intervention}` : "",
     "",
-    "Formatkan dengan bagian: Opening, Bridge/Isi, Cue Lagu/Interaksi, Closing."
+    "Format teks langsung dimulai dengan bagian: Opening, Bridge/Isi, Cue Lagu/Interaksi, Closing."
   ].filter(Boolean).join("\n");
 }
 
@@ -67,10 +69,10 @@ export async function generateProgramScript(
     };
   }
 
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+  const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
 
-  if (!apiKey) {
-    console.warn("VITE_GEMINI_API_KEY tidak ditemukan. Menggunakan naskah demo.");
+  if (!keysString) {
+    console.warn("VITE_GEMINI_API_KEYS tidak ditemukan. Menggunakan naskah demo.");
     return {
       demo: true,
       provider: "demo",
@@ -79,8 +81,7 @@ export async function generateProgramScript(
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Menggunakan gemini-2.5-flash sesuai spesifikasi project
+    const genAI = getGenAIClient();
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = buildGeminiPrompt(request);

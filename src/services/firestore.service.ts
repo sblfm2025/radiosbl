@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -118,3 +119,11 @@ export function subscribeDocuments<T extends DocumentData>(
     }
   );
 }
+
+export async function deleteDocument(
+  collectionName: string,
+  id: string
+): Promise<void> {
+  await deleteDoc(doc(getFirebaseFirestore(), collectionName, id));
+}
+

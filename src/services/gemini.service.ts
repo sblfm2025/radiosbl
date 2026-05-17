@@ -1,6 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
+export function getGenAIClient(): GoogleGenerativeAI {
+  const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
+  const keys = keysString.split(",").map((k: string) => k.trim()).filter(Boolean);
+  
+  if (keys.length === 0) {
+    return new GoogleGenerativeAI("");
+  }
+  
+  // Rotasi otomatis dengan memilih key secara acak
+  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  return new GoogleGenerativeAI(randomKey);
+}
 
 export type GeminiDraftRequest = {
   prompt: string;
@@ -17,7 +28,8 @@ function buildLocalDraft(request: GeminiDraftRequest): string {
   ].filter(Boolean).join("\n");
 }
 
-export async function analyzeAttendancePhoto(imageBlob: Blob): Promise<{ isValid: boolean; reason: string; description: string }> {
+export async function analyzeAttendancePhoto(imageBlob: Blob, displayName: string = "Penyiar"): Promise<{ isValid: boolean; reason: string; description: string; greeting: string }> {
+  const genAI = getGenAIClient();
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Menggunakan Gemini 2.5 Flash sesuai standar SBL
   
   const imageData = await new Promise<string>((resolve) => {
@@ -26,18 +38,28 @@ export async function analyzeAttendancePhoto(imageBlob: Blob): Promise<{ isValid
     reader.readAsDataURL(imageBlob);
   });
 
+  const timeString = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  const hour = new Date().getHours();
+  let timeOfDay = "Pagi";
+  if (hour >= 10 && hour < 15) timeOfDay = "Siang";
+  else if (hour >= 15 && hour < 18) timeOfDay = "Sore";
+  else if (hour >= 18) timeOfDay = "Malam";
+
   const prompt = `
-    Analisis foto selfie absensi staf radio ini. 
+    Analisis foto selfie absensi staf radio ini. Nama penyiar/staf: Kak ${displayName}. Waktu saat ini: ${timeOfDay} (${timeString}).
+    
     Tugasmu:
     1. Pastikan ada wajah manusia yang jelas.
-    2. Berikan deskripsi singkat tentang foto tersebut (misal: "Pria mengenakan headset di depan mic").
-    3. Jika foto tidak layak (gelap, bukan orang, atau menutupi kamera), berikan isValid: false.
+    2. Berikan "description" objektif tentang foto (misal: "Pria kacamata mengenakan headset") untuk direkap HRD.
+    3. Jika foto tidak layak (gelap, bukan orang, menutupi kamera), berikan isValid: false dan isi "reason".
+    4. Buat "greeting" (sapaan) yang personal, interaktif, menyenangkan, sangat kekinian, dan sedikit memuji paras atau gaya berpakaian penyiar di dalam foto secara spesifik. Pastikan menyebut "Kak [Nama]".
     
-    Format respon harus JSON murni:
+    Format respon harus JSON murni tanpa markdown formatting:
     {
       "isValid": boolean,
-      "reason": "alasan jika tidak valid, atau kosong jika valid",
-      "description": "deskripsi singkat apa yang terlihat di foto"
+      "reason": "alasan tolakan, atau kosong",
+      "description": "deskripsi objektif untuk admin",
+      "greeting": "sapaan manis untuk UI penyiar"
     }
   `;
 
@@ -51,7 +73,7 @@ export async function analyzeAttendancePhoto(imageBlob: Blob): Promise<{ isValid
     return JSON.parse(responseText);
   } catch (err) {
     console.error("Gagal parse AI response:", responseText);
-    return { isValid: true, reason: "", description: "Foto berhasil dianalisis." };
+    return { isValid: true, reason: "", description: "Foto berhasil dianalisis.", greeting: `Semangat ${timeOfDay} Kak ${displayName}!` };
   }
 }
 

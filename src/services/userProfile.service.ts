@@ -112,7 +112,7 @@ export async function getUserProfile(
   uid: string,
   fallback: FirebaseUserFallback
 ): Promise<AppUser> {
-  const { getDocument, queryDocuments, upsertDocument } = await import("./firestore.service");
+  const { getDocument, queryDocuments, upsertDocument, deleteDocument } = await import("./firestore.service");
   
   try {
     // 1. Coba cari berdasarkan ID Dokumen (UID)
@@ -160,8 +160,32 @@ export async function getUserProfile(
           });
           await upsertDocument("users", uid, linkedData);
           console.log("Berhasil memperbarui tautan profil di Firestore.");
+          
+          // Hapus dokumen lama (wa-XXX) jika berhasil terhubung
+          if (staffProfile.id && staffProfile.id.startsWith("wa-")) {
+            await deleteDocument("users", staffProfile.id);
+            console.log(`Dokumen lama (${staffProfile.id}) dihapus untuk menghindari duplikat.`);
+          }
         } catch (syncErr) {
           console.warn("Gagal menyimpan tautan profil ke Firestore (tapi login tetap dilanjutkan):", syncErr);
+        }
+      } else if (!profile) {
+        const guestData = {
+          email: fallback.email,
+          displayName: fallback.displayName,
+          photoUrl: fallback.photoUrl || null,
+          whatsapp: fallback.whatsapp || null,
+          role: "public",
+          active: true,
+          updatedAt: new Date(),
+          createdAt: new Date()
+        };
+        try {
+          await upsertDocument("users", uid, guestData);
+          profile = { id: uid, ...guestData };
+          console.log("Berhasil merekam user baru ke tabel Users.");
+        } catch (syncErr) {
+          console.warn("Gagal merekam user baru ke Firestore:", syncErr);
         }
       }
     }
@@ -179,23 +203,88 @@ export async function upsertUserProfile(uid: string, payload: Partial<AppUser>):
   await upsertDocument("users", uid, payload);
 }
 
+function buildLocalProfiles(announcers: any[], employees: any[]): AppUser[] {
+  const profiles: AppUser[] = [];
+
+  for (const ann of announcers) {
+    // Konsisten dengan pola syncSblStaff/firestore: id user announcer = wa-{nomorWA}
+    const waId = `wa-${ann.id}`;
+    profiles.push({
+      id: waId,
+      email: `${ann.id}@radiosbl.com`,
+      displayName: ann.fullName,
+      role: "announcer",
+      airName: ann.airName,
+      announcerNames: ann.scheduleNames,
+      photoUrl: ann.photoUrl,
+      whatsapp: ann.id,
+      active: true,
+      employeeId: undefined
+    });
+  }
+
+  for (const emp of employees) {
+    const role: UserRole =
+      emp.role.toLowerCase().includes("direktur") || emp.role.toLowerCase().includes("pengawas")
+        ? "super_admin"
+        : emp.role.toLowerCase().includes("manajemen") ||
+            emp.role.toLowerCase().includes("kabid") ||
+            emp.role.toLowerCase().includes("sekretaris")
+          ? "admin"
+          : emp.role.toLowerCase().includes("it") || emp.role.toLowerCase().includes("engineer")
+            ? "operator"
+            : emp.role.toLowerCase().includes("reporter")
+              ? "reporter"
+              : "employee";
+
+    profiles.push({
+      id: emp.id,
+      email: `${emp.wa}@radiosbl.com`,
+      displayName: emp.name,
+      role,
+      employeeId: emp.id,
+      airName: undefined,
+      announcerNames: [],
+      photoUrl: undefined,
+      whatsapp: emp.wa,
+      active: true
+    });
+  }
+
+  return profiles;
+}
+
 export async function listUserProfiles(): Promise<AppUser[]> {
+  const { shouldUseLocalFallback } = await import("../lib/env");
+  const { announcers, employees } = await import("../data/radioData");
+
+  if (shouldUseLocalFallback()) {
+    return buildLocalProfiles(announcers, employees);
+  }
+
   const { listDocuments } = await import("./firestore.service");
   try {
-    // Gunakan array kosong untuk constraints agar tidak terpengaruh default orderBy("createdAt")
     const docs = await listDocuments<DocumentData>("users", []);
+
+    if (!docs || docs.length === 0) {
+      return buildLocalProfiles(announcers, employees);
+    }
+
     return docs.map((doc) => {
-      // Pastikan ID dokumen tetap terjaga
       const id = doc.id || "";
-      return normalizeUserProfile(id, { 
-        email: doc.email || "", 
-        displayName: doc.displayName || doc.name || "User",
-        whatsapp: doc.whatsapp || ""
-      }, doc);
+      return normalizeUserProfile(
+        id,
+        {
+          email: doc.email || "",
+          displayName: doc.displayName || doc.name || "User",
+          whatsapp: doc.whatsapp || ""
+        },
+        doc
+      );
     });
   } catch (err) {
     console.error("Gagal list profil user:", err);
-    return [];
+    return buildLocalProfiles(announcers, employees);
   }
 }
 
@@ -209,7 +298,7 @@ export async function syncSblStaff(): Promise<{ success: boolean; count: number;
 
   try {
     const { announcers, employees } = await import("../data/radioData");
-    const { upsertDocument } = await import("./firestore.service");
+    const { upsertDocument, queryDocuments, deleteDocument } = await import("./firestore.service");
     const usersToSync = new Map<string, any>();
 
     // 1. Kumpulkan Data Penyiar
@@ -269,12 +358,32 @@ export async function syncSblStaff(): Promise<{ success: boolean; count: number;
     // 3. Eksekusi Upsert ke Firestore
     console.log(`Memulai upload ${usersToSync.size} user ke Firestore...`);
     
-    const syncPromises = Array.from(usersToSync.entries()).map(async ([id, data]) => {
+    const syncPromises = Array.from(usersToSync.entries()).map(async ([waId, data]) => {
       try {
-        await upsertDocument("users", id, data);
+        let targetId = waId;
+        // Cari apakah staf ini sudah memiliki dokumen (misalnya sudah ada UID hasil login)
+        const existingUsers = await queryDocuments<DocumentData>("users", "whatsapp", "==", data.whatsapp);
+        
+        for (const existing of existingUsers) {
+           if (existing.id && !existing.id.startsWith("wa-")) {
+              targetId = existing.id; // Gunakan UID login yang sebenarnya
+              break;
+           } else if (existing.id === waId) {
+              targetId = waId; // Timpa dokumen lama
+           }
+        }
+
+        await upsertDocument("users", targetId, data);
         successCount++;
+
+        // Jika data berhasil di-upsert ke UID, pastikan dokumen 'wa-XXXX' lama dihapus jika masih ada (untuk menghindari duplikasi)
+        if (targetId !== waId) {
+            try {
+                await deleteDocument("users", waId);
+            } catch (e) {}
+        }
       } catch (err: any) {
-        console.error(`Gagal sinkron user ${id}:`, err);
+        console.error(`Gagal sinkron user ${waId}:`, err);
         failed.push(`${data.displayName} (${err.message})`);
       }
     });

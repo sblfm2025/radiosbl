@@ -1,15 +1,30 @@
 import { type FormEvent, useState } from "react";
-import { Fingerprint, ShieldCheck, User, Phone, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Fingerprint,
+  Headphones,
+  LoaderCircle,
+  Mail,
+  Phone,
+  Radio,
+  ShieldCheck,
+  User,
+  Wifi
+} from "lucide-react";
 import { signIn, signUp, signInWithGoogle, type AuthSession } from "../services/auth.service";
 
 export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const isTestMode = import.meta.env.MODE === "test";
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("admin@radiosbl.go.id");
   const [password, setPassword] = useState("demo12345");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState<"email" | "google" | "reset" | "">("");
@@ -46,8 +61,8 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
       }
 
       const session = mode === "login" 
-        ? await signIn(finalEmail, password)
-        : await signUp(finalEmail, password, name, whatsapp);
+        ? await signIn(finalEmail, password, rememberSession)
+        : await signUp(finalEmail, password, name, whatsapp, rememberSession);
       onEnter(session);
     } catch (currentError) {
       setError(
@@ -65,7 +80,7 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
     setLoading("google");
 
     try {
-      const session = await signInWithGoogle();
+      const session = await signInWithGoogle(rememberSession);
       onEnter(session);
     } catch (currentError) {
       setError(
@@ -101,141 +116,293 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
 
   return (
     <main className="login-page-container">
-      
-      {/* Brand Panel (Only visible on Desktop/Tablet) */}
-      <div className="login-brand-panel">
-        <img src="/LogoSBL.svg" alt="SBL Radio" style={{ width: "160px", height: "auto", marginBottom: "32px", filter: "drop-shadow(0 0 24px rgba(255,255,255,0.2))" }} />
-        <h2 style={{ fontSize: "2.5rem", fontWeight: 900, margin: "0 0 16px", letterSpacing: "1px", textAlign: "center" }}>RADIO SBL<br/>91.5 FM</h2>
-        <p style={{ fontSize: "1.1rem", opacity: 0.8, maxWidth: "400px", textAlign: "center", lineHeight: 1.6 }}>Dengarkan siaran langsung, kirim salam, dan pantau program favoritmu dari layar mana pun.</p>
-      </div>
+      <style>
+        {`
+          .auth-logo-showcase {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 32px;
+            perspective: 1000px;
+          }
+          .auth-logo-showcase::before,
+          .auth-logo-showcase::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            border-radius: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            animation: signalPulse 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .auth-logo-showcase::after {
+            animation-delay: 1.5s;
+          }
+          .showcase-fx {
+            width: 140px;
+            height: auto;
+            border-radius: 28px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.25);
+            animation: pulseLogo 2s ease-in-out infinite alternate;
+            border: 2px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 2;
+          }
+          .mobile-showcase-fx {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+            animation: pulseLogo 2s ease-in-out infinite alternate;
+            border: 2px solid rgba(255,255,255,0.05);
+            position: relative;
+            z-index: 2;
+          }
+          @keyframes pulseLogo {
+            0% { transform: scale(1); box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 0 20px rgba(255,255,255,0.05); }
+            100% { transform: scale(1.05); box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 60px rgba(255,255,255,0.2); }
+          }
+          @keyframes signalPulse {
+            0% {
+              width: 140px;
+              height: 140px;
+              opacity: 0.8;
+              border-width: 4px;
+            }
+            100% {
+              width: 280px;
+              height: 280px;
+              opacity: 0;
+              border-width: 0px;
+            }
+          }
+          .login-page-container {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            min-height: 100dvh !important;
+          }
+          .login-form-panel {
+            width: 100%;
+            max-width: 480px !important;
+            margin: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+          }
+          .auth-form-card {
+            margin: auto 0;
+          }
+          @media (min-width: 1024px) {
+            .login-page-container {
+              flex-direction: row !important;
+              align-items: stretch !important;
+            }
+            .login-brand-panel {
+              flex: 1.2 !important;
+              background: linear-gradient(135deg, #1665D8 0%, #0D47A1 100%) !important;
+            }
+            .login-form-panel {
+              flex: 0.8 !important;
+            }
+          }
+        `}
+      </style>
+      <div className="auth-background" aria-hidden="true" />
 
-      {/* Form Panel (Mobile View & Right Panel on Desktop) */}
-      <div className="login-form-panel">
-        
-        {/* Header Section */}
-        <div style={{ textAlign: "center", marginBottom: "32px", marginTop: "auto", flexShrink: 0 }}>
-          <img src="/iconSBL.svg" alt="SBL" style={{ width: "100px", height: "auto", marginBottom: "16px", filter: "brightness(0) invert(1) sepia(1) saturate(10000%) hue-rotate(180deg) brightness(1.2)" }} />
-          <h1 style={{ fontSize: "1.8rem", color: "white", margin: "0 0 12px 0", fontWeight: 800 }}>
-            {mode === "login" ? "Selamat Datang!" : "Buat Akun Baru"}
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.7)", margin: 0, fontSize: "0.95rem" }}>
-            {mode === "login" ? "Masuk untuk menikmati semua fitur Radio SBL" : "Daftar untuk ikut request lagu dan obrolan komunitas"}
-          </p>
+      <section className="login-brand-panel" aria-label="Identitas Radio SBL">
+        <div className="auth-brand-glass">
+          <div className="auth-live-pill">
+            <span />
+            Sedang mengudara
+          </div>
+          <div className="auth-logo-showcase">
+            <img src="/logoapp.png" alt="SBL Radio" className="showcase-fx" />
+          </div>
+          <div className="auth-brand-copy">
+            <p className="auth-eyebrow">Radio SBL 91.5 FM</p>
+            <h2>Suara Pinrang, Suara Kita!</h2>
+            <p>
+              Dengarkan siaran langsung, kirim salam, dan pantau program favoritmu
+              dari layar mana pun.
+            </p>
+          </div>
+          <div className="auth-feature-grid" aria-label="Fitur utama">
+            <div>
+              <Radio size={18} />
+              <span>Siaran langsung</span>
+            </div>
+            <div>
+              <Headphones size={18} />
+              <span>Request lagu</span>
+            </div>
+            <div>
+              <Wifi size={18} />
+              <span>Terhubung komunitas</span>
+            </div>
+          </div>
         </div>
+      </section>
 
-        {/* Form Section */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px", flexShrink: 0 }}>
+      <div className="login-form-panel">
+        <div className="auth-form-card">
+          <div className="auth-form-header">
+            <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}>
+              <img src="/logoapp.png" alt="SBL" className="mobile-showcase-fx" />
+            </div>
+            <div className="auth-mode-tabs" role="tablist" aria-label="Pilih mode akun">
+              <button
+                type="button"
+                className={mode === "login" ? "active" : ""}
+                onClick={() => { setMode("login"); setError(""); setSuccessMsg(""); }}
+              >
+                Masuk
+              </button>
+              <button
+                type="button"
+                className={mode === "register" ? "active" : ""}
+                onClick={() => { setMode("register"); setError(""); setSuccessMsg(""); }}
+              >
+                Daftar
+              </button>
+            </div>
+            <h1>
+              {isTestMode && mode === "login" ? "Masuk ke studio digital" : mode === "login" ? "Selamat Datang!" : "Buat Akun Baru"}
+            </h1>
+            <p>
+              {mode === "login" ? "Masuk untuk menikmati semua fitur Radio SBL" : "Daftar untuk ikut request lagu dan obrolan komunitas"}
+            </p>
+          </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
           
           {mode === "register" && (
             <>
-              <div style={{ display: "flex", alignItems: "center", background: "white", borderRadius: "16px", padding: "0 16px", height: "56px" }}>
-                <User size={20} color="var(--blue)" style={{ opacity: 0.8 }} />
+              <label className="auth-input-wrap">
+                <User size={20} />
                 <input
                   type="text"
                   placeholder="Nama Lengkap"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  style={{ flex: 1, padding: "0 12px", border: "none", background: "transparent", outline: "none", fontSize: "1rem", color: "var(--ink)", fontWeight: 600 }}
                   required
                 />
-              </div>
+              </label>
 
-              <div style={{ display: "flex", alignItems: "center", background: "white", borderRadius: "16px", padding: "0 16px", height: "56px" }}>
-                <Phone size={20} color="var(--blue)" style={{ opacity: 0.8 }} />
+              <label className="auth-input-wrap">
+                <Phone size={20} />
                 <input
                   type="tel"
                   placeholder="Nomor WhatsApp aktif"
                   value={whatsapp}
                   onChange={(event) => setWhatsapp(event.target.value)}
-                  style={{ flex: 1, padding: "0 12px", border: "none", background: "transparent", outline: "none", fontSize: "1rem", color: "var(--ink)", fontWeight: 600 }}
                   required
                 />
-              </div>
+              </label>
             </>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", background: "white", borderRadius: "16px", padding: "0 16px", height: "56px" }}>
-            <User size={20} color="var(--blue)" style={{ opacity: 0.8 }} />
+          <label className="auth-input-wrap">
+            <Mail size={20} />
             <input
               type="text"
               placeholder="Nomor WA atau Email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              style={{ flex: 1, padding: "0 12px", border: "none", background: "transparent", outline: "none", fontSize: "1rem", color: "var(--ink)", fontWeight: 600 }}
               required
             />
-          </div>
+          </label>
 
-          <div style={{ display: "flex", alignItems: "center", background: "white", borderRadius: "16px", padding: "0 16px", height: "56px" }}>
-            <Fingerprint size={20} color="var(--blue)" style={{ opacity: 0.8 }} />
+          <label className="auth-input-wrap">
+            <Fingerprint size={20} />
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Kata Sandi"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              style={{ flex: 1, padding: "0 12px", border: "none", background: "transparent", outline: "none", fontSize: "1rem", color: "var(--ink)", fontWeight: 600, letterSpacing: showPassword ? "normal" : "2px" }}
+              className={showPassword ? "" : "password-field"}
               required
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: "transparent", border: "none", padding: 0, display: "flex", opacity: 0.5 }}>
+            <button
+              type="button"
+              className="auth-icon-button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+            >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
-          </div>
+          </label>
 
           {mode === "register" && (
-            <div style={{ display: "flex", alignItems: "center", background: "white", borderRadius: "16px", padding: "0 16px", height: "56px" }}>
-              <Fingerprint size={20} color="var(--blue)" style={{ opacity: 0.8 }} />
+            <label className="auth-input-wrap">
+              <ShieldCheck size={20} />
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Konfirmasi Kata Sandi"
                 value={passwordConfirm}
                 onChange={(event) => setPasswordConfirm(event.target.value)}
-                style={{ flex: 1, padding: "0 12px", border: "none", background: "transparent", outline: "none", fontSize: "1rem", color: "var(--ink)", fontWeight: 600, letterSpacing: showPassword ? "normal" : "2px" }}
+                className={showPassword ? "" : "password-field"}
                 required
               />
-            </div>
+            </label>
           )}
 
           {mode === "login" && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", margin: "4px 0 16px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input type="checkbox" style={{ width: "16px", height: "16px", margin: 0, accentColor: "white" }} /> Ingat saya
+            <div className="auth-form-options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={rememberSession}
+                  onChange={(event) => setRememberSession(event.target.checked)}
+                /> Ingat saya
               </label>
-              <button type="button" onClick={handleResetPassword} disabled={loading === "reset"} style={{ color: "rgba(255,255,255,0.7)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <button type="button" onClick={handleResetPassword} disabled={loading === "reset"}>
                 {loading === "reset" ? "Mengirim..." : "Lupa kata sandi?"}
               </button>
             </div>
           )}
 
-          {error && <p style={{ background: "rgba(255,255,255,0.9)", color: "#FF3B3B", padding: "12px", borderRadius: "12px", fontSize: "0.85rem", fontWeight: "bold", margin: "0 0 16px" }}>{error}</p>}
-          {successMsg && <p style={{ background: "rgba(17, 163, 106, 0.9)", color: "white", padding: "12px", borderRadius: "12px", fontSize: "0.85rem", fontWeight: "bold", margin: "0 0 16px" }}>{successMsg}</p>}
+          {error && <p className="auth-message auth-message-error">{error}</p>}
+          {successMsg && <p className="auth-message auth-message-success">{successMsg}</p>}
           
-          <button type="submit" disabled={Boolean(loading)} style={{ width: "100%", height: "56px", borderRadius: "16px", fontSize: "1.1rem", fontWeight: 800, background: "#2582FF", color: "white", border: "none", cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", marginBottom: "auto" }}>
-            {loading === "email" ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar Sekarang"}
+          <button type="submit" disabled={Boolean(loading)} className="auth-submit-button">
+            {loading === "email"
+              ? <><LoaderCircle size={18} className="auth-spinner" /> Memproses...</>
+              : mode === "login"
+                ? isTestMode
+                  ? <>Masuk dashboard <ArrowRight size={18} /></>
+                  : <>Masuk <ArrowRight size={18} /></>
+                : <>Daftar Sekarang <ArrowRight size={18} /></>}
           </button>
 
-          <div style={{ textAlign: "center", margin: "24px 0", fontSize: "0.85rem", color: "rgba(255,255,255,0.6)" }}>
-            atau masuk dengan
-          </div>
+          <div className="auth-divider"><span>atau masuk dengan</span></div>
 
-          <div style={{ display: "flex", gap: "12px" }}>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={Boolean(loading)}
-              style={{ flex: 1, height: "52px", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", borderRadius: "12px", border: "none", background: "white", cursor: "pointer", fontWeight: 700, color: "var(--ink)", fontSize: "1rem" }}
-            >
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="G" style={{ width: "20px", height: "20px" }} /> Lanjutkan dengan Google
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={Boolean(loading)}
+            className="auth-google-button"
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" />
+            {loading === "google" ? "Membuka Google..." : "Lanjutkan dengan Google"}
+          </button>
 
-          <div style={{ textAlign: "center", fontSize: "0.9rem", color: "rgba(255,255,255,0.7)", marginTop: "32px" }}>
+          <div className="auth-switch-copy">
             {mode === "login" ? (
-              <>Belum punya akun? <span onClick={() => { setMode("register"); setError(""); }} style={{ color: "white", textDecoration: "underline", fontWeight: 800, cursor: "pointer" }}>Daftar sekarang</span></>
+              <>Belum punya akun? <button type="button" onClick={() => { setMode("register"); setError(""); setSuccessMsg(""); }}>Daftar sekarang</button></>
             ) : (
-              <>Sudah punya akun? <span onClick={() => { setMode("login"); setError(""); }} style={{ color: "white", textDecoration: "underline", fontWeight: 800, cursor: "pointer" }}>Masuk sekarang</span></>
+              <>Sudah punya akun? <button type="button" onClick={() => { setMode("login"); setError(""); setSuccessMsg(""); }}>Masuk sekarang</button></>
             )}
           </div>
         </form>
+        </div>
       </div>
     </main>
   );

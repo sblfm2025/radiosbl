@@ -7,6 +7,7 @@ export type AuthSession = {
 };
 
 const DEMO_SESSION_KEY = "sbl_demo_session";
+const DEMO_LOCAL_SESSION_KEY = "sbl_demo_local_session";
 
 const demoUser: AppUser = {
   id: "demo-admin",
@@ -17,7 +18,45 @@ const demoUser: AppUser = {
   active: true
 };
 
-export async function signIn(email: string, password: string): Promise<AuthSession> {
+function getDemoSessionStorage(rememberSession: boolean): Storage {
+  return rememberSession ? localStorage : sessionStorage;
+}
+
+function clearDemoSession(): void {
+  sessionStorage.removeItem(DEMO_SESSION_KEY);
+  localStorage.removeItem(DEMO_LOCAL_SESSION_KEY);
+}
+
+function saveDemoSession(session: AuthSession, rememberSession: boolean): void {
+  clearDemoSession();
+  getDemoSessionStorage(rememberSession).setItem(
+    rememberSession ? DEMO_LOCAL_SESSION_KEY : DEMO_SESSION_KEY,
+    JSON.stringify(session)
+  );
+}
+
+function readDemoSession(): AuthSession | null {
+  const cached =
+    sessionStorage.getItem(DEMO_SESSION_KEY) ??
+    localStorage.getItem(DEMO_LOCAL_SESSION_KEY);
+
+  if (!cached) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(cached) as AuthSession;
+  } catch {
+    clearDemoSession();
+    return null;
+  }
+}
+
+export async function signIn(
+  email: string,
+  password: string,
+  rememberSession = true
+): Promise<AuthSession> {
   if (!email || !password) {
     throw new Error("Email dan password wajib diisi.");
   }
@@ -27,7 +66,7 @@ export async function signIn(email: string, password: string): Promise<AuthSessi
       user: { ...demoUser, email },
       provider: "demo"
     };
-    sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
+    saveDemoSession(session, rememberSession);
     return session;
   }
 
@@ -35,7 +74,7 @@ export async function signIn(email: string, password: string): Promise<AuthSessi
     import("./firebaseAuth.service"),
     import("./userProfile.service")
   ]);
-  const firebaseUser = await loginWithEmail(email, password);
+  const firebaseUser = await loginWithEmail(email, password, rememberSession);
   
   // Ekstrak WhatsApp jika email berformat nomor@radiosbl.com
   let whatsappFallback = undefined;
@@ -59,7 +98,13 @@ export async function signIn(email: string, password: string): Promise<AuthSessi
   };
 }
 
-export async function signUp(email: string, password: string, name: string, whatsapp: string): Promise<AuthSession> {
+export async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  whatsapp: string,
+  rememberSession = true
+): Promise<AuthSession> {
   if (!email || !password || !name || !whatsapp) {
     throw new Error("Semua kolom (Nama, WhatsApp, Email, dan Password) wajib diisi.");
   }
@@ -69,7 +114,7 @@ export async function signUp(email: string, password: string, name: string, what
       user: { ...demoUser, email, displayName: name, role: "public", whatsapp },
       provider: "demo"
     };
-    sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
+    saveDemoSession(session, rememberSession);
     return session;
   }
 
@@ -78,7 +123,7 @@ export async function signUp(email: string, password: string, name: string, what
     import("./userProfile.service")
   ]);
   
-  const firebaseUser = await registerWithEmail(email, password, name);
+  const firebaseUser = await registerWithEmail(email, password, name, rememberSession);
   
   // Create initial profile in Firestore database for access control
   await upsertUserProfile(firebaseUser.uid, {
@@ -102,13 +147,13 @@ export async function signUp(email: string, password: string, name: string, what
   };
 }
 
-export async function signInWithGoogle(): Promise<AuthSession> {
+export async function signInWithGoogle(rememberSession = true): Promise<AuthSession> {
   if (!hasFirebaseConfig()) {
     const session: AuthSession = {
       user: { ...demoUser, displayName: "Admin Radio SBL" },
       provider: "demo"
     };
-    sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
+    saveDemoSession(session, rememberSession);
     return session;
   }
 
@@ -116,7 +161,7 @@ export async function signInWithGoogle(): Promise<AuthSession> {
     import("./firebaseAuth.service"),
     import("./userProfile.service")
   ]);
-  const firebaseUser = await loginWithGoogle();
+  const firebaseUser = await loginWithGoogle(rememberSession);
   const user = await getUserProfile(firebaseUser.uid, {
     email: firebaseUser.email ?? "google-user@radiosbl.go.id",
     displayName: firebaseUser.displayName ?? "Pengguna Google Radio SBL",
@@ -131,7 +176,7 @@ export async function signInWithGoogle(): Promise<AuthSession> {
 
 export async function signOut(provider: AuthSession["provider"]): Promise<void> {
   if (provider === "demo") {
-    sessionStorage.removeItem(DEMO_SESSION_KEY);
+    clearDemoSession();
     return;
   }
   if (provider === "firebase") {
@@ -144,16 +189,7 @@ export function subscribeToSession(
   onSession: (session: AuthSession | null) => void
 ): () => void {
   if (!hasFirebaseConfig()) {
-    const cached = sessionStorage.getItem(DEMO_SESSION_KEY);
-    if (cached) {
-      try {
-        onSession(JSON.parse(cached));
-      } catch {
-        onSession(null);
-      }
-    } else {
-      onSession(null);
-    }
+    onSession(readDemoSession());
     return () => {};
   }
 
@@ -188,14 +224,14 @@ export function subscribeToSession(
 
 export async function updateUserProfile(uid: string, payload: Partial<AppUser>): Promise<void> {
   if (!hasFirebaseConfig()) {
-    const cached = sessionStorage.getItem(DEMO_SESSION_KEY);
+    const cached = readDemoSession();
     if (cached) {
-      const session = JSON.parse(cached) as AuthSession;
       const newSession: AuthSession = {
-        ...session,
-        user: { ...session.user, ...payload }
+        ...cached,
+        user: { ...cached.user, ...payload }
       };
-      sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(newSession));
+      const rememberSession = localStorage.getItem(DEMO_LOCAL_SESSION_KEY) !== null;
+      saveDemoSession(newSession, rememberSession);
     }
     return;
   }

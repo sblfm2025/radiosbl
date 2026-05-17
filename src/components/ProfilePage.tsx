@@ -43,7 +43,12 @@ function statusLabel(status: AttendanceStatus): string {
   const labels: Record<AttendanceStatus, string> = {
     present: "Tepat Lokasi",
     outside_radius: "Luar Radius",
-    late: "Terlambat"
+    late: "Terlambat",
+    valid: "Tervalidasi",
+    needs_review: "Perlu Review",
+    rejected: "Ditolak",
+    sick: "Sakit",
+    leave: "Izin"
   };
   return labels[status];
 }
@@ -124,7 +129,12 @@ function statusColor(status: AttendanceStatus) {
   const colors: Record<AttendanceStatus, { bg: string; text: string; icon: string }> = {
     present: { bg: "rgba(17,163,106,0.1)", text: "#059669", icon: "#11a36a" },
     outside_radius: { bg: "rgba(245,158,11,0.12)", text: "#b45309", icon: "#f59e0b" },
-    late: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", icon: "#ef4444" }
+    late: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", icon: "#ef4444" },
+    valid: { bg: "rgba(17,163,106,0.1)", text: "#059669", icon: "#11a36a" },
+    needs_review: { bg: "rgba(245,158,11,0.12)", text: "#b45309", icon: "#f59e0b" },
+    rejected: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", icon: "#ef4444" },
+    sick: { bg: "rgba(2,132,199,0.1)", text: "#0284c7", icon: "#0284c7" },
+    leave: { bg: "rgba(126,34,206,0.1)", text: "#7e22ce", icon: "#7e22ce" }
   };
   return colors[status];
 }

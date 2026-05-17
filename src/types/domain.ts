@@ -50,7 +50,7 @@ export type DriveFile = {
   createdAt: TimestampLike;
 };
 
-export type AttendanceStatus = "present" | "late" | "outside_radius";
+export type AttendanceStatus = "present" | "late" | "outside_radius" | "valid" | "needs_review" | "rejected" | "sick" | "leave";
 
 export type AttendanceRecord = {
   id: string;
@@ -59,8 +59,15 @@ export type AttendanceRecord = {
   airName?: string;
   checkInAt: TimestampLike;
   checkOutAt?: TimestampLike;
+  clientTime?: string;
   latitude: number;
   longitude: number;
+  accuracyMeters?: number;
+  distanceToCenter?: number;
+  userAgent?: string;
+  confidenceScore?: number;
+  aiVerificationText?: string;
+  outOfOfficeReason?: string;
   selfieDriveFileId: string;
   status: AttendanceStatus;
 };

@@ -250,15 +250,22 @@ service cloud.firestore {
         'airName',
         'checkInAt',
         'checkOutAt',
+        'clientTime',
         'latitude',
         'longitude',
+        'accuracyMeters',
+        'distanceToCenter',
+        'userAgent',
+        'confidenceScore',
+        'aiVerificationText',
+        'outOfOfficeReason',
         'selfieDriveFileId',
         'status',
         'createdAt',
         'updatedAt'
       ])
       && hasAll(['userId', 'checkInAt', 'latitude', 'longitude', 'selfieDriveFileId', 'status'])
-      && validStatus(request.resource.data.status, ['present', 'late', 'outside_radius']);
+      && validStatus(request.resource.data.status, ['present', 'late', 'outside_radius', 'sick', 'leave', 'needs_review', 'rejected', 'valid']);
     }
 
     function validSwapPayload() {
@@ -402,9 +409,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAdmin()
-        || isOwner(userId)
-        || (signedIn() && resource.data.email == request.auth.token.email);
+      allow read: if signedIn();
       allow create: if (isAdmin() && validUserPayload())
         || isSelfPublicCreate(userId)
         || isSelfStaffClaim(userId);
@@ -459,13 +464,14 @@ service cloud.firestore {
 
     match /customScheduleSlots/{slotId} {
       allow read: if signedIn();
-      allow create, update: if canManageSchedule() && validCustomScheduleSlotPayload();
+      allow create, update: if (canManageSchedule() || isRole(['announcer'])) && validCustomScheduleSlotPayload();
       allow delete: if isAdmin();
     }
 
     match /schedule_swaps/{requestId} {
       allow read: if isLeader()
         || isOwner(resource.data.requesterId)
+        || isOwner(resource.data.targetAnnouncerId)
         || ownsAnnouncer(resource.data.targetAnnouncerId);
       allow create: if isOwner(request.resource.data.requesterId)
         && validSwapPayload()
@@ -474,11 +480,11 @@ service cloud.firestore {
         && (
           isLeader()
           || (
-            ownsAnnouncer(resource.data.targetAnnouncerId)
+            (isOwner(resource.data.targetAnnouncerId) || ownsAnnouncer(resource.data.targetAnnouncerId))
             && request.resource.data.requesterId == resource.data.requesterId
             && request.resource.data.targetAnnouncerId == resource.data.targetAnnouncerId
             && changedOnly(['status', 'updatedAt'])
-            && request.resource.data.status in ['pending_admin', 'rejected']
+            && request.resource.data.status in ['approved', 'rejected']
           )
         );
       allow delete: if isAdmin();

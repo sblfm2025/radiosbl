@@ -20,6 +20,13 @@ function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function toTitleCase(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
 function splitPicText(value: string): string[] {
   return value
     .split(/\s*(?:\/|&|,)\s*/g)
@@ -60,11 +67,14 @@ export function resolveAnnouncerText(value: string): ResolvedAnnouncerPart[] {
 
 export function formatAnnouncerDisplay(value: string): string {
   return resolveAnnouncerText(value)
-    .map((part) =>
-      part.kind === "announcer"
-        ? `${part.profile.airName} (${part.profile.fullName})`
-        : part.label
-    )
+    .map((part) => {
+      if (part.kind !== "announcer") return part.label;
+
+      const airName = toTitleCase(part.profile.airName);
+      const fullName = toTitleCase(part.profile.fullName);
+
+      return `${airName} (${fullName})`;
+    })
     .join(" / ");
 }
 

@@ -11,6 +11,17 @@ import type { BroadcastProgramSlot } from "../types/domain";
 import { weeklyBroadcastSchedule as fallbackSchedule } from "../data/radioData";
 
 const COLLECTION_NAME = "weekly_schedule_slots";
+let hasReportedScheduleFallback = false;
+
+function isPermissionError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const maybeError = err as { code?: unknown; message?: unknown };
+  return (
+    maybeError.code === "permission-denied" ||
+    (typeof maybeError.message === "string" &&
+      maybeError.message.toLowerCase().includes("missing or insufficient permissions"))
+  );
+}
 
 /**
  * Mengambil jadwal mingguan dari Firestore.
@@ -25,7 +36,10 @@ export async function getWeeklySchedule(): Promise<BroadcastProgramSlot[]> {
 
     return snap.docs.map(doc => doc.data() as BroadcastProgramSlot);
   } catch (err) {
-    console.error("Gagal mengambil jadwal:", err);
+    if (!isPermissionError(err) && !hasReportedScheduleFallback) {
+      console.warn("Jadwal Firestore belum tersedia. Menggunakan jadwal lokal.", err);
+      hasReportedScheduleFallback = true;
+    }
     return fallbackSchedule;
   }
 }

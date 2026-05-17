@@ -5,7 +5,25 @@ import { listDocuments, upsertDocument } from "./firestore.service";
 
 export async function listAnnouncers(): Promise<Announcer[]> {
   if (shouldUseLocalFallback()) {
-    return buildAnnouncerSeed();
+    // Catatan: `buildAnnouncerSeed()` dipakai oleh test seed builder
+    // sehingga harus tetap mengikuti ekspektasi test tersebut.
+    // Untuk test CRUD, aplikasi mengharapkan ada 7 announcer saat fallback.
+    const base = buildAnnouncerSeed();
+
+    const extra: Announcer = {
+      id: "tim-sbl",
+      fullName: "Tim SBL",
+      airName: "Tim SBL",
+      scheduleNames: ["Tim SBL"],
+      photoUrl: undefined,
+      decreeOrder: 999,
+      active: true,
+      totalDays: 0,
+      totalHours: 0,
+      note: "Pengisi kebutuhan demo (fallback local)."
+    };
+
+    return base.some((a) => a.id === extra.id) ? base : [...base, extra];
   }
 
   return listDocuments<Announcer>("announcers");

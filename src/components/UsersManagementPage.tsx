@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
-import { Users, Shield, CheckCircle, XCircle, Search, Save, RefreshCcw } from "lucide-react";
+import { useState, useEffect, type FormEvent } from "react";
+import { Users, Shield, CheckCircle, XCircle, Search, Save, RefreshCcw, KeyRound } from "lucide-react";
 import { listUserProfiles, upsertUserProfile, syncSblStaff } from "../services/userProfile.service";
 import { getRoleLabel } from "../utils/rbac";
 import type { AppUser, UserRole } from "../types/domain";
+import { getFirebaseAuth } from "../lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 const AVAILABLE_ROLES: UserRole[] = [
   "super_admin",
@@ -20,8 +22,13 @@ export function UsersManagementPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [editUserForm, setEditUserForm] = useState<Partial<AppUser>>({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
   const [message, setMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [resettingPwd, setResettingPwd] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -68,6 +75,78 @@ export function UsersManagementPage() {
     }
   }
 
+  function openEditProfile(user: AppUser) {
+    setEditingUser(user);
+    setEditError("");
+    setEditUserForm({
+      displayName: user.displayName,
+      email: user.email,
+      photoUrl: user.photoUrl,
+      airName: user.airName,
+      whatsapp: user.whatsapp
+    });
+  }
+
+  function closeEditProfile() {
+    setEditingUser(null);
+    setEditUserForm({});
+    setEditSaving(false);
+    setEditError("");
+  }
+
+  function handleEditFormChange(field: keyof Partial<AppUser>, value: string) {
+    setEditUserForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSendResetPassword() {
+    if (!editingUser || !editingUser.email) return;
+    if (!confirm(`Kirim tautan reset kata sandi ke ${editingUser.email}?`)) return;
+    setResettingPwd(true);
+    setEditError("");
+    try {
+      const auth = getFirebaseAuth();
+      await sendPasswordResetEmail(auth, editingUser.email);
+      setMessage(`Tautan reset sandi terkirim ke email: ${editingUser.email}`);
+      setTimeout(() => setMessage(""), 5000);
+    } catch (err: unknown) {
+      setEditError("Gagal mengirim email: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setResettingPwd(false);
+    }
+  }
+
+  async function handleSaveUserProfile(e: FormEvent) {
+    e.preventDefault();
+    if (!editingUser) return;
+    setEditSaving(true);
+    setEditError("");
+
+    try {
+      const payload: Partial<AppUser> = {
+        displayName: editUserForm.displayName?.trim() || editingUser.displayName,
+        email: editUserForm.email?.trim() || editingUser.email,
+        photoUrl: editUserForm.photoUrl?.trim() || editingUser.photoUrl,
+        airName: editUserForm.airName?.trim() || editingUser.airName,
+        whatsapp: editUserForm.whatsapp?.trim() || editingUser.whatsapp
+      };
+
+      await upsertUserProfile(editingUser.id, payload);
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === editingUser.id ? { ...user, ...payload } : user
+        )
+      );
+      setMessage("Profil user berhasil diperbarui.");
+      setTimeout(() => setMessage(""), 3000);
+      closeEditProfile();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal menyimpan profil.";
+      setEditError(message);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   async function handleSyncStaff() {
     if (!confirm("Sinkronkan daftar 15 personil SBL ke database?")) return;
     setSyncing(true);
@@ -98,7 +177,7 @@ export function UsersManagementPage() {
   return (
     <div className="users-management-page" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh" }}>
       <header style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "14px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
               <Users size={28} color="var(--blue)" />
@@ -145,7 +224,7 @@ export function UsersManagementPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                  <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 600 }}>User</th>
+                  <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 600 }}>User (Google / Terdaftar)</th>
                   <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 600 }}>Role / Hak Akses</th>
                   <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 600 }}>Status</th>
                   <th style={{ padding: "12px", color: "var(--muted)", fontWeight: 600 }}>Aksi</th>
@@ -162,8 +241,14 @@ export function UsersManagementPage() {
                           style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover", background: "#f1f3f5" }} 
                         />
                         <div>
-                          <div style={{ fontWeight: "bold", color: "var(--ink)" }}>{user.displayName}</div>
+                          <div style={{ fontWeight: "bold", color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}>
+                            {user.displayName}
+                            {user.photoUrl?.includes('googleusercontent') && (
+                              <span style={{ fontSize: "0.6rem", background: "rgba(22, 119, 237, 0.1)", color: "var(--blue)", padding: "2px 6px", borderRadius: "8px" }}>Google</span>
+                            )}
+                          </div>
                           <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>{user.email}</div>
+                          {user.whatsapp && <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "2px" }}>HP: {user.whatsapp}</div>}
                         </div>
                       </div>
                     </td>
@@ -185,8 +270,16 @@ export function UsersManagementPage() {
                         {user.active ? "Aktif" : "Nonaktif"}
                       </div>
                     </td>
-                    <td style={{ padding: "16px 12px" }}>
+                    <td style={{ padding: "16px 12px", display: "grid", gap: "8px" }}>
+                      <button
+                        type="button"
+                        onClick={() => openEditProfile(user)}
+                        style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(22, 119, 237, 0.16)", background: "white", color: "var(--blue)", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer" }}
+                      >
+                        Edit Profil
+                      </button>
                       <button 
+                        type="button"
                         onClick={() => toggleStatus(user)}
                         disabled={updatingId === user.id}
                         style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: user.active ? "#fff0f0" : "#e7f5ef", color: user.active ? "#FF3B3B" : "#11a36a", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer" }}
@@ -198,6 +291,92 @@ export function UsersManagementPage() {
                 ))}
               </tbody>
             </table>
+            {editingUser && (
+              <div className="schedule-modal-backdrop" role="dialog" aria-modal="true">
+                <div className="schedule-modal">
+                  <div className="schedule-modal-head">
+                    <div>
+                      <h3>Edit Profil & Keamanan</h3>
+                      <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.95rem" }}>
+                        Perbarui kontak untuk {editingUser.displayName}.
+                      </p>
+                    </div>
+                    <button type="button" onClick={closeEditProfile} aria-label="Tutup modal">
+                      ×
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveUserProfile} className="schedule-modal-form">
+                    <label>
+                      Nama Lengkap
+                      <input
+                        type="text"
+                        value={editUserForm.displayName ?? ""}
+                        onChange={(e) => handleEditFormChange("displayName", e.target.value)}
+                        placeholder="Nama lengkap"
+                      />
+                    </label>
+                    <label>
+                      Email (Kontak Database)
+                      <input
+                        type="email"
+                        value={editUserForm.email ?? ""}
+                        onChange={(e) => handleEditFormChange("email", e.target.value)}
+                        placeholder="Email"
+                      />
+                    </label>
+                    <label>
+                      WhatsApp / No HP
+                      <input
+                        type="text"
+                        value={editUserForm.whatsapp ?? ""}
+                        onChange={(e) => handleEditFormChange("whatsapp", e.target.value)}
+                        placeholder="08xx..."
+                      />
+                    </label>
+                    <label>
+                      Nama Penyiar / Air Name
+                      <input
+                        type="text"
+                        value={editUserForm.airName ?? ""}
+                        onChange={(e) => handleEditFormChange("airName", e.target.value)}
+                        placeholder="Kosongkan jika bukan penyiar"
+                      />
+                    </label>
+
+                    <div style={{ padding: "12px", background: "rgba(245,180,0,0.08)", borderRadius: "12px", border: "1px solid rgba(245,180,0,0.2)", marginBottom: "16px", marginTop: "4px", fontSize: "0.85rem", color: "var(--ink)", lineHeight: 1.4 }}>
+                      <strong>Penting:</strong> Untuk pengguna <strong>SSO (Masuk dengan Google)</strong>, kata sandi dan email akses tidak bisa dikelola dari sini.
+                      Email yang Anda ubah di atas hanya sekadar mengganti data kontak di buku tamu aplikasi, <u>bukan alamat login-nya</u>.
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <button 
+                        type="button" 
+                        onClick={handleSendResetPassword}
+                        disabled={resettingPwd}
+                        style={{ display: "flex", alignItems: "center", gap: "6px", background: "transparent", color: "var(--coral)", border: "none", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer", padding: "6px 0" }}
+                      >
+                        <KeyRound size={16} /> {resettingPwd ? "Mengirim..." : "Kirim Link Ganti Password"}
+                      </button>
+                    </div>
+
+                    {editError && (
+                      <div style={{ color: "#d92d20", marginBottom: "14px", fontSize: "0.95rem" }}>
+                        {editError}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
+                      <button type="button" onClick={closeEditProfile} style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.08)", background: "white", color: "var(--ink)", cursor: "pointer" }}>
+                        Tutup
+                      </button>
+                      <button type="submit" disabled={editSaving} style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", fontWeight: 700, cursor: "pointer" }}>
+                        {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
             {filteredUsers.length === 0 && (
               <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)" }}>
                 User tidak ditemukan.

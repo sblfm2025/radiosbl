@@ -3,7 +3,7 @@ import type { PageKey } from "../data/radioData";
 export function SplashPage({ onNavigate }: { onNavigate: (page: PageKey) => void }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      onNavigate("onboarding");
+      onNavigate("login");
     }, 1200);
 
     return () => clearTimeout(timer);
@@ -11,34 +11,39 @@ export function SplashPage({ onNavigate }: { onNavigate: (page: PageKey) => void
 
   return (
     <main className="splash-page-container">
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, zIndex: 1 }}>
-        <img 
-          src="/LogoSBL.svg" 
-          alt="SBL Radio" 
-          className="splash-logo"
-          style={{ animation: "pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite" }}
-        />
-        <h1 style={{ color: "white", fontSize: "2rem", fontWeight: 900, margin: "0 0 4px", letterSpacing: "1px" }}>RADIO SBL</h1>
-        <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "1.1rem", fontWeight: 600, margin: "0 0 32px", letterSpacing: "1px", textTransform: "uppercase", textAlign: "center" }}>Suara Pinrang, Suara Kita!</p>
-        
-        {/* Radio Equalizer Loading Animation */}
-        <div style={{ display: "flex", gap: "4px", alignItems: "center", height: "30px" }}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div 
-              key={i} 
-              style={{ 
-                width: "4px", 
-                background: i === 3 ? "#D1FF00" : "white", 
-                borderRadius: "2px", 
-                animation: `eq 1s infinite ease-in-out alternate`,
-                animationDelay: `${i * 0.15}s`,
-                boxShadow: i === 3 ? "0 0 8px rgba(209, 255, 0, 0.6)" : "none"
-              }} 
-            />
-          ))}
+      <div className="splash-ambient" aria-hidden="true" />
+      <div className="splash-page-content">
+        <div className="splash-station-panel" aria-hidden="true">
+          <span className="splash-frequency">92.4 FM</span>
+          <div className="splash-wave-lines">
+            {Array.from({ length: 18 }).map((_, index) => (
+              <span key={index} style={{ animationDelay: `${index * 0.05}s` }} />
+            ))}
+          </div>
+        </div>
+        <div className="splash-card">
+          <span className="splash-live-chip">On Air</span>
+          <img
+            src="/LogoSBL.svg"
+            alt="SBL Radio"
+            className="splash-logo"
+          />
+          <h1>RADIO SBL</h1>
+          <p>Suara Pinrang, Suara Kita!</p>
+          <div className="splash-eq">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="splash-eq-bar"
+                style={{
+                  background: i === 3 ? "#D1FF00" : "white",
+                  animationDelay: `${i * 0.15}s`
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
-      
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 20px rgba(255,255,255,0.4)); }

@@ -1,5 +1,6 @@
 import {
   browserLocalPersistence,
+  browserSessionPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
@@ -13,16 +14,29 @@ import {
 } from "firebase/auth";
 import { getFirebaseAuth } from "../lib/firebase";
 
-export async function loginWithEmail(email: string, password: string): Promise<User> {
+function getAuthErrorCode(error: unknown): string {
+  return typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+    ? error.code
+    : "";
+}
+
+export async function loginWithEmail(
+  email: string,
+  password: string,
+  rememberSession = true
+): Promise<User> {
   const auth = getFirebaseAuth();
-  await setPersistence(auth, browserLocalPersistence);
+  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
   const cleanEmail = email.trim().toLowerCase();
 
   try {
     const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
     return credential.user;
-  } catch (error: any) {
-    const errorCode = error.code || "";
+  } catch (error) {
+    const errorCode = getAuthErrorCode(error);
     
     // Logika Auto-Onboarding untuk staf SBL
     if (
@@ -32,17 +46,26 @@ export async function loginWithEmail(email: string, password: string): Promise<U
       try {
         console.log("Pendaftaran otomatis staf SBL...");
         const name = cleanEmail.split("@")[0].toUpperCase();
-        return await registerWithEmail(cleanEmail, password, name);
+        return await registerWithEmail(cleanEmail, password, name, rememberSession);
       } catch (regError) {
-        throw error;
+        if (getAuthErrorCode(regError).includes("email-already-in-use")) {
+          throw error; // Kembalikan error asli invalid-credential
+        }
+        throw regError;
       }
     }
     throw error;
   }
 }
 
-export async function registerWithEmail(email: string, password: string, displayName: string): Promise<User> {
+export async function registerWithEmail(
+  email: string,
+  password: string,
+  displayName: string,
+  rememberSession = true
+): Promise<User> {
   const auth = getFirebaseAuth();
+  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   if (credential.user) {
     await updateProfile(credential.user, { displayName });
@@ -50,13 +73,13 @@ export async function registerWithEmail(email: string, password: string, display
   return credential.user;
 }
 
-export async function loginWithGoogle(): Promise<User> {
+export async function loginWithGoogle(rememberSession = true): Promise<User> {
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({
     prompt: "select_account"
   });
-  await setPersistence(auth, browserLocalPersistence);
+  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
   const credential = await signInWithPopup(auth, provider);
   return credential.user;
 }

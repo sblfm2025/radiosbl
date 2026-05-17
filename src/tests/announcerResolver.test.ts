@@ -10,7 +10,6 @@ describe("announcer resolver", () => {
   it("finds official profiles from air names", () => {
     expect(findAnnouncerProfile("Miah")?.fullName).toBe("Salmiah");
     expect(findAnnouncerProfile("Ria")?.fullName).toBe("St. Rukiah");
-    expect(findAnnouncerProfile("Hendra")?.fullName).toBe("Muhammad Chendra Burhan");
   });
 
   it("splits combined announcers and external partners", () => {
@@ -34,12 +33,6 @@ describe("announcer resolver", () => {
       slotCount: 5,
       totalHours: 10,
       days: ["Senin", "Selasa", "Rabu", "Sabtu", "Minggu"]
-    });
-
-    expect(getAnnouncerWorkload("Hendra")).toMatchObject({
-      slotCount: 0,
-      totalHours: 0,
-      days: []
     });
   });
 });

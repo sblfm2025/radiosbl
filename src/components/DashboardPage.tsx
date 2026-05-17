@@ -17,13 +17,15 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
-import { type BroadcastProgramSlot, type PageKey, weeklyBroadcastSchedule } from "../data/radioData";
+import { dailyInsertPrograms, getProgramInfo, type BroadcastProgramSlot, type PageKey, weeklyBroadcastSchedule } from "../data/radioData";
 import type { AuthSession } from "../services/auth.service";
 import { useEffect, useState, useMemo } from "react";
+import type { CSSProperties } from "react";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import type { AttendanceRecord, Permission } from "../types/domain";
 import { canUser, getRoleLabel } from "../utils/rbac";
 import { mergeScheduleSlotsRemote } from "../services/scheduleSlot.service";
+import { getIndonesianDay, parseTimeRangeMinutes } from "../utils/scheduleClock";
 
 const featuredPodcastEpisodes = [
   {
@@ -37,6 +39,54 @@ const featuredPodcastEpisodes = [
     image: "https://image-cdn-ak.spotifycdn.com/image/ab67656300005f1f8d8eab9e6c1793afef3838b7"
   }
 ];
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + days);
+  return nextDate;
+}
+
+function findNextBroadcastProgram(
+  now: Date,
+  mainSlots: BroadcastProgramSlot[]
+): BroadcastProgramSlot | undefined {
+  const currentAbsoluteMinutes = now.getTime() / 60000;
+  const candidates: Array<BroadcastProgramSlot & { absoluteStart: number }> = [];
+
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const date = addDays(now, offset);
+    const day = getIndonesianDay(date);
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayStartMinutes = dayStart.getTime() / 60000;
+
+    mainSlots
+      .filter((slot) => slot.day === day)
+      .forEach((slot) => {
+        const { start } = parseTimeRangeMinutes(slot.time);
+        candidates.push({
+          ...slot,
+          absoluteStart: dayStartMinutes + start
+        });
+      });
+
+    dailyInsertPrograms.forEach((slot) => {
+      const { start } = parseTimeRangeMinutes(slot.time);
+      candidates.push({
+        day,
+        time: slot.time,
+        program: slot.program,
+        description: slot.description,
+        announcer: slot.pic,
+        absoluteStart: dayStartMinutes + start
+      });
+    });
+  }
+
+  return candidates
+    .filter((slot) => slot.absoluteStart > currentAbsoluteMinutes + 0.01)
+    .sort((a, b) => a.absoluteStart - b.absoluteStart)[0];
+}
 
 type DashboardMenuItem = {
   key: PageKey;
@@ -60,6 +110,7 @@ export function DashboardPage({
   attendanceRecords: AttendanceRecord[] 
 }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [showAllMenu, setShowAllMenu] = useState(false);
   const [scheduleSlots, setScheduleSlots] = useState<BroadcastProgramSlot[]>(weeklyBroadcastSchedule);
   const currentSlot = useCurrentBroadcastSlot();
   
@@ -80,19 +131,11 @@ export function DashboardPage({
   }, []);
 
   const nextSlot = useMemo(() => {
-    const now = new Date();
-    const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-    const todayName = dayNames[now.getDay()];
-    
-    const todaySlots = scheduleSlots.filter(s => s.day === todayName);
-    const currentIndex = todaySlots.findIndex(s => s.time === currentSlot.time);
-    
-    if (currentIndex !== -1 && currentIndex < todaySlots.length - 1) {
-      return todaySlots[currentIndex + 1];
+    if (!currentSlot.time) {
+      return undefined;
     }
-    
-    const tomorrowName = dayNames[(now.getDay() + 1) % 7];
-    return scheduleSlots.find(s => s.day === tomorrowName);
+
+    return findNextBroadcastProgram(new Date(), scheduleSlots);
   }, [currentSlot.time, scheduleSlots]);
 
   const displayAnnouncer = useMemo(() => {
@@ -100,31 +143,35 @@ export function DashboardPage({
     return onAirAnnouncer;
   }, [attendanceRecords, onAirAnnouncer]);
   const hasTrackCoverArt = Boolean(metadata.albumArtUrl && !metadata.albumArtUrl.includes("LogoSBL"));
+  const nextProgramInfo = nextSlot ? getProgramInfo(nextSlot.program) : null;
 
   const menuItems = useMemo(() => {
     const baseItems: DashboardMenuItem[] = [
-      { key: "schedule", label: "Jadwal", icon: CalendarClock, color: "#1665D8", requiredPermission: "schedule:read" },
-      { key: "streaming", label: "Streaming", icon: Radio, color: "#1665D8", requiredPermission: "dashboard:read" },
-      { key: "podcast", label: "Podcast", icon: Headphones, color: "#1665D8", requiredPermission: "dashboard:read" },
-      { key: "requests", label: "Request", icon: Headphones, color: "#1665D8", requiredPermission: "complaints:submit" },
-      { key: "attendance", label: "Absensi", icon: ClipboardCheck, color: "#1665D8", requiredPermission: "attendance:self" },
-      { key: "scheduleSwap", label: "Tukar Jadwal", icon: CalendarClock, color: "#1665D8", requiredPermission: "schedule:swap" },
-      { key: "aiScript", label: "Naskah AI", icon: Sparkles, color: "#1665D8", requiredPermission: "ai:use" },
-      { key: "liveOb", label: "Live OB", icon: Radio, color: "#1665D8", requiredPermission: "live_ob:manage" },
-      { key: "coverage", label: "Event", icon: FileText, color: "#1665D8", requiredPermission: "coverage:manage" },
-      { key: "announcers", label: "Penyiar", icon: Users, color: "#1665D8", requiredPermission: "schedule:read" },
-      { key: "complaints", label: "Aduan", icon: Bell, color: "#1665D8", requiredPermission: "complaints:submit" }
+      { key: "schedule", label: "Jadwal", icon: CalendarClock, color: "#0B6ED0", requiredPermission: "schedule:read" },
+      { key: "streaming", label: "Streaming", icon: Radio, color: "#00A0A8", requiredPermission: "dashboard:read" },
+      { key: "podcast", label: "Podcast", icon: Headphones, color: "#7C3AED", requiredPermission: "dashboard:read" },
+      { key: "requests", label: "Request", icon: Headphones, color: "#F97316", requiredPermission: "complaints:submit" },
+      { key: "attendance", label: "Absensi", icon: ClipboardCheck, color: "#16A34A", requiredPermission: "attendance:self" },
+      { key: "scheduleSwap", label: "Tukar Jadwal", icon: CalendarClock, color: "#D97706", requiredPermission: "schedule:swap" },
+      { key: "aiScript", label: "Naskah AI", icon: Sparkles, color: "#DB2777", requiredPermission: "ai:use" },
+      { key: "liveOb", label: "Live OB", icon: Radio, color: "#E11D48", requiredPermission: "live_ob:manage" },
+      { key: "coverage", label: "Event", icon: FileText, color: "#2563EB", requiredPermission: "coverage:manage" },
+      { key: "announcers", label: "Penyiar", icon: Users, color: "#0891B2", requiredPermission: "schedule:read" },
+      { key: "complaints", label: "Aduan", icon: Bell, color: "#475569", requiredPermission: "complaints:submit" }
     ];
 
     if (session.user.role === "super_admin" || session.user.role === "admin") {
       baseItems.push(
-        { key: "users", label: "Kelola User", icon: Users, color: "#1665D8", requiredPermission: "users:manage" },
-        { key: "attendanceReport", label: "Rekap Absen", icon: FileText, color: "#1665D8", requiredPermission: "users:manage" }
+        { key: "users", label: "Kelola User", icon: Users, color: "#4F46E5", requiredPermission: "users:manage" },
+        { key: "attendanceReport", label: "Rekap Absen", icon: FileText, color: "#0F766E", requiredPermission: "users:manage" }
       );
     }
 
     return baseItems.filter((item) => canUser(session.user.role, item.requiredPermission));
   }, [session.user.role]);
+
+  const visibleMenuItems = showAllMenu ? menuItems : menuItems.slice(0, 8);
+  const hasMoreMenu = menuItems.length > 8;
 
   return (
     <div style={{ paddingBottom: "100px", background: "#f8f9fc", minHeight: "100vh" }}>
@@ -157,8 +204,8 @@ export function DashboardPage({
         </div>
         <button
           type="button"
-          aria-label="Buka notifikasi"
-          onClick={() => onNavigate("requests")}
+          aria-label="Buka notifikasi pertukaran jadwal"
+          onClick={() => onNavigate("scheduleSwap")}
           style={{ background: "transparent", border: "none", color: "var(--ink)", cursor: "pointer" }}
         >
           <Bell size={24} />
@@ -166,7 +213,9 @@ export function DashboardPage({
       </div>
 
       <div style={{ padding: "0 24px" }}>
-        <div style={{ 
+        <div
+          className={`dashboard-radio-player${playing ? " is-playing" : ""}`}
+          style={{ 
           background: "linear-gradient(135deg, #0066CC 0%, #004d99 100%)", 
           borderRadius: "24px", 
           padding: "24px", 
@@ -177,6 +226,39 @@ export function DashboardPage({
           boxShadow: "0 14px 28px rgba(0, 102, 204, 0.15)"
         }}>
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "100%", background: "url('/radio_background.png') center bottom / cover", opacity: 0.1 }}></div>
+          <div className="dashboard-radio-orbit" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="dashboard-radio-visualizer" aria-hidden="true">
+            <svg viewBox="0 0 720 190" preserveAspectRatio="none" focusable="false">
+              <defs>
+                <filter id="dashboardSpectrumGlow" x="-10%" y="-80%" width="120%" height="260%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <linearGradient id="dashboardSpectrumCyan" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" stopColor="#35D9FF" stopOpacity="0.38" />
+                  <stop offset="46%" stopColor="#00E5FF" stopOpacity="0.86" />
+                  <stop offset="100%" stopColor="#6DEBFF" stopOpacity="0.45" />
+                </linearGradient>
+                <linearGradient id="dashboardSpectrumMagenta" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" stopColor="#6AD7FF" stopOpacity="0.26" />
+                  <stop offset="42%" stopColor="#FF4DDE" stopOpacity="0.78" />
+                  <stop offset="100%" stopColor="#24D8FF" stopOpacity="0.34" />
+                </linearGradient>
+              </defs>
+              <path className="spectrum-mesh mesh-one" d="M0 112 C60 38 112 160 176 92 S294 42 360 104 474 152 546 80 660 66 720 112" />
+              <path className="spectrum-mesh mesh-two" d="M0 84 C74 138 118 52 184 106 S288 146 356 84 466 36 548 110 650 154 720 78" />
+              <path className="spectrum-line spectrum-cyan" d="M0 100 C40 142 72 48 116 78 S190 126 232 86 300 70 340 104 410 135 456 94 520 56 578 94 664 118 720 86" />
+              <path className="spectrum-line spectrum-magenta" d="M0 82 C52 128 84 116 126 74 S208 52 256 94 330 118 380 86 446 78 492 108 560 126 612 76 682 86 720 102" />
+              <path className="spectrum-line spectrum-soft" d="M0 96 C64 74 94 104 140 98 S224 74 282 96 374 126 430 96 500 72 554 94 644 124 720 96" />
+            </svg>
+          </div>
           
           <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", gap: "18px", alignItems: "center", flex: 1, minWidth: 0 }}>
@@ -270,47 +352,41 @@ export function DashboardPage({
           </div>
         </div>
 
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(4, 1fr)", 
-          gap: "16px 8px", 
-          marginBottom: "40px" 
-        }}>
-          {menuItems.map((item, i) => {
+        <div className="dashboard-menu-grid" style={{ marginBottom: "28px" }}>
+          {visibleMenuItems.map((item, i) => {
             const Icon = item.icon;
             return (
               <button 
                 key={i} 
+                type="button"
                 onClick={() => onNavigate(item.key)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
+                className="dashboard-menu-item dashboard-menu-item-colored"
+                style={{ "--menu-accent": item.color } as CSSProperties}
+                aria-label={`Buka menu ${item.label}`}
               >
-                <div style={{ 
-                  background: "white", 
-                  width: "56px", 
-                  height: "56px", 
-                  borderRadius: "16px", 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-                  color: item.color
-                }}>
-                  <Icon size={24} strokeWidth={1.5} />
+                <div className="dashboard-menu-item-icon">
+                  <Icon size={24} strokeWidth={2} />
                 </div>
-                <span style={{ fontSize: "0.7rem", color: "var(--ink)", fontWeight: 500, textAlign: "center" }}>{item.label}</span>
+                <span className="dashboard-menu-item-label">{item.label}</span>
               </button>
             )
           })}
         </div>
+
+        {hasMoreMenu && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
+            <button
+              type="button"
+              className={`dashboard-menu-more${showAllMenu ? " is-expanded" : ""}`}
+              onClick={() => setShowAllMenu((current) => !current)}
+              aria-label={showAllMenu ? "Sembunyikan menu tambahan" : "Tampilkan semua menu"}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <div style={{ background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
@@ -329,21 +405,20 @@ export function DashboardPage({
               </button>
             </div>
             {nextSlot ? (
-              <div className="schedule-slot-card dashboard-schedule-card" onClick={() => onNavigate("schedule")}>
-                <div className="schedule-slot-main">
-                  <div className="schedule-slot-art" aria-hidden="true">
-                    <img src="/coverSBL.jpg" alt="" />
-                  </div>
-                  <div className="schedule-slot-copy">
+              <div className="dashboard-next-card" onClick={() => onNavigate("schedule")}>
+                <div className="dashboard-next-cover" aria-hidden="true">
+                    <img src={nextProgramInfo?.imageUrl ?? "/LogoSBL.svg"} alt="" />
+                </div>
+                <div className="dashboard-next-copy">
                     <h3>{nextSlot.program}</h3>
-                    <div className="schedule-announcer">
+                  <div className="dashboard-next-meta">
                       <Mic2 size={14} color="#64748B" />
-                      <span className="schedule-announcer-links">{nextSlot.announcer}</span>
-                    </div>
-                    <div className="schedule-time-pill">
-                      <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
-                    </div>
+                    <span>{nextSlot.announcer}</span>
                   </div>
+                  <div className="dashboard-next-time">
+                      <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
+                  </div>
+                  <p>{nextProgramInfo?.description}</p>
                 </div>
               </div>
             ) : (
@@ -452,4 +527,3 @@ export function DashboardPage({
     </div>
   );
 }
-

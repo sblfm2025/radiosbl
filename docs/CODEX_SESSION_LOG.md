@@ -1670,3 +1670,342 @@ pm run typecheck\.
   - `npm run lint` berhasil.
   - `npm run test` berhasil: 19 files / 62 tests passed.
   - `npm run build` berhasil.
+
+### Koreksi 17 Mei 2026 - Poles Ikon Grid Dashboard
+
+- Dashboard quick menu dipoles agar terlihat lebih modern dan profesional:
+  - setiap shortcut kini memakai aksen warna per fitur, tidak lagi semua biru seragam;
+  - kartu menu diberi permukaan putih berlapis, highlight aksen tipis, icon container bergradasi lembut, dan hover/focus state yang lebih jelas;
+  - label menu dibuat lebih stabil untuk mobile dengan text wrapping aman dan ukuran kartu konsisten;
+  - tombol menu diberi `type="button"` dan `aria-label` agar aksesibilitas tetap rapi.
+- Tombol tiga titik dashboard kini menjadi toggle dua arah:
+  - saat menu tambahan sudah terbuka, tombol tetap tampil untuk menyembunyikan lagi;
+  - ukuran tombol dan titik dibuat lebih kecil agar tidak mendominasi grid.
+- Navigasi dan permission menu tidak diubah.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - `npm run lint` masih gagal karena error lama di `scratch/*.mjs`, beberapa komponen, dan service yang tidak terkait perubahan dashboard.
+  - `npm run test` masih gagal pada 5 assertion lama terkait resolver/seed penyiar `Miah/Salmiah`, bukan area dashboard menu.
+
+### Koreksi 17 Mei 2026 - Visualizer Latar Radio Player
+
+- Radio player Dashboard diberi animasi latar yang lebih hidup:
+  - bar visualizer 24 kolom di belakang metadata siaran;
+  - orbit/pulse lingkaran halus di area tombol play;
+  - shimmer lembut dan respons hover/focus;
+  - animasi lebih aktif saat radio sedang `playing`.
+- Komponen `AudioPlayer` reusable juga dipoles:
+  - background aurora bergerak pelan;
+  - bar visualizer memakai gradasi dan intensitas berbeda ketika stream diputar.
+- Aksesibilitas:
+  - layer visualizer diberi `aria-hidden`;
+  - menghormati `prefers-reduced-motion: reduce`.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright manual mobile berhasil: 24 bar visualizer tampil, orbit tersedia, dan tidak ada overflow horizontal.
+  - `npm run lint` masih gagal karena error lama di `scratch/*.mjs`, unused import/variable, dan `any` di file non-player.
+  - `npm run test` masih gagal pada 5 assertion lama terkait resolver/seed penyiar `Miah/Salmiah`.
+
+### Koreksi 17 Mei 2026 - Visualizer Lebih Terlihat & Fallback Jadwal Senyap
+
+- Berdasarkan preview iPhone 14 Pro Max, visualizer player Dashboard diperjelas:
+  - opacity bar dinaikkan;
+  - ditambahkan garis frekuensi tipis;
+  - orbit tombol play dibuat lebih kontras;
+  - idle animation tetap halus tetapi lebih mudah terlihat.
+- Error Firestore permission pada `weekly_schedule_slots` tidak lagi dicetak sebagai error merah berulang:
+  - jika Firestore mengembalikan `permission-denied`, aplikasi langsung memakai jadwal lokal;
+  - error non-permission tetap dilaporkan satu kali sebagai warning.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright manual iPhone 14 Pro Max mode demo berhasil: 24 bar, frequency line, orbit, dan tidak ada overflow horizontal.
+
+### Koreksi 17 Mei 2026 - Spectrum Player Lebih Halus
+
+- Visualizer radio player Dashboard disesuaikan ulang agar teks tetap terbaca:
+  - warna spectrum dibuat mendekati biru latar;
+  - opacity, glow, dan garis frekuensi diturunkan;
+  - tinggi bar dikurangi agar tidak menabrak metadata siaran;
+  - mode hover/playing tetap hidup tetapi lebih lembut.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+
+### Koreksi 17 Mei 2026 - Visualizer Wave Spectrum
+
+- Visualizer radio player Dashboard diubah dari bar menjadi wave spectrum ala referensi:
+  - SVG dotted wave cyan/magenta dengan mesh tipis di belakang;
+  - animasi dash bergerak pelan dan lebih cepat saat `playing`;
+  - warna tetap berada di keluarga biru/cyan agar menyatu dengan kartu player;
+  - layer tetap di background dengan `aria-hidden`.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright iPhone 14 Pro Max mode demo berhasil: 3 spectrum line, 2 mesh line, dan tidak ada overflow horizontal.
+
+### Koreksi 17 Mei 2026 - Cover dan Detail Program Siaran
+
+- Menambahkan katalog program di `src/data/radioData.ts`:
+  - setiap program memiliki judul resmi, deskripsi singkat, dan cover dari `public/program`;
+  - pencocokan nama menangani variasi jadwal seperti `Weekend Edition`, `Podcast / Siaran Reguler`, dan `Aga Kareba / SBL on Stage`;
+  - fallback tetap memakai identitas Radio SBL bila nama program belum terpetakan.
+- Halaman Jadwal:
+  - kartu jadwal sekarang memakai cover program yang sesuai;
+  - kartu bisa diklik atau dibuka via keyboard untuk menampilkan modal detail program;
+  - modal detail menampilkan cover, judul, hari/jam, penyiar, dan deskripsi singkat;
+  - tombol penyiar, tukar jadwal, dan edit jadwal tidak ikut membuka modal detail.
+- Dashboard:
+  - kartu `Jadwal Berikutnya` memakai cover dan deskripsi dari katalog program.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright iPhone 14 Pro Max mode demo berhasil: cover `Salam_Bumi_lasinrang.jpg` tampil dan modal detail `Salam Bumi Lasinrang` terbuka tanpa overflow horizontal.
+  - `npm run lint` masih gagal karena debt lama lint di file non-perubahan seperti `scratch/*.mjs`, unused import/variable, dan `any`.
+  - `npm run test` masih gagal pada 5 assertion lama terkait resolver/seed penyiar `Miah/Salmiah`.
+
+### Koreksi 17 Mei 2026 - Frame Cover Program 16:9
+
+- Frame cover program pada kartu jadwal dan kartu `Jadwal Berikutnya` Dashboard diubah dari kotak kecil menjadi rasio 16:9 agar lebih pas dengan gambar di `public/program`.
+- Ukuran mobile juga disesuaikan agar cover tetap terbaca tanpa membuat layout melebar.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+
+### Koreksi 17 Mei 2026 - Sinkronisasi Jadwal Berikutnya Dashboard
+
+- Memperbaiki logika `Jadwal Berikutnya` di Dashboard:
+  - sebelumnya hanya mencari slot berikutnya dari jadwal utama mingguan;
+  - sekarang kandidat dihitung dari jadwal utama remote/lokal plus seluruh program sisipan harian;
+  - pemilihan memakai waktu mulai terdekat setelah waktu saat ini, sehingga saat `Jeda Siaran 23.00 - 05.00` kartu berikutnya menampilkan `Salam Subuh 05.00 - 07.00`.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright iPhone 14 Pro Max mode demo berhasil: player `Jeda Siaran`, kartu berikutnya `Salam Subuh`, cover `/program/Info_Terkini.jpg`, tanpa overflow horizontal.
+  - `npm run lint` masih gagal karena debt lama lint; warning baru di Dashboard sudah dirapikan.
+  - `npm run test` masih gagal pada 5 assertion lama terkait resolver/seed penyiar `Miah/Salmiah`.
+
+### Koreksi 17 Mei 2026 - Cover Popup Program 16:9
+
+- Cover pada popup/detail program juga diubah ke rasio 16:9 agar konsisten dengan kartu jadwal dan Dashboard.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+
+### Koreksi 17 Mei 2026 - Layout Jadwal Berikutnya Dashboard
+
+- Kartu `Jadwal Berikutnya` di Dashboard dibuat sebagai layout khusus:
+  - mobile satu kolom: cover 16:9 di atas, judul/meta/jam/deskripsi di bawah;
+  - desktop dua kolom: cover kiri proporsional dan tingginya sama dengan blok teks kanan;
+  - deskripsi tetap dibatasi agar kartu tidak terlalu panjang.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright:
+    - iPhone 14 Pro Max: `gridTemplateColumns` satu kolom, cover 280x157.5, tanpa overflow;
+    - desktop 1366px: cover dan blok teks sama tinggi 193.875px.
+
+### Koreksi 17 Mei 2026 - Detail Program dari Profil Penyiar
+
+- Jadwal siaran di halaman profil penyiar sekarang berupa tombol program interaktif.
+- Klik program terkait membuka popup detail program yang sama:
+  - cover 16:9;
+  - judul program;
+  - hari/jam siaran;
+  - penyiar/PIC;
+  - deskripsi singkat dari katalog program.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - Cek Playwright iPhone 14 Pro Max mode demo berhasil: dari Jadwal ke profil penyiar, klik slot program membuka modal detail `Aga Kareba?` dengan cover `/program/Aga_Kareba.jpg`, tanpa overflow horizontal.
+
+### Koreksi 17 Mei 2026 - Query Tukar Jadwal Tanpa Composite Index
+
+- Memperbaiki error Firestore di `ScheduleSwapPage`: query `schedule_swaps` tidak lagi menggabungkan `where(...)` dengan `orderBy("createdAt")`, sehingga tidak memicu kebutuhan composite index Firebase.
+- Urutan permintaan tukar jadwal sekarang dihitung di sisi aplikasi melalui helper `sortByNewest`, termasuk daftar user dan daftar admin `pending_admin`.
+- Membersihkan beberapa warning di `ScheduleSwapPage`:
+  - import ikon/type yang tidak dipakai dihapus;
+  - `loadData` dibuat stabil dengan `useCallback`;
+  - submit dan response menunggu reload data selesai.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run build` berhasil.
+  - `npm run lint` masih gagal karena debt lama di `scratch/*.mjs` dan beberapa file non-perubahan; tidak ada error lint baru dari file swap yang disentuh.
+
+### Koreksi 17 Mei 2026 - Poles Splash dan Login
+
+- Membuat aset latar baru `public/sbl-auth-studio-bg.png` dengan visual studio radio malam tanpa teks/watermark.
+- Merapikan `SplashPage`:
+  - latar studio radio penuh layar;
+  - panel `91.5 FM` untuk desktop;
+  - kartu logo, chip `On Air`, dan visualizer gelombang.
+- Merapikan `LoginPage`:
+  - layout mobile berupa kartu glass yang ringkas;
+  - layout desktop split-screen dengan panel brand dan panel form;
+  - tab Masuk/Daftar, input berikon, tombol aksi lime, Google login, lupa sandi, dan toggle kata sandi tetap fungsional.
+- Menambahkan override `content-splash`, `content-onboarding`, dan `content-login` agar halaman pembuka bebas padding shell dan tidak bocor scroll/area putih.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 4 test lulus di mobile dan desktop.
+  - Cek Playwright manual:
+    - splash mobile 390x844: `scrollWidth=390`, `clientWidth=390`, `scrollHeight=844`;
+    - splash desktop 1440x900: `scrollWidth=1440`, `clientWidth=1440`, `scrollHeight=900`;
+    - login mobile 390x844: `scrollWidth=390`, `clientWidth=390`, `scrollHeight=844`;
+    - login desktop 1440x900: `scrollWidth=1440`, `clientWidth=1440`, `scrollHeight=900`.
+  - `npm run lint` masih gagal karena debt lama di banyak file non-perubahan (`scratch/*.mjs`, unused import/variable, dan beberapa `any`); perubahan splash/login tidak menambah error TypeScript/build.
+
+### Koreksi 17 Mei 2026 - Proxy Podcast Lokal Opsional
+
+- Merapikan error console `ERR_CONNECTION_REFUSED` dari `POST http://localhost:8789/spotify/show-episodes`.
+- `.env.local` lokal diarahkan agar `VITE_PODCAST_API_ENDPOINT` kosong dan `VITE_ENABLE_LOCAL_PODCAST_PROXY=false`.
+- `.env.example` menambahkan `VITE_ENABLE_LOCAL_PODCAST_PROXY=false` sebagai dokumentasi resmi.
+- `podcast.service.ts` sekarang mengabaikan endpoint podcast `localhost`, `127.0.0.1`, atau `::1` saat mode development, kecuali `VITE_ENABLE_LOCAL_PODCAST_PROXY=true/1/yes`.
+- Hasilnya:
+  - development harian memakai fallback episode statis tanpa request ke proxy yang belum dinyalakan;
+  - testing proxy Spotify live tetap bisa dilakukan dengan menjalankan `npm run proxy:notifications` dan mengaktifkan flag lokal.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - Cek Playwright manual tidak menemukan request/failure ke `localhost:8789` atau `/spotify/show-episodes` pada sesi dev.
+  - `npm run lint` masih gagal karena debt lama di file non-perubahan (`scratch/*.mjs`, unused import/variable, dan beberapa `any`).
+
+### Koreksi 17 Mei 2026 - Hapus Halaman Onboarding
+
+- Menghapus halaman onboarding yang berisi tombol `Mulai Sekarang` dari alur pembuka.
+- `SplashPage` sekarang langsung mengarah ke halaman login setelah animasi 1,2 detik.
+- Membersihkan referensi route onboarding:
+  - `PageKey` tidak lagi memiliki nilai `onboarding`;
+  - `App.tsx` tidak lagi mengimpor/merender `OnboardingPage`;
+  - `Shell.tsx` tidak lagi memeriksa `activePage === "onboarding"`;
+  - file `src/components/OnboardingPage.tsx` dihapus;
+  - CSS khusus `.onboarding-*`, `.app-shell-onboarding`, dan `.content-onboarding` dihapus.
+- Verifikasi:
+  - `rg -n "onboarding|OnboardingPage" src` tidak menemukan referensi tersisa.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 4 test lulus.
+
+### Koreksi 17 Mei 2026 - Checkbox Ingat Saya Dibuat Fungsional
+
+- Menjawab audit UI login: checkbox `Ingat saya` sebelumnya hanya elemen visual.
+- `LoginPage` sekarang menyimpan state `rememberSession` dan meneruskannya ke:
+  - `signIn`;
+  - `signUp`;
+  - `signInWithGoogle`.
+- Firebase Auth:
+  - saat `Ingat saya` aktif memakai `browserLocalPersistence`;
+  - saat tidak aktif memakai `browserSessionPersistence`.
+- Mode demo:
+  - saat `Ingat saya` aktif sesi disimpan di `localStorage`;
+  - saat tidak aktif sesi disimpan di `sessionStorage`;
+  - logout membersihkan keduanya agar tidak ada sesi tertinggal.
+- Auto-onboarding staf SBL (`nomor@radiosbl.com`) ikut menghormati pilihan persistence.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+
+### Koreksi 17 Mei 2026 - Poles Halaman Penyiar
+
+- Merapikan halaman `Penyiar` agar konsisten dengan tema super-app Radio SBL:
+  - header hero baru berbahasa Indonesia dengan lockup logo, tagline, dan ringkasan jumlah penyiar/slot/jam;
+  - kartu penyiar menjadi tombol interaktif untuk membuka profil;
+  - kartu memakai foto, status aktif, statistik, hari siaran, cuplikan jadwal, dan CTA `Lihat profil`;
+  - inline style lama di `AnnouncersPage` dipindahkan ke class CSS yang responsif;
+  - layout mobile satu kolom, tablet dua kolom, desktop tiga kolom tanpa overflow horizontal.
+- Profil penyiar ikut diselaraskan:
+  - header sticky khusus profil penyiar;
+  - foto profil memakai frame visual yang sama;
+  - kartu profil diberi border/shadow lebih konsisten;
+  - detail jadwal tetap membuka popup detail program seperti sebelumnya.
+- Foto penyiar di `radioData.ts` diarahkan ke aset lokal `public/crew` agar tidak bergantung pada remote image dan lebih stabil saat preview.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 4 test lulus.
+  - `npx eslint src\App.tsx src\components\AnnouncerProfilePage.tsx src\data\radioData.ts` berhasil.
+  - Cek Playwright manual mode test:
+    - mobile 390x844 halaman Penyiar `scrollWidth=390`, `clientWidth=390`;
+    - desktop 1440x900 halaman Penyiar `scrollWidth=1440`, `clientWidth=1440`;
+    - profil penyiar mobile/desktop juga tanpa overflow horizontal.
+  - `npm run lint` penuh masih gagal karena debt lama di file non-perubahan (`scratch/*.mjs`, beberapa unused import/variable, dan beberapa `any`).
+
+### Koreksi 17 Mei 2026 - Audit dan Poles Halaman Aduan
+
+- Merapikan halaman `Aduan & Saran` agar konsisten dengan tema UI/UX Radio SBL:
+  - mengganti tampilan inline-style lama menjadi class CSS khusus `complaints-*`;
+  - menambahkan hero dengan logo, tagline `Suara pendengar`, dan ringkasan status aduan;
+  - membuat panel input aduan manual lebih jelas untuk operator/admin;
+  - daftar aduan tampil sebagai tiket status dengan badge `Baru`, `Terverifikasi`, `Diproses`, dan `Selesai`;
+  - empty state dan notifikasi sukses/error memakai gaya visual yang konsisten;
+  - layout desktop memakai dua kolom, sedangkan mobile satu kolom tanpa overflow horizontal.
+- Fungsi tetap nyata:
+  - submit aduan tetap memakai `submitComplaint`;
+  - realtime/list tetap memakai `subscribeComplaints` dan `listComplaints`;
+  - perubahan status tetap memakai `updateComplaintStatus`.
+- Koreksi kecil di `ProfilePage.tsx`:
+  - membersihkan import ikon lucide yang dobel/korup agar `typecheck` kembali berjalan.
+- Verifikasi:
+  - `npx eslint src\components\ComplaintsPage.tsx src\components\ProfilePage.tsx` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - Cek Playwright manual mode test:
+    - mobile 390x844 halaman Aduan `scrollWidth=390`, `clientWidth=390`;
+    - desktop 1440x900 halaman Aduan `scrollWidth=1440`, `clientWidth=1440`;
+    - tombol tanpa label kosong: `0`.
+  - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama file `scratch/*.mjs`, beberapa unused import/variable, dan beberapa `any` di file non-perubahan.
+
+### Koreksi 17 Mei 2026 - Poles Halaman Pembuatan Naskah AI
+
+- Merapikan halaman `Buat Naskah AI` agar konsisten dengan halaman operasional lain:
+  - header lama diganti hero dengan logo Radio SBL, tagline `Asisten kreatif`, dan deskripsi fungsi yang lebih jelas;
+  - badge/teks visual `Gemini 2.5 Flash` dihapus dari UI;
+  - notifikasi hasil berhasil tidak lagi menyebut nama model teknis;
+  - ditambahkan kartu konteks program aktif berisi hari/jam, nama program, deskripsi, dan penyiar;
+  - panel konfigurasi dan editor draft dibuat lebih rapi, responsif, dan nyaman dipakai di desktop maupun mobile;
+  - tombol utama memakai aksen hijau-lime agar selaras dengan splash/login dan halaman Aduan.
+- Fungsi tetap nyata:
+  - generator tetap memakai `generateProgramScript`;
+  - simpan arsip tetap memakai `saveProgramScript`;
+  - model internal service tidak diubah agar integrasi AI tetap berjalan.
+- Koreksi pendukung:
+  - `attendance.service.ts` diselaraskan lagi agar status dasar test kembali `present/outside_radius`, sambil mempertahankan field tambahan verifikasi yang sudah ada.
+- Verifikasi:
+  - `npx eslint src\components\AiScriptPage.tsx src\services\aiScript.service.ts src\services\attendance.service.ts` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil, 4 test lulus.
+  - Cek Playwright manual mode test:
+    - mobile 390x844 halaman Naskah AI `scrollWidth=390`, `clientWidth=390`;
+    - desktop 1440x900 halaman Naskah AI `scrollWidth=1440`, `clientWidth=1440`;
+    - teks `Gemini 2.5 Flash` tidak muncul di UI;
+    - tombol tanpa label kosong: `0`.
+  - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama `scratch/*.mjs`, unused import/variable, dan beberapa `any` di file non-perubahan.
+
+### Koreksi 17 Mei 2026 - Compact Konfigurasi Naskah AI
+
+- Menyesuaikan layout halaman `Buat Naskah AI`:
+  - lebar maksimal hero/konten dinaikkan ke `1320px`;
+  - kolom `Konfigurasi Naskah` di desktop dipadatkan menjadi sekitar `286px`;
+  - gap, padding, input, textarea, dan tombol panel konfigurasi diperkecil;
+  - area `Hasil Draft Naskah` otomatis mengambil ruang yang lebih luas;
+  - tinggi minimum editor dinaikkan agar area hasil terasa lebih lapang.
+- Verifikasi:
+  - `npx eslint src\components\AiScriptPage.tsx` berhasil.
+  - `npm run typecheck` berhasil.
+  - `npm run test` berhasil, 17 file test / 54 test lulus.
+  - `npm run build` berhasil.
+  - Cek Playwright manual mode test:
+    - mobile 390x844: `scrollWidth=390`, `clientWidth=390`, konfigurasi/hasil tetap satu kolom;
+    - desktop 1440x900: panel konfigurasi `286px`, area hasil `756px`, editor `640px`;
+    - teks `Gemini 2.5 Flash` tetap tidak muncul di UI.
+  - `npm run lint` penuh masih gagal karena debt lama lint lintas repo, terutama `scratch/*.mjs`, unused import/variable, dan beberapa `any` di file non-perubahan.

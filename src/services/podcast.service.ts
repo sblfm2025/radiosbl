@@ -135,12 +135,33 @@ export function getConfiguredPodcastFeedUrl(): string {
   ).trim();
 }
 
+function isLocalPodcastEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLocalPodcastProxyEnabled(): boolean {
+  return ["true", "1", "yes"].includes(
+    String(import.meta.env.VITE_ENABLE_LOCAL_PODCAST_PROXY ?? "").trim().toLowerCase()
+  );
+}
+
 export function getConfiguredPodcastApiEndpoint(): string {
-  return (
+  const endpoint = (
     import.meta.env.VITE_PODCAST_API_ENDPOINT ??
     import.meta.env.VITE_SPOTIFY_SHOW_EPISODES_ENDPOINT ??
     ""
   ).trim();
+
+  if (import.meta.env.DEV && isLocalPodcastEndpoint(endpoint) && !isLocalPodcastProxyEnabled()) {
+    return "";
+  }
+
+  return endpoint;
 }
 
 export async function loadPodcastFeed(feedUrl: string): Promise<PodcastFeed> {

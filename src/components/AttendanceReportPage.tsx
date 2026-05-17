@@ -3,14 +3,23 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
+  CheckCircle,
   Download,
   Filter,
   MapPin,
-  Users
+  Users,
+  XCircle,
+  ShieldAlert,
+  X,
+  Camera,
+  MonitorSmartphone,
+  Clock,
+  Navigation
 } from "lucide-react";
-import { listAttendanceRecords } from "../services/attendance.service";
+import { listAttendanceRecords, updateAttendanceStatus } from "../services/attendance.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../types/domain";
+import type { AuthSession } from "../services/auth.service";
 
 type PeriodMode = "week" | "month" | "year";
 
@@ -107,7 +116,7 @@ function roleMatchesRecord(record: AttendanceRecord, selectedRole: string, userB
   return userById.get(record.userId)?.role === selectedRole;
 }
 
-export function AttendanceReportPage() {
+export function AttendanceReportPage({ session }: { session: AuthSession | null }) {
   const today = useMemo(() => new Date(), []);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -117,6 +126,18 @@ export function AttendanceReportPage() {
   const [weekValue, setWeekValue] = useState(toWeekInputValue(today));
   const [monthValue, setMonthValue] = useState(toMonthInputValue(today));
   const [yearValue, setYearValue] = useState(today.getFullYear());
+  const [activeTab, setActiveTab] = useState<"summary" | "daily" | "announcers">("summary");
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+
+  async function handleReviewStatus(recordId: string, newStatus: AttendanceRecord["status"]) {
+    try {
+      await updateAttendanceStatus(recordId, newStatus);
+      setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, status: newStatus } : r)));
+    } catch (err) {
+      alert("Gagal memperbarui status. Periksa log konsol.");
+      console.error(err);
+    }
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -203,19 +224,20 @@ export function AttendanceReportPage() {
   const periodLabel = formatPeriodLabel(periodRange.start, periodRange.end, periodMode);
 
   return (
-    <div className="attendance-report" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh" }}>
-      <header style={{ marginBottom: "28px" }}>
+    <div className="attendance-report" style={{ padding: "20px", background: "#f8f9fc", minHeight: "100vh", position: "relative" }}>
+      <header style={{ marginBottom: "24px" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: "0 0 8px" }}>Rekap Kehadiran Staf</h1>
         <p style={{ color: "var(--muted)", margin: 0 }}>Pantau kedisiplinan dan lokasi absensi seluruh kru Radio SBL.</p>
       </header>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-        <StatCard icon={<Users size={20} />} label="Total Absen" value={stats.total} color="var(--blue)" />
-        <StatCard icon={<CheckCircle2 size={20} />} label="Tepat Lokasi" value={stats.present} color="#11a36a" />
-        <StatCard icon={<MapPin size={20} />} label="Luar Radius" value={stats.outside} color="#f59e0b" />
-        <StatCard icon={<AlertTriangle size={20} />} label="Terlambat" value={stats.late} color="#ef4444" />
+      {/* TAB NAVIGATION */}
+      <div style={{ display: "flex", gap: "12px", marginBottom: "24px", borderBottom: "2px solid rgba(15,23,42,0.05)", paddingBottom: "12px", overflowX: "auto" }}>
+        <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>Ringkasan</TabButton>
+        <TabButton active={activeTab === "daily"} onClick={() => setActiveTab("daily")}>Harian</TabButton>
+        <TabButton active={activeTab === "announcers"} onClick={() => setActiveTab("announcers")}>Penyiar / Staf</TabButton>
       </div>
 
+      {/* FILTER (Muncul di semua tab) */}
       <div style={{ background: "white", borderRadius: "24px", padding: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", color: "var(--ink)", fontWeight: 800 }}>
           <Filter size={18} color="var(--blue)" />
@@ -285,143 +307,289 @@ export function AttendanceReportPage() {
         </div>
       </div>
 
-      <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
-          <div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0 }}>Rekap Absensi Penyiar</h2>
-            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-              Ringkasan kehadiran penyiar untuk {periodLabel}.
-            </p>
-          </div>
-          <span style={{ padding: "8px 12px", borderRadius: "99px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, fontSize: "0.8rem" }}>
-            {announcerSummary.length} penyiar
-          </span>
+      {activeTab === "summary" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+          <StatCard icon={<Users size={20} />} label="Total Absen" value={stats.total} color="var(--blue)" />
+          <StatCard icon={<CheckCircle2 size={20} />} label="Tepat Lokasi" value={stats.present} color="#11a36a" />
+          <StatCard icon={<MapPin size={20} />} label="Luar Radius" value={stats.outside} color="#f59e0b" />
+          <StatCard icon={<AlertTriangle size={20} />} label="Terlambat" value={stats.late} color="#ef4444" />
         </div>
+      )}
 
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "32px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-        ) : announcerSummary.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
-            <Users size={40} style={{ opacity: 0.18, marginBottom: "10px" }} />
-            <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data penyiar.</p>
+      {activeTab === "announcers" && (
+        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0 }}>Rekap Absensi Penyiar</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Ringkasan kehadiran penyiar untuk {periodLabel}.
+              </p>
+            </div>
+            <span style={{ padding: "8px 12px", borderRadius: "99px", background: "#eef5ff", color: "var(--blue)", fontWeight: 800, fontSize: "0.8rem" }}>
+              {announcerSummary.length} penyiar
+            </span>
           </div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "780px" }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                  <th style={tableHeadStyle}>PENYIAR</th>
-                  <th style={tableHeadStyle}>TOTAL</th>
-                  <th style={tableHeadStyle}>TEPAT LOKASI</th>
-                  <th style={tableHeadStyle}>LUAR RADIUS</th>
-                  <th style={tableHeadStyle}>TERLAMBAT</th>
-                  <th style={tableHeadStyle}>RASIO</th>
-                  <th style={tableHeadStyle}>TERAKHIR</th>
-                </tr>
-              </thead>
-              <tbody>
-                {announcerSummary.map((item) => (
-                  <tr key={item.user.id} style={{ borderBottom: "1px solid #f1f3f5" }}>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ fontWeight: 800 }}>{item.user.displayName}</div>
-                      <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{item.user.airName || item.user.email}</div>
-                    </td>
-                    <td style={summaryCellStyle}>{item.total}</td>
-                    <td style={{ ...summaryCellStyle, color: "#059669" }}>{item.present}</td>
-                    <td style={{ ...summaryCellStyle, color: "#d97706" }}>{item.outside}</td>
-                    <td style={{ ...summaryCellStyle, color: "#dc2626" }}>{item.late}</td>
-                    <td style={{ padding: "16px", minWidth: "130px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ flex: 1, height: "8px", background: "rgba(15,23,42,0.08)", borderRadius: "99px", overflow: "hidden" }}>
-                          <div style={{ width: `${item.rate}%`, height: "100%", background: item.rate >= 80 ? "#11a36a" : item.rate >= 50 ? "#f59e0b" : "#ef4444" }} />
-                        </div>
-                        <strong style={{ fontSize: "0.82rem", color: "var(--ink)", minWidth: "34px" }}>{item.rate}%</strong>
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px", color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>
-                      {item.latest
-                        ? toDate(item.latest.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-                        : "-"}
-                    </td>
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "32px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
+          ) : announcerSummary.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
+              <Users size={40} style={{ opacity: 0.18, marginBottom: "10px" }} />
+              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data penyiar.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "780px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
+                    <th style={tableHeadStyle}>PENYIAR</th>
+                    <th style={tableHeadStyle}>TOTAL</th>
+                    <th style={tableHeadStyle}>TEPAT LOKASI</th>
+                    <th style={tableHeadStyle}>LUAR RADIUS</th>
+                    <th style={tableHeadStyle}>TERLAMBAT</th>
+                    <th style={tableHeadStyle}>RASIO</th>
+                    <th style={tableHeadStyle}>TERAKHIR</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
-          <div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Daftar Kehadiran</h2>
-            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-              Menampilkan {filteredRecords.length} data untuk {periodLabel}.
-            </p>
-          </div>
-          <button style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold" }}>
-            <Download size={18} /> Export
-          </button>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "40px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
-        ) : filteredRecords.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "44px 16px", color: "var(--muted)" }}>
-            <Calendar size={44} style={{ opacity: 0.18, marginBottom: "12px" }} />
-            <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data absensi pada filter ini.</p>
-          </div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
-                  <th style={tableHeadStyle}>STAF</th>
-                  <th style={tableHeadStyle}>ROLE</th>
-                  <th style={tableHeadStyle}>WAKTU</th>
-                  <th style={tableHeadStyle}>STATUS</th>
-                  <th style={tableHeadStyle}>LOKASI (GPS)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRecords.slice(0, 100).map((record) => {
-                  const user = userById.get(record.userId);
-                  const checkInAt = toDate(record.checkInAt);
-
-                  return (
-                    <tr key={record.id} style={{ borderBottom: "1px solid #f1f3f5" }}>
+                </thead>
+                <tbody>
+                  {announcerSummary.map((item) => (
+                    <tr key={item.user.id} style={{ borderBottom: "1px solid #f1f3f5" }}>
                       <td style={{ padding: "16px" }}>
-                        <div style={{ fontWeight: "bold" }}>{record.displayName || user?.displayName || "Staf Radio SBL"}</div>
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{record.airName || user?.airName || "-"}</div>
+                        <div style={{ fontWeight: 800 }}>{item.user.displayName}</div>
+                        <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{item.user.airName || item.user.email}</div>
                       </td>
-                      <td style={{ padding: "16px", fontSize: "0.85rem", color: "var(--muted)", fontWeight: 700 }}>
-                        {user?.role || "-"}
+                      <td style={summaryCellStyle}>{item.total}</td>
+                      <td style={{ ...summaryCellStyle, color: "#059669" }}>{item.present}</td>
+                      <td style={{ ...summaryCellStyle, color: "#d97706" }}>{item.outside}</td>
+                      <td style={{ ...summaryCellStyle, color: "#dc2626" }}>{item.late}</td>
+                      <td style={{ padding: "16px", minWidth: "130px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ flex: 1, height: "8px", background: "rgba(15,23,42,0.08)", borderRadius: "99px", overflow: "hidden" }}>
+                            <div style={{ width: `${item.rate}%`, height: "100%", background: item.rate >= 80 ? "#11a36a" : item.rate >= 50 ? "#f59e0b" : "#ef4444" }} />
+                          </div>
+                          <strong style={{ fontSize: "0.82rem", color: "var(--ink)", minWidth: "34px" }}>{item.rate}%</strong>
+                        </div>
                       </td>
-                      <td style={{ padding: "16px" }}>
-                        <div style={{ fontSize: "0.9rem" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
-                      </td>
-                      <td style={{ padding: "16px" }}>
-                        <StatusBadge status={record.status} />
-                      </td>
-                      <td style={{ padding: "16px" }}>
-                        <a
-                          href={`https://www.google.com/maps?q=${record.latitude},${record.longitude}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "var(--blue)", fontSize: "0.85rem", textDecoration: "none", display: "flex", alignItems: "center", gap: "4px", fontWeight: 700 }}
-                        >
-                          <MapPin size={14} /> Lihat Maps
-                        </a>
+                      <td style={{ padding: "16px", color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>
+                        {item.latest
+                          ? toDate(item.latest.checkInAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                          : "-"}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "daily" && (
+        <div style={{ background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Daftar Kehadiran</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Klik baris untuk melihat foto selfie dan detail absensi.
+              </p>
+            </div>
+            <button style={{ padding: "10px 16px", borderRadius: "12px", border: "none", background: "var(--blue)", color: "white", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", cursor: "pointer" }}>
+              <Download size={18} /> Export
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px" }}><div className="spinner-small" style={{ margin: "auto" }}></div></div>
+          ) : filteredRecords.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "44px 16px", color: "var(--muted)" }}>
+              <Calendar size={44} style={{ opacity: 0.18, marginBottom: "12px" }} />
+              <p style={{ margin: 0, fontWeight: 700 }}>Belum ada data absensi pada filter ini.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f1f3f5", textAlign: "left" }}>
+                    <th style={tableHeadStyle}>STAF</th>
+                    <th style={tableHeadStyle}>ROLE</th>
+                    <th style={tableHeadStyle}>WAKTU</th>
+                    <th style={tableHeadStyle}>STATUS</th>
+                    <th style={tableHeadStyle}>LOKASI</th>
+                    <th style={tableHeadStyle}>AKSI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.slice(0, 100).map((record) => {
+                    const user = userById.get(record.userId);
+                    const checkInAt = toDate(record.checkInAt);
+
+                    return (
+                      <tr key={record.id} onClick={() => setSelectedRecord(record)} style={{ borderBottom: "1px solid #f1f3f5", cursor: "pointer", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f8f9fc"} onMouseOut={(e) => e.currentTarget.style.background = "transparent"}>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ fontWeight: "bold" }}>{record.displayName || user?.displayName || "Staf Radio SBL"}</div>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{record.airName || user?.airName || "-"}</div>
+                        </td>
+                        <td style={{ padding: "16px", fontSize: "0.85rem", color: "var(--muted)", fontWeight: 700 }}>
+                          {user?.role || "-"}
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ fontSize: "0.9rem" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <StatusBadge status={record.status} />
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: 700, color: "var(--ink)" }}>
+                            <MapPin size={14} color="var(--blue)" /> {record.accuracyMeters ? `±${record.accuracyMeters}m` : "-"}
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <button style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", fontSize: "0.75rem", fontWeight: "bold", cursor: "pointer", color: "var(--ink)" }}>
+                            Detail
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL / SIDE PANEL */}
+      {selectedRecord && (
+        <>
+          <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "100%", maxWidth: "420px", background: "white", boxShadow: "-10px 0 40px rgba(0,0,0,0.1)", zIndex: 1000, display: "flex", flexDirection: "column", transform: "translateX(0)", transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f3f5", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8f9fc" }}>
+              <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem" }}>Detail Absensi</h3>
+              <button onClick={() => setSelectedRecord(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: "24px", overflowY: "auto", flex: 1 }}>
+              <SidePanelDetail record={selectedRecord} user={userById.get(selectedRecord.userId)} session={session} onReview={handleReviewStatus} />
+            </div>
+          </div>
+          <div onClick={() => setSelectedRecord(null)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", zIndex: 999, backdropFilter: "blur(2px)" }} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "10px 20px",
+        borderRadius: "99px",
+        border: "none",
+        background: active ? "var(--blue)" : "white",
+        color: active ? "white" : "var(--muted)",
+        fontWeight: 800,
+        fontSize: "0.9rem",
+        cursor: "pointer",
+        boxShadow: active ? "0 4px 12px rgba(22, 101, 216, 0.2)" : "0 2px 8px rgba(0,0,0,0.02)",
+        transition: "all 0.2s",
+        whiteSpace: "nowrap"
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SidePanelDetail({ record, user, session, onReview }: { record: AttendanceRecord; user?: AppUser; session: AuthSession | null; onReview: (id: string, status: AttendanceRecord["status"]) => void }) {
+  const checkInAt = toDate(record.checkInAt);
+  const mapUrl = `https://www.google.com/maps?q=${record.latitude},${record.longitude}`;
+  const isAdmin = session && ["super_admin", "admin"].includes(session.user.role);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* HEADER INFO */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#eef5ff", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--blue)" }}>
+          <Users size={28} />
+        </div>
+        <div>
+          <h4 style={{ margin: "0 0 4px", fontSize: "1.2rem", fontWeight: 800, color: "var(--ink)" }}>{record.displayName || user?.displayName || "Staf SBL"}</h4>
+          <div style={{ color: "var(--muted)", fontSize: "0.85rem", fontWeight: 700 }}>{user?.role || "-"} • {record.airName || user?.airName || "-"}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <StatusBadge status={record.status} />
+        {record.outOfOfficeReason && <span style={{ padding: "4px 12px", borderRadius: "99px", background: "#fffbeb", color: "#d97706", fontSize: "0.75rem", fontWeight: "bold" }}>Tugas: {record.outOfOfficeReason}</span>}
+      </div>
+
+      {/* VERIFIKASI WAJAH / FOTO */}
+      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
+        <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><Camera size={16} /> Verifikasi Selfie</h5>
+        {record.selfieDriveFileId ? (
+          <div style={{ position: "relative", width: "100%", paddingTop: "100%", borderRadius: "12px", overflow: "hidden", background: "#e2e8f0" }}>
+            <img src={record.selfieDriveFileId} alt="Selfie" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        ) : (
+          <div style={{ padding: "32px 16px", textAlign: "center", background: "#e2e8f0", borderRadius: "12px", color: "var(--muted)" }}>
+            <Camera size={32} style={{ opacity: 0.2, margin: "0 auto 8px" }} />
+            <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700 }}>Tidak ada foto selfie</p>
           </div>
         )}
+        <div style={{ marginTop: "12px", fontSize: "0.8rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+            <span style={{ color: "var(--muted)" }}>Skor AI Wajah:</span>
+            <strong style={{ color: record.confidenceScore && record.confidenceScore >= 80 ? "#11a36a" : "#ef4444" }}>{record.confidenceScore || 0}%</strong>
+          </div>
+          <div style={{ color: "var(--muted)", fontStyle: "italic", fontSize: "0.75rem" }}>{record.aiVerificationText || "-"}</div>
+        </div>
       </div>
+
+      {/* INFORMASI LOKASI */}
+      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
+         <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MapPin size={16} /> Data Lokasi</h5>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+           <div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Waktu Check-in</div>
+             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>{checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{checkInAt.toLocaleDateString("id-ID")}</div>
+           </div>
+           <div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "4px" }}>Jarak & Akurasi</div>
+             <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>{record.distanceToCenter ? `${Math.round(record.distanceToCenter)}m` : "-"}</div>
+             <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Akurasi ±{record.accuracyMeters || "-"}m</div>
+           </div>
+         </div>
+         <a href={mapUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "10px", background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", color: "var(--ink)", textDecoration: "none", fontWeight: 800, fontSize: "0.85rem", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.background = "#f1f3f5"} onMouseOut={(e) => e.currentTarget.style.background = "white"}>
+           Buka di Google Maps <Navigation size={14} />
+         </a>
+      </div>
+
+      {/* INFORMASI DEVICE */}
+      <div style={{ background: "#f8f9fc", borderRadius: "16px", padding: "16px", border: "1px solid #f1f3f5" }}>
+        <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><MonitorSmartphone size={16} /> Device Info</h5>
+        <div style={{ fontSize: "0.8rem", color: "var(--ink)", lineHeight: 1.5, wordBreak: "break-all" }}>
+          {record.userAgent || "Tidak terdeteksi"}
+        </div>
+      </div>
+
+      {/* ACTION ADMIN */}
+      {isAdmin && record.status === "needs_review" && (
+        <div style={{ marginTop: "8px", borderTop: "2px dashed #e2e8f0", paddingTop: "24px" }}>
+          <h5 style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}><ShieldAlert size={16} /> Aksi Validasi Admin</h5>
+          <div style={{ display: "flex", gap: "12px" }}>
+             <button onClick={() => { onReview(record.id, "valid"); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#11a36a", color: "white", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer" }}>
+               <CheckCircle size={18} /> Terima Absen
+             </button>
+             <button onClick={() => { onReview(record.id, "rejected"); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#ef4444", color: "white", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer" }}>
+               <XCircle size={18} /> Tolak Absen
+             </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -465,7 +633,12 @@ function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; bg: string; text: string }> = {
     present: { label: "Hadir (Radius)", bg: "#ecfdf5", text: "#059669" },
     outside_radius: { label: "Luar Radius", bg: "#fffbeb", text: "#d97706" },
-    late: { label: "Terlambat", bg: "#fef2f2", text: "#dc2626" }
+    late: { label: "Terlambat", bg: "#fef2f2", text: "#dc2626" },
+    valid: { label: "Valid", bg: "#ecfdf5", text: "#059669" },
+    needs_review: { label: "Butuh Review", bg: "#fffbeb", text: "#d97706" },
+    rejected: { label: "Ditolak", bg: "#fef2f2", text: "#dc2626" },
+    sick: { label: "Sakit", bg: "#e0f2fe", text: "#0284c7" },
+    leave: { label: "Izin", bg: "#f3e8ff", text: "#7e22ce" }
   };
   const { label, bg, text } = config[status] || { label: status, bg: "#f3f4f6", text: "#374151" };
 

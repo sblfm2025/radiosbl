@@ -1,5 +1,5 @@
 import { useState, useMemo, type FormEvent } from "react";
-import { Sparkles, Save, FileText, Bot } from "lucide-react";
+import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2 } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript } from "../services/aiScript.service";
@@ -36,6 +36,14 @@ export function AiScriptPage({
     );
   }, [scheduleSlots, scriptSlotKey]);
 
+  const groupedSlots = useMemo(() => {
+    return scheduleSlots.reduce((acc: Record<string, BroadcastProgramSlot[]>, slot: BroadcastProgramSlot) => {
+      if (!acc[slot.day]) acc[slot.day] = [];
+      acc[slot.day].push(slot);
+      return acc;
+    }, {});
+  }, [scheduleSlots]);
+
   function formatAirNames(value: string): string {
     return resolveAnnouncerText(value)
       .map((part) => (part.kind === "announcer" ? part.profile.airName : part.label))
@@ -68,12 +76,12 @@ export function AiScriptPage({
 
       setScriptDraft(result.text);
       if (result.warning) {
-        setScriptNotice("Gemini sedang sibuk. Naskah sementara disiapkan agar tetap bisa diedit.");
+        setScriptNotice("Asisten AI sedang sibuk. Naskah sementara disiapkan agar tetap bisa diedit.");
       } else {
         setScriptNotice(
           result.demo
             ? "Mode Demo: Menampilkan naskah sementara."
-            : "Draft naskah berhasil dibuat dengan Gemini 2.5 Flash."
+            : "Draft naskah berhasil dibuat dan siap disunting."
         );
       }
     } catch (currentError) {
@@ -123,34 +131,41 @@ export function AiScriptPage({
 
   return (
     <div className="ai-script-page">
-      {/* Header Premium */}
-      <header className="page-header-premium">
-        <div className="header-content">
-          <div className="header-brand">
-            <div className="brand-icon-wrap">
-              <Sparkles className="sparkle-icon" />
-            </div>
-            <div className="brand-text">
-              <p className="eyebrow-accent">Creative Assistant</p>
+      <section className="ai-script-hero" aria-label="Pembuatan naskah siaran dengan AI">
+        <div className="ai-script-hero-copy">
+          <div className="schedule-title-lockup">
+            <img src="/LogoSBL.svg" alt="Radio SBL" />
+            <div>
+              <p className="eyebrow">Asisten kreatif</p>
               <h1>Buat Naskah AI</h1>
             </div>
           </div>
-          <div className="header-meta">
-            <span className="model-badge">
-              <Bot size={14} />
-              Gemini 1.5 Flash
-            </span>
-          </div>
+          <p>
+            Susun draft opening, isi siaran, cue interaksi, dan closing berdasarkan
+            jadwal resmi Radio SBL. Hasilnya tetap bisa diedit sebelum disimpan.
+          </p>
         </div>
-      </header>
+
+        <div className="ai-script-context-card">
+          <span>
+            <CalendarClock size={18} />
+            {selectedScriptSlot.day}, {selectedScriptSlot.time}
+          </span>
+          <strong>{selectedScriptSlot.program}</strong>
+          <p>{selectedScriptSlot.description || "Pilih program untuk menyesuaikan konteks naskah."}</p>
+          <em>
+            <Radio size={16} />
+            {formatAirNames(selectedScriptSlot.announcer) || "Penyiar Radio SBL"}
+          </em>
+        </div>
+      </section>
 
       <main className="ai-script-container">
         <div className="ai-layout-grid">
-          {/* Sisi Kiri: Konfigurasi */}
           <section className="ai-config-panel">
             <div className="panel-inner">
               <div className="panel-header">
-                <Sparkles size={18} />
+                <Wand2 size={18} />
                 <h2>Konfigurasi Naskah</h2>
               </div>
               
@@ -162,14 +177,19 @@ export function AiScriptPage({
                     onChange={(e) => setScriptSlotKey(e.target.value)}
                     className="premium-select"
                   >
-                    {scheduleSlots.map((slot: BroadcastProgramSlot) => {
-                      const key = `${slot.day}-${slot.time}-${slot.program}`;
-                      return (
-                        <option key={key} value={key}>
-                          {slot.day} • {slot.program}
-                        </option>
-                      );
-                    })}
+                    <option value="">-- Pilih Program --</option>
+                    {Object.entries(groupedSlots).map(([day, slots]) => (
+                      <optgroup key={day} label={day}>
+                        {slots.map((slot) => {
+                          const key = `${slot.day}-${slot.time}-${slot.program}`;
+                          return (
+                            <option key={key} value={key}>
+                              {slot.time} - {slot.program}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
 
@@ -202,7 +222,7 @@ export function AiScriptPage({
                     value={scriptIntervention}
                     onChange={(e) => setScriptIntervention(e.target.value)}
                     placeholder="Sapa pendengar di pesisir, buka dengan pantun, dll..."
-                    rows={3}
+                    rows={2}
                     className="premium-textarea"
                   />
                 </div>
@@ -224,7 +244,6 @@ export function AiScriptPage({
             </div>
           </section>
 
-          {/* Sisi Kanan: Hasil */}
           <section className="ai-result-panel">
             <div className="panel-inner">
               <div className="panel-header">
@@ -269,3 +288,4 @@ export function AiScriptPage({
     </div>
   );
 }
+
