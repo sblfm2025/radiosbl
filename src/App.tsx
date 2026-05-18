@@ -37,6 +37,8 @@ import { CoveragePage } from "./components/CoveragePage";
 import { UsersManagementPage } from "./components/UsersManagementPage";
 import { ScheduleSwapPage } from "./components/ScheduleSwapPage";
 import { AttendanceReportPage } from "./components/AttendanceReportPage";
+import { TutorialPage } from "./components/TutorialPage";
+import { PedomanMediaPage } from "./components/PedomanMediaPage";
 
 // Data & Repository
 import {
@@ -105,7 +107,9 @@ function getInitialPageFromUrl(): PageKey | null {
     "scheduleSwap",
     "attendanceReport",
     "profile",
-    "menu"
+    "menu",
+    "tutorial",
+    "pedoman"
   ];
 
   return allowedPages.includes(page as PageKey) ? (page as PageKey) : null;
@@ -478,6 +482,10 @@ export default function App() {
         return <ScheduleSwapPage session={session} />;
       case "attendanceReport":
         return <AttendanceReportPage session={session} />;
+      case "tutorial":
+        return <TutorialPage />;
+      case "pedoman":
+        return <PedomanMediaPage />;
       case "profile":
         return session ? (
           <ProfilePage session={session} onLogout={handleLogout} />

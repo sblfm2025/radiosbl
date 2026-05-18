@@ -36,6 +36,10 @@ const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   {
     label: "Sistem",
     items: ["profile"]
+  },
+  {
+    label: "Bantuan & Informasi",
+    items: ["tutorial", "pedoman"]
   }
 ];
 
@@ -283,7 +287,9 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     pinrangBerkabar: "video youtube pinrang berkabar playlist kabar berita",
     announcers: "penyiar kru profil air name",
     complaints: "aduan saran keluhan warga",
-    profile: "profil akun password preferensi"
+    profile: "profil akun password preferensi",
+    tutorial: "tutorial panduan bantuan faq help troubleshooting",
+    pedoman: "pedoman media siber aturan kebijakan privasi"
   };
 
   return [
@@ -349,6 +355,10 @@ function getMenuDescription(key: PageKey): string {
       return "Role dan akses";
     case "profile":
       return "Akun dan preferensi";
+    case "tutorial":
+      return "Panduan penggunaan aplikasi";
+    case "pedoman":
+      return "Aturan dan kebijakan privasi";
     default:
       return "Fitur Radio SBL";
   }

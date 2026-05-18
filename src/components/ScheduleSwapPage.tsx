@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Calendar, CheckCircle2, Clock, Send } from "lucide-react";
 import { PageHeader } from "./PageHeader";
+import { InlineHelp } from "./InlineHelp";
 import {
   getScheduleSwapAliasesForUser,
   isIncomingScheduleSwap,
@@ -281,8 +282,12 @@ export function ScheduleSwapPage({ session }: { session: AuthSession | null }) {
 
         <div className="schedule-swap-grid">
           <section className="schedule-swap-panel">
-            <h2 className="schedule-swap-section-title">
+            <h2 className="schedule-swap-section-title" style={{ display: "flex", alignItems: "center" }}>
               <Send size={18} /> Ajukan Pertukaran
+              <InlineHelp 
+                title="Sistem Tukar Jadwal" 
+                content="Pilih jadwal siaran Anda dan rekan pengganti. Rekan Anda akan mendapat konfirmasi lewat WhatsApp."
+              />
             </h2>
 
             <form className="schedule-swap-form" onSubmit={handleSubmit}>

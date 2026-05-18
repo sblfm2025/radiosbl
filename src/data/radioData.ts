@@ -15,7 +15,9 @@ import {
   CalendarRange,
   Sparkles,
   ArrowLeftRight,
-  BarChart3
+  BarChart3,
+  BookOpen,
+  FileText
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -39,7 +41,9 @@ export type PageKey =
   | "scheduleSwap"
   | "attendanceReport"
   | "profile"
-  | "menu";
+  | "menu"
+  | "tutorial"
+  | "pedoman";
 
 import type { Permission } from "../types/domain";
 
@@ -65,7 +69,9 @@ export const primaryNav: NavItem[] = [
   { key: "attendance", label: "Absensi", icon: ClipboardCheck, requiredPermission: "attendance:self" },
   { key: "users", label: "Kelola User", icon: UsersRound, requiredPermission: "users:manage" },
   { key: "attendanceReport", label: "Rekap Absen", icon: BarChart3, requiredPermission: "attendance:manage" },
-  { key: "complaints", label: "Aduan", icon: Bell, requiredPermission: "complaints:submit" }
+  { key: "complaints", label: "Aduan", icon: Bell, requiredPermission: "complaints:submit" },
+  { key: "tutorial", label: "Tutorial", icon: BookOpen },
+  { key: "pedoman", label: "Pedoman Media", icon: FileText }
 ];
 
 export const bottomNav: NavItem[] = [

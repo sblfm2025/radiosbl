@@ -1,6 +1,6 @@
 import { shouldUseLocalFallback } from "../lib/env";
 import type { ProgramScriptDraft } from "../types/domain";
-import { createDocument, listDocuments } from "./firestore.service";
+import { createDocument, listDocuments, updateDocument } from "./firestore.service";
 
 const PROGRAM_SCRIPTS_KEY = "radio-sbl-program-script-drafts";
 const MAX_LOCAL_SCRIPTS = 30;
@@ -40,6 +40,15 @@ function writeLocalProgramScripts(scripts: ProgramScriptDraft[]) {
   }
 
   storage.setItem(PROGRAM_SCRIPTS_KEY, JSON.stringify(scripts.slice(0, MAX_LOCAL_SCRIPTS)));
+}
+
+export function updateLocalProgramScriptStatus(id: string, status: ProgramScriptDraft["status"]): void {
+  const scripts = readLocalProgramScripts();
+  const index = scripts.findIndex(s => s.id === id);
+  if (index !== -1) {
+    scripts[index] = { ...scripts[index], status, updatedAt: new Date().toISOString() };
+    writeLocalProgramScripts(scripts);
+  }
 }
 
 function createProgramScriptDraft(input: ProgramScriptDraftInput): ProgramScriptDraft {
@@ -116,3 +125,17 @@ export async function listProgramScripts(): Promise<ProgramScriptDraft[]> {
     return listLocalProgramScripts();
   }
 }
+
+export async function updateProgramScriptStatus(id: string, status: ProgramScriptDraft["status"]): Promise<void> {
+  if (shouldUseLocalFallback()) {
+    updateLocalProgramScriptStatus(id, status);
+    return;
+  }
+
+  try {
+    await updateDocument("programScriptDrafts", id, { status, updatedAt: new Date().toISOString() });
+  } catch {
+    updateLocalProgramScriptStatus(id, status);
+  }
+}
+

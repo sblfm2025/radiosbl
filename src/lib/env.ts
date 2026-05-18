@@ -31,3 +31,10 @@ export function hasFirebaseConfig(): boolean {
 export function shouldUseLocalFallback(): boolean {
   return import.meta.env.MODE === "test" || !hasFirebaseConfig();
 }
+
+export const featureFlags = {
+  enableNewDashboard: import.meta.env.VITE_ENABLE_NEW_DASHBOARD !== "false",
+  enablePinrangBerkabar: import.meta.env.VITE_ENABLE_PINRANG_BERKABAR !== "false",
+  enableTutorialSystem: import.meta.env.VITE_ENABLE_TUTORIAL_SYSTEM !== "false",
+  enableNewHelpCenter: import.meta.env.VITE_ENABLE_NEW_HELP_CENTER !== "false"
+};

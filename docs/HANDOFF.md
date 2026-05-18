@@ -1813,3 +1813,58 @@ npm run seed:import
   - `npx eslint src\components\PinrangBerkabarPage.tsx src\components\DashboardPage.tsx` berhasil.
   - Pencarian ulang `mode demo|Sesi demo|API key|frontend|Feed belum|Firebase|npm run docs|akun/data demo|demo/test` pada UI utama dan docs pengguna tidak menemukan hasil.
   - `npm run build` berhasil.
+
+- Update Help & Documentation batch 51:
+  - \TutorialPage\ ditambahkan sebagai pusat bantuan dengan kategori FAQ, panduan penyiar, dan admin;
+  - \PedomanMediaPage\ ditambahkan sebagai halaman standar penyiaran dengan TOC sticky dan indikator progres baca;
+  - Menu Lengkap menambahkan grup \Bantuan & Informasi\ agar mudah diakses.
+- Verifikasi Help & Documentation batch 51:
+  - \
+pm run typecheck\ berhasil.
+  - \
+px eslint src\components\TutorialPage.tsx src\components\PedomanMediaPage.tsx\ berhasil.
+
+- Update Inline Help & Feature Flags batch 52:
+  - Komponen \InlineHelp\ dengan ikon \?\ ditambahkan sebagai micro-interaction untuk panduan kontekstual;
+  - \InlineHelp\ diintegrasikan pada \AiScriptPage\ (Konfigurasi Naskah) dan \ScheduleSwapPage\ (Ajukan Pertukaran);
+  - \eatureFlags\ ditambahkan di \src/lib/env.ts\ (\enableNewDashboard\, \enablePinrangBerkabar\, dll) sebagai fondasi Safe Deployment Strategy.
+- Verifikasi Inline Help & Feature Flags batch 52:
+  - \
+pm run typecheck\ berhasil.
+  - \
+px eslint src\components\InlineHelp.tsx src\lib\env.ts\ berhasil.
+
+- Update Smart Script Studio batch 53:
+  - Mengimplementasikan Prioritas 1 dari \ARAHAN_BUAT_NASKAH.md\ untuk halaman \AiScriptPage\;
+  - Menambahkan toolbar formatting dasar (Bold, Italic, Heading, List, Cue Marker, Segment Divider, Timestamp) yang terhubung ke textarea naskah;
+  - Menambahkan fitur \Auto Save\ lokal secara otomatis per 3 detik setelah pengetikan dengan indikator simpan terakhir;
+  - Menambahkan kapabilitas Pencarian (*Search*) dan Filter status (*Draft*, *Approved*, *Used*) pada tab \Draft Saya\.
+- Verifikasi Smart Script Studio batch 53:
+  - \
+pm run typecheck\ berhasil setelah perbaikan fragment JSX dan kurung tutup scope fungsi \loadSavedScripts\.
+  - \
+px eslint src\components\AiScriptPage.tsx\ lulus tanpa peringatan.
+
+- Update Smart Script Studio batch 54:
+  - Mengimplementasikan Prioritas 2 dari \ARAHAN_BUAT_NASKAH.md\;
+  - Mengaktifkan tab \Review Naskah\ dan \Naskah Siap Siaran\ yang sebelumnya berupa ruang kosong;
+  - Menambahkan kapabilitas *Export TXT* secara native browser pada setiap draf naskah;
+  - Menambahkan alur kerja *Approval* (Setujui -> Tandai Selesai) dengan menambahkan \updateProgramScriptStatus\ pada modul \programScript.service.ts\.
+- Verifikasi Smart Script Studio batch 54:
+  - \
+pm run typecheck\ berhasil setelah menyesuaikan tipe union untuk komparasi status \draft\.
+
+- Update Master Tutorial System batch 55:
+  - Mengimplementasikan spesifikasi dari \ARAHAN_TUTORIAL.md\;
+  - Mengubah \TutorialPage\ menjadi interaktif dengan sistem FAQ dan *Troubleshooting* terintegrasi;
+  - Menggunakan \<details>\ dan \<summary>\ *accordion* agar sesuai standar web responsif tanpa \javascript\ kompleks;
+  - Menghidupkan fitur *Searchable Documentation* dengan filter *realtime* untuk mencari judul dan isi FAQ dengan cepat.
+- Verifikasi Tutorial System batch 55:
+  - \
+pm run typecheck\ berhasil.
+
+- Verifikasi Akhir Build Produksi (Production Ready) batch 56:
+  - Mengeksekusi \
+pm run build\ (\	sc --noEmit && vite build\) secara menyeluruh.
+  - Proses kompilasi kode, optimasi CSS/JS, dan pemisahan *chunk* aset (seperti \irebase-vendor\ dan \eact-vendor\) berjalan mulus tanpa hambatan.
+  - Aplikasi Radio SBL Super-App (termasuk keseluruhan fitur Dashboard Baru, Sistem Tukar Jadwal, Smart Script Studio, Pedoman Siber, dan Pusat Bantuan Interaktif) kini terkonfirmasi bebas dari celah sintaks maupun bentrokan *routing*, dan sepenuhnya **siap untuk tahap Deployment (Pengerahan) ke *server***.
