@@ -93,8 +93,8 @@
     <header class="fixed top-0 w-full z-50 glass-panel border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-heading font-bold">
-                    SBL
+                <div class="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white shadow-sm border border-gray-100">
+                    <img src="../public/logoapp.png" alt="Radio SBL Logo" class="w-full h-full object-contain">
                 </div>
                 <span class="font-heading font-bold text-lg">Radio SBL Manual</span>
             </div>
@@ -126,10 +126,12 @@
                 <div>
                     <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Persiapan Awal</h3>
                     <nav class="flex flex-col border-l-2 border-gray-100">
-                        <a href="#login" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Login & Autentikasi</a>
-                        <a href="#absensi" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Absensi Berbasis Radius</a>
-                        <a href="#dashboard" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Dashboard Utama</a>
-                        <a href="#menu-lengkap" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">4. Navigasi Lanjutan (Menu Lengkap)</a>
+                        <a href="#instalasi" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Instalasi Aplikasi (PWA)</a>
+                        <a href="#hak-akses" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Spesifikasi Hak Akses (Role)</a>
+                        <a href="#login" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Login & Autentikasi</a>
+                        <a href="#absensi" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">4. Absensi Berbasis Radius</a>
+                        <a href="#dashboard" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">5. Dashboard Utama</a>
+                        <a href="#menu-lengkap" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">6. Navigasi Lanjutan (Menu)</a>
                     </nav>
                 </div>
                 <div>
@@ -156,13 +158,97 @@
         <!-- Main Content Area -->
         <main class="flex-1 space-y-24 min-w-0">
             
+            <!-- SECTION 0.1: INSTALASI PWA -->
+            <section id="instalasi" class="content-section">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-primary flex items-center justify-center">
+                        <i class="ph ph-device-mobile text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">1. Instalasi Aplikasi (PWA) di HP</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Radio SBL Super App dibangun dengan teknologi <strong>Progressive Web App (PWA)</strong>. Ini berarti Anda tidak perlu mengunduhnya dari Play Store atau App Store. Cukup "Install" langsung dari <em>browser</em> agar berjalan layaknya aplikasi mandiri.
+                        </p>
+                        <h4 class="font-bold mb-2">Android (Google Chrome):</h4>
+                        <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-700 mb-4">
+                            <li>Buka tautan <strong>radiosbl.web.app</strong> di Google Chrome.</li>
+                            <li>Tunggu munculnya <em>popup</em> di bawah layar bertuliskan <strong>"Add Radio SBL to Home screen"</strong> (atau ketuk titik tiga di pojok kanan atas).</li>
+                            <li>Pilih <strong>"Install app"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong>.</li>
+                            <li>Ikon Radio SBL akan muncul di layar HP Anda.</li>
+                        </ol>
+                        <h4 class="font-bold mb-2">iPhone / iOS (Safari):</h4>
+                        <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+                            <li>Buka tautan <strong>radiosbl.web.app</strong> di peramban Safari.</li>
+                            <li>Ketuk tombol <strong>Share</strong> (ikon kotak dengan panah ke atas) di bagian bawah layar.</li>
+                            <li>Gulir ke bawah dan pilih <strong>"Add to Home Screen"</strong>.</li>
+                            <li>Konfirmasi dengan menekan "Add".</li>
+                        </ol>
+                    </div>
+                    <div class="mobile-mockup relative">
+                        <img src="screenshots/pwa-install.png" alt="Instalasi PWA Radio SBL" loading="lazy">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 0.2: HAK AKSES -->
+            <section id="hak-akses" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                        <i class="ph ph-key text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">2. Spesifikasi Hak Akses (Level Jabatan)</h2>
+                </div>
+                
+                <p class="text-gray-600 leading-relaxed mb-6">
+                    Sistem ini mengisolasi layar dan fitur sesuai dengan jabatan masing-masing kru. Berikut adalah matriks wewenang:
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border border-gray-200 bg-white rounded-xl shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-gray-200 text-gray-700 text-xs font-bold px-2 py-1 rounded">GUEST (Tamu)</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            Status bawaan (*default*) saat pengguna pertama kali login dengan Google. Hanya dapat melihat Dashboard Utama (Live Monitor). Fitur jadwal, absensi, request, dan modul tertutup total sampai disetujui Admin.
+                        </p>
+                    </div>
+                    <div class="p-4 border border-gray-200 bg-white rounded-xl shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">PENYIAR (Announcer)</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            Akses penuh ke modul operasional siaran: Absensi Geofencing, Smart Script AI, Kalender Jadwal, Profil, dan Modul Request Lagu. Tidak dapat mengakses fitur manajemen user.
+                        </p>
+                    </div>
+                    <div class="p-4 border border-gray-200 bg-white rounded-xl shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">REPORTER</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            Fokus pada peliputan berita luar. Memiliki hak absensi "Tugas Luar". Memiliki akses tambahan ke Modul Redaksi (Pinrang Berkabar) untuk merilis video jurnalistik ke web portal.
+                        </p>
+                    </div>
+                    <div class="p-4 border border-gray-200 bg-white rounded-xl shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded">SUPER ADMIN</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            Akses tak terbatas (Tuhan/Root). Dapat mengatur role jabatan seluruh pengguna, mengakses rekapitulasi kehadiran semua orang, dan melakukan pembersihan data sistem secara massal.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <!-- SECTION 1 -->
-            <section id="login" class="content-section">
+            <section id="login" class="content-section pt-10 border-t border-gray-200">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 rounded-full bg-blue-100 text-primary flex items-center justify-center">
                         <i class="ph ph-sign-in text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">1. Login & Autentikasi</h2>
+                    <h2 class="font-heading text-2xl font-bold">3. Login & Autentikasi</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -192,7 +278,7 @@
                     <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
                         <i class="ph ph-map-pin text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">2. Absensi Berbasis Radius (Geofencing)</h2>
+                    <h2 class="font-heading text-2xl font-bold">4. Absensi Berbasis Radius (Geofencing)</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -223,7 +309,7 @@
                     <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
                         <i class="ph ph-squares-four text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">3. Memahami Dashboard & Menu</h2>
+                    <h2 class="font-heading text-2xl font-bold">5. Memahami Dashboard & Menu</h2>
                 </div>
                 
                 <p class="text-gray-600 leading-relaxed mb-8">
@@ -258,7 +344,7 @@
                     <div class="w-10 h-10 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center">
                         <i class="ph ph-grid-four text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">4. Navigasi Lanjutan (Menu Lengkap)</h2>
+                    <h2 class="font-heading text-2xl font-bold">6. Navigasi Lanjutan (Menu Lengkap)</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -284,7 +370,7 @@
                     <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
                         <i class="ph ph-calendar-check text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">4. Kalender Siaran & Tukar Jadwal</h2>
+                    <h2 class="font-heading text-2xl font-bold">7. Kalender Siaran & Tukar Jadwal</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -324,7 +410,7 @@
                     <div class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
                         <i class="ph ph-magic-wand text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">5. Smart Script Studio (Generasi AI)</h2>
+                    <h2 class="font-heading text-2xl font-bold">8. Smart Script Studio (Generasi AI)</h2>
                 </div>
                 
                 <div class="bg-gray-900 rounded-3xl p-8 text-white mb-8">
@@ -369,7 +455,7 @@
                     <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
                         <i class="ph ph-music-notes-simple text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">6. Manajemen Request Lagu</h2>
+                    <h2 class="font-heading text-2xl font-bold">9. Manajemen Request Lagu</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -413,7 +499,7 @@
                     <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
                         <i class="ph ph-youtube-logo text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">Modul Redaksi: Pinrang Berkabar</h2>
+                    <h2 class="font-heading text-2xl font-bold">10. Modul Redaksi: Pinrang Berkabar</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -449,7 +535,7 @@
                     <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center">
                         <i class="ph ph-users text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">Admin: Manajemen Pengguna</h2>
+                    <h2 class="font-heading text-2xl font-bold">11. Admin: Manajemen Pengguna</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -478,7 +564,7 @@
                     <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
                         <i class="ph ph-user-circle text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">Profil Kru & Detail Penyiar</h2>
+                    <h2 class="font-heading text-2xl font-bold">12. Profil Kru & Detail Penyiar</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -504,7 +590,7 @@
                     <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center">
                         <i class="ph ph-scales text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">7. Pedoman Pemberitaan Media Siber</h2>
+                    <h2 class="font-heading text-2xl font-bold">13. Pedoman Pemberitaan Media Siber</h2>
                 </div>
                 
                 <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
@@ -547,7 +633,7 @@
                     <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
                         <i class="ph ph-wrench text-xl"></i>
                     </div>
-                    <h2 class="font-heading text-2xl font-bold">8. Troubleshooting & FAQ (Solusi Cepat)</h2>
+                    <h2 class="font-heading text-2xl font-bold">14. Troubleshooting & FAQ (Solusi Cepat)</h2>
                 </div>
                 
                 <div class="space-y-4">
