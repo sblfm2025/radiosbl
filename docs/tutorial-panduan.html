@@ -129,6 +129,7 @@
                         <a href="#login" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Login & Autentikasi</a>
                         <a href="#absensi" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Absensi Berbasis Radius</a>
                         <a href="#dashboard" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Dashboard Utama</a>
+                        <a href="#menu-lengkap" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">4. Navigasi Lanjutan (Menu Lengkap)</a>
                     </nav>
                 </div>
                 <div>
@@ -140,11 +141,13 @@
                     </nav>
                 </div>
                 <div>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Manajemen</h3>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Manajemen & Redaksi</h3>
                     <nav class="flex flex-col border-l-2 border-gray-100">
-                        <a href="#admin" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Kontrol Admin & User</a>
-                        <a href="#pedoman" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Pedoman Media Siber</a>
-                        <a href="#troubleshooting" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Solusi Kendala (FAQ)</a>
+                        <a href="#pinrang-berkabar" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Portal Pinrang Berkabar</a>
+                        <a href="#users" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Admin: Manajemen Pengguna</a>
+                        <a href="#profil" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Profil Kru & Sosmed</a>
+                        <a href="#pedoman" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">4. Pedoman Media Siber</a>
+                        <a href="#troubleshooting" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">5. Solusi Kendala (FAQ)</a>
                     </nav>
                 </div>
             </div>
@@ -245,6 +248,32 @@
                         </div>
                         <h4 class="font-bold mb-2">Navigasi Sentral</h4>
                         <p class="text-sm text-gray-500">Gunakan *Menu Lengkap* (ikon grid di sudut kanan bawah) untuk mengakses fitur seperti Pinrang Berkabar, Manajemen User, atau Laporan.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3.5 -->
+            <section id="menu-lengkap" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center">
+                        <i class="ph ph-grid-four text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">4. Navigasi Lanjutan (Menu Lengkap)</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="mobile-mockup order-2 md:order-1">
+                        <img src="screenshots/menu-mobile.png" alt="Tampilan Menu Lengkap" loading="lazy">
+                    </div>
+                    <div class="order-1 md:order-2">
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Untuk menjaga layar Dashboard Utama agar tetap ringan dan bersih dari elemen menumpuk, Super App kami menggunakan pendekatan <strong>App Drawer</strong> layaknya ponsel cerdas.
+                        </p>
+                        <ol class="list-decimal pl-5 space-y-3 text-gray-700">
+                            <li>Tekan tombol berlambang <strong>Grid (Menu)</strong> pada <em>navbar</em> bawah aplikasi.</li>
+                            <li>Semua layanan, mulai dari modul redaksi (Pinrang Berkabar), Modul Manajemen Data, Arsip Absensi, hingga Pusat Bantuan disusun rapi berdasarkan kategori.</li>
+                            <li>Sistem ini <em>role-based</em>: jika Anda login sebagai "Penyiar", maka modul super-admin (Manajemen Pengguna) akan otomatis disembunyikan untuk mencegah kesalahan sistem.</li>
+                        </ol>
                     </div>
                 </div>
             </section>
@@ -374,6 +403,97 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 6.1: Pinrang Berkabar -->
+            <section id="pinrang-berkabar" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                        <i class="ph ph-youtube-logo text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">Modul Redaksi: Pinrang Berkabar</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-6">
+                            Modul ini khusus digunakan oleh Tim Redaksi/Berita untuk mempublikasikan video jurnalistik, podcast, maupun konten <em>citizen journalism</em> ke website portal resmi Radio SBL.
+                        </p>
+                        <h4 class="font-bold text-lg mb-3">Tata Cara Unggah & Publikasi</h4>
+                        <ul class="space-y-4 text-sm text-gray-600">
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Salin URL YouTube dari liputan terbaru Radio SBL.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Gunakan sistem "Sinkronisasi Otomatis". Aplikasi akan mengambil Judul, Deskripsi, dan Gambar Pratinjau (Thumbnail) secara mandiri dari server YouTube.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Pilih kategori jurnalistik yang sesuai (misal: Hukum & Kriminal, Budaya, Pemerintahan).</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="mobile-mockup">
+                        <img src="screenshots/pinrang-berkabar-mobile.png" alt="Modul Pinrang Berkabar" loading="lazy">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 6.2: Manajemen Users -->
+            <section id="users" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center">
+                        <i class="ph ph-users text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">Admin: Manajemen Pengguna</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="mobile-mockup order-2 md:order-1">
+                        <img src="screenshots/users-mobile.png" alt="Manajemen User SBL" loading="lazy">
+                    </div>
+                    <div class="order-1 md:order-2">
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Pusat kendali akses aplikasi. Halaman ini HANYA terbuka bagi pengguna dengan status <strong>Super Admin</strong>.
+                        </p>
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                            <h4 class="font-bold mb-3 flex items-center gap-2"><i class="ph ph-shield text-blue-600"></i> Kapabilitas Admin</h4>
+                            <ul class="list-disc pl-5 space-y-2 text-sm text-gray-700">
+                                <li>Melihat status keaktifan seluruh akun (Aktif/Diblokir).</li>
+                                <li><strong>Bypass Sinkronisasi:</strong> Mengatur <em>Role</em> (Penyiar, Reporter, Tamu) untuk setiap akun SSO Google yang baru masuk tanpa campur tangan teknis (IT).</li>
+                                <li>Sistem proteksi: Super Admin yang sedang <em>login</em> tidak dapat men-<em>downgrade</em> jabatannya sendiri demi menghindari "kunci dari dalam".</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 6.3: Profil Kru -->
+            <section id="profil" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i class="ph ph-user-circle text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">Profil Kru & Detail Penyiar</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Sebagai Penyiar profesional, Anda dituntut memiliki rekam jejak digital dan profil publik yang dapat diakses oleh pendengar.
+                        </p>
+                        <ol class="list-decimal pl-5 space-y-3 text-gray-700">
+                            <li>Buka halaman Profil Anda (klik foto avatar di kanan atas).</li>
+                            <li>Lengkapi <strong>Air Name</strong> (nama siaran/udara) dan nama asli Anda. Sistem sinkronisasi naskah AI akan memanggil Anda berdasarkan nama siaran ini.</li>
+                            <li>Tautkan tautan akun sosial media Anda (Instagram/Facebook) untuk diintegrasikan ke halaman Profil Penyiar di website publik.</li>
+                        </ol>
+                    </div>
+                    <div class="mobile-mockup relative">
+                        <img src="screenshots/profile-mobile.png" alt="Profil Penyiar SBL" loading="lazy">
                     </div>
                 </div>
             </section>
