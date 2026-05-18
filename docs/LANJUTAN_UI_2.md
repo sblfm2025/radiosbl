@@ -721,3 +721,62 @@ Fokus:
 Target akhir:
 RadioSBL terasa:
 “powerful, intelligent, realtime, and effortless.”
+
+---
+
+# 24. DEVELOPER NEXT STEPS (ADDITIVE + VERIFIABLE)
+
+Bagian ini wajib dipakai untuk memastikan semua “kecerdasan operasional” tetap aman (additive, backward-compatible) dan tidak merusak business logic inti.
+
+## 24.1 Aturan kerja (mengikuti HANDOFF.md)
+- Perubahan hanya additive dan tidak merombak struktur produksi utama.
+- Hindari perubahan massal; lakukan step-by-step per modul.
+- Jangan menyerahkan hasil sebelum verifikasi lokal (lint/typecheck/test/build).
+
+## 24.2 Urutan implementasi yang disarankan
+1. Tentukan 1 “Operational Intelligence slice” yang jelas (contoh: dashboard briefing role-aware, timeline request, actionable notification).
+2. Pastikan data yang dipakai sudah ada dari modul existing (presentation-only), atau gunakan service existing dengan fallback.
+3. Tambahkan UI state minimal:
+   - loading (skeleton/progressive)
+   - empty state (human-friendly)
+   - error state (bahasa manusia, tidak menampilkan error Firebase mentah)
+4. Hubungkan aksi langsung ke halaman/flow yang sudah ada (no new route/service bila tidak perlu).
+5. Tambahkan verifikasi UX:
+   - mobile 390x844
+   - tablet (>= 768)
+   - desktop (>= 980)
+6. Pastikan aksesibilitas:
+   - semua ikon punya label/aria-label
+   - tidak ada fokus yang hilang (keyboard/screen reader)
+   - tidak ada horizontal overflow
+
+## 24.3 Contoh acceptance criteria (wajib bisa dicek)
+- Dashboard intelligence:
+  - role tertentu menampilkan aksi yang benar (tanpa aksi “tidak diizinkan”)
+  - panel berubah sesuai konteks (sebelum/on-air/setelah) dengan data existing
+- Realtime layer:
+  - ketika request masuk, panel “Request Terkini” memperbarui tanpa refresh
+  - jika permission denied/offline, UI tetap menampilkan fallback tanpa crash
+- Notification:
+  - critical/important/passive terpisah dan actionable
+  - setiap aksi membuka halaman relevan atau memicu flow existing
+
+## 24.4 Verifikasi sebelum menganggap selesai
+Jalankan minimal:
+- npm run lint
+- npm run typecheck
+- npm run test
+- npm run build
+
+Tambahkan bila ada UI interactive baru:
+- npm run test:e2e
+
+---
+
+# 25. PENUTUP
+
+Tahap LANJUTAN_UI_2 dianggap selesai ketika:
+- pengalaman terasa “assistive” (membantu keputusan dan tindakan),
+- dashboard terasa hidup dan role-aware,
+- realtime terasa bekerja,
+- dan semua perubahan tetap additive serta aman seperti yang diminta HANDOFF.

@@ -99,6 +99,16 @@ type DashboardActionItem = {
   page: PageKey;
 };
 
+type DashboardAssistantInsight = {
+  label: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  page: PageKey;
+  icon: LucideIcon;
+  tone: "blue" | "green" | "amber";
+};
+
 function addDays(date: Date, days: number): Date {
   const nextDate = new Date(date);
   nextDate.setDate(date.getDate() + days);
@@ -426,6 +436,24 @@ export function DashboardPage({
       }).length
     };
   }, [now, songRequests]);
+  const todaySongRequests = useMemo(
+    () => songRequests.filter((request) => {
+      const requestDate = toLocalDate(request.createdAt);
+      return requestDate && isSameLocalDay(requestDate, now);
+    }),
+    [now, songRequests]
+  );
+  const popularRequestToday = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    todaySongRequests.forEach((request) => {
+      const title = request.title.trim();
+      if (!title) return;
+      counts.set(title, (counts.get(title) ?? 0) + 1);
+    });
+
+    return Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0];
+  }, [todaySongRequests]);
   const briefingItems = useMemo<DashboardBriefingItem[]>(() => {
     const items: DashboardBriefingItem[] = [];
 
@@ -582,6 +610,97 @@ export function DashboardPage({
     return items.slice(0, 4);
   }, [activeUserSlot, dashboardUserSlot, nextProgramInfo, nextUserSlot, nextUserSlotCountdown, requestQueue.latest, todayAttendance]);
 
+  const assistantInsights = useMemo<DashboardAssistantInsight[]>(() => {
+    const insights: DashboardAssistantInsight[] = [];
+    const nextProgramName = dashboardUserSlot?.program ?? nextSlot?.program ?? currentSlot.title;
+
+    if (activeUserSlot) {
+      insights.push({
+        label: "Ringkasan on-air",
+        title: requestQueue.latest
+          ? `${requestQueue.active.length} request perlu dipantau`
+          : "Siaran berjalan tanpa request aktif",
+        detail: requestQueue.latest
+          ? `Request terbaru: ${requestQueue.latest.title}. Siapkan cue singkat sebelum diputar.`
+          : "Jaga layar tetap fokus ke request, timer, dan cue program.",
+        actionLabel: "Buka request",
+        page: "requests",
+        icon: Radio,
+        tone: "green"
+      });
+    } else {
+      insights.push({
+        label: "Ringkasan shift",
+        title: dashboardUserSlot ? `${dashboardUserSlot.program} perlu disiapkan` : "Pantau jadwal utama",
+        detail: dashboardUserSlot
+          ? `${dashboardUserSlot.time.replace(/ WITA/g, "")} WITA bersama ${dashboardUserSlot.announcer}.`
+          : "Tidak ada jadwal pribadi terdeteksi hari ini. Cek susunan siaran sebelum mulai kerja.",
+        actionLabel: "Buka jadwal",
+        page: "schedule",
+        icon: CalendarClock,
+        tone: "blue"
+      });
+    }
+
+    insights.push({
+      label: "Rekomendasi cue",
+      title: `Siapkan naskah untuk ${nextProgramName}`,
+      detail: popularRequestToday
+        ? `${popularRequestToday[0]} muncul ${popularRequestToday[1]} kali hari ini. Bisa dipakai sebagai bahan bridging.`
+        : "Buat pembuka, bridging, atau penutup singkat agar transisi siaran lebih mulus.",
+      actionLabel: "Buat naskah",
+      page: "aiScript",
+      icon: Sparkles,
+      tone: "amber"
+    });
+
+    if (!todayAttendance) {
+      insights.push({
+        label: "Tindak lanjut",
+        title: "Absensi belum lengkap",
+        detail: "Lengkapi absensi sebelum mengambil tugas utama agar rekap harian tetap rapi.",
+        actionLabel: "Absen",
+        page: "attendance",
+        icon: ClipboardCheck,
+        tone: "amber"
+      });
+    } else if (session.user.role === "admin" || session.user.role === "super_admin") {
+      insights.push({
+        label: "Monitoring admin",
+        title: "Cek laporan operasional",
+        detail: "Lihat rekap absensi dan catatan staf untuk mendeteksi hal yang perlu validasi.",
+        actionLabel: "Buka rekap",
+        page: "attendanceReport",
+        icon: FileText,
+        tone: "blue"
+      });
+    } else {
+      insights.push({
+        label: "Tindak lanjut",
+        title: requestQueue.active.length > 0 ? "Request masih aktif" : "Workflow aman",
+        detail: requestQueue.active.length > 0
+          ? "Ada request yang belum selesai. Buka antrean sebelum menutup sesi."
+          : "Absensi sudah tercatat dan tidak ada request aktif yang mendesak.",
+        actionLabel: requestQueue.active.length > 0 ? "Buka request" : "Lihat profil",
+        page: requestQueue.active.length > 0 ? "requests" : "profile",
+        icon: CheckCircle2,
+        tone: "green"
+      });
+    }
+
+    return insights;
+  }, [
+    activeUserSlot,
+    currentSlot.title,
+    dashboardUserSlot,
+    nextSlot,
+    popularRequestToday,
+    requestQueue.active.length,
+    requestQueue.latest,
+    session.user.role,
+    todayAttendance
+  ]);
+
   const menuItems = useMemo(() => {
     const baseItems: DashboardMenuItem[] = [
       { key: "schedule", label: "Jadwal", icon: CalendarClock, tone: "schedule", requiredPermission: "schedule:read" },
@@ -614,6 +733,8 @@ export function DashboardPage({
       .filter((item): item is DashboardMenuItem => Boolean(item))
       .slice(0, 4);
   }, [menuItems, recentPages]);
+  const primaryBriefingItem = briefingItems[0];
+  const supportingBriefingItems = briefingItems.slice(1);
 
   const quickActions = useMemo<DashboardShortcut[]>(() => {
     const announcerPriority = session.user.role === "announcer" ? 0 : 1;
@@ -837,8 +958,9 @@ export function DashboardPage({
     }
   }, [session.user.id]);
 
-  const visibleMenuItems = showAllMenu ? menuItems : menuItems.slice(0, 8);
-  const hasMoreMenu = menuItems.length > 8;
+  const dashboardMenuPreviewCount = 4;
+  const visibleMenuItems = showAllMenu ? menuItems : menuItems.slice(0, dashboardMenuPreviewCount);
+  const hasMoreMenu = menuItems.length > dashboardMenuPreviewCount;
 
   function closeProfileSheet() {
     setShowProfilePopup(false);
@@ -965,7 +1087,34 @@ export function DashboardPage({
             </button>
           </div>
           <div className="dashboard-briefing-grid">
-            {briefingItems.map((item) => {
+            {primaryBriefingItem && (() => {
+              const Icon = primaryBriefingItem.icon;
+
+              return (
+                <article className={`dashboard-briefing-card ${primaryBriefingItem.priority}`}>
+                  <span className="dashboard-briefing-icon">
+                    <Icon size={18} />
+                  </span>
+                  <div>
+                    <small>{primaryBriefingItem.label}</small>
+                    <strong>{primaryBriefingItem.title}</strong>
+                    <p>{primaryBriefingItem.detail}</p>
+                  </div>
+                  <button type="button" onClick={() => handleNavigate(primaryBriefingItem.page)}>
+                    {primaryBriefingItem.actionLabel}
+                  </button>
+                </article>
+              );
+            })()}
+
+            {supportingBriefingItems.length > 0 && (
+              <details className="dashboard-briefing-more">
+                <summary>
+                  <span>Prioritas lain</span>
+                  <strong>{supportingBriefingItems.length}</strong>
+                </summary>
+                <div>
+                  {supportingBriefingItems.map((item) => {
               const Icon = item.icon;
               return (
                 <article key={`${item.priority}-${item.title}`} className={`dashboard-briefing-card ${item.priority}`}>
@@ -982,7 +1131,10 @@ export function DashboardPage({
                   </button>
                 </article>
               );
-            })}
+                  })}
+                </div>
+              </details>
+            )}
           </div>
         </section>
 
@@ -1037,6 +1189,44 @@ export function DashboardPage({
               Buka request
               <ArrowRight size={16} />
             </button>
+          </section>
+        )}
+
+        {canUser(session.user.role, "ai:use") && (
+          <section className="dashboard-assistant-panel" aria-label="Asisten operasional">
+            <div className="dashboard-assistant-head">
+              <span>
+                <Sparkles size={18} />
+              </span>
+              <div>
+                <small>AI Operational Assistant</small>
+                <strong>Ringkasan dan rekomendasi cepat</strong>
+              </div>
+              <button type="button" onClick={() => handleNavigate("aiScript")}>
+                Naskah AI
+                <ArrowRight size={15} />
+              </button>
+            </div>
+            <div className="dashboard-assistant-grid">
+              {assistantInsights.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <article key={`${item.label}-${item.title}`} className={`dashboard-assistant-card tone-${item.tone}`}>
+                    <span className="dashboard-assistant-icon">
+                      <Icon size={18} />
+                    </span>
+                    <div>
+                      <small>{item.label}</small>
+                      <strong>{item.title}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                    <button type="button" onClick={() => handleNavigate(item.page)}>
+                      {item.actionLabel}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
           </section>
         )}
 
@@ -1143,84 +1333,96 @@ export function DashboardPage({
           )}
         </section>
 
-        <section className="dashboard-stack">
-          <DashboardPanel
-            icon={<CalendarClock size={20} />}
-            title="Jadwal Berikutnya"
-            actionLabel="Lihat Semua"
-            onAction={() => handleNavigate("schedule")}
-          >
-            {nextSlot ? (
-              <button type="button" className="dashboard-next-card" onClick={() => handleNavigate("schedule")}>
-                <span className="dashboard-next-cover" aria-hidden="true">
-                  <img src={nextProgramInfo?.imageUrl ?? "/LogoSBL.svg"} alt="" />
-                </span>
-                <span className="dashboard-next-copy">
-                  <h3>{nextSlot.program}</h3>
-                  <span className="dashboard-next-meta">
-                    <Mic2 size={14} color="#64748B" />
-                    <span>{nextSlot.announcer}</span>
-                  </span>
-                  <span className="dashboard-next-time">
-                    <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
-                  </span>
-                  <p>{nextProgramInfo?.description}</p>
-                </span>
-              </button>
-            ) : (
-              <button type="button" className="schedule-slot-card dashboard-schedule-card" onClick={() => onNavigate("schedule")}>
-                <span className="schedule-slot-main">
-                  <span className="schedule-slot-art" aria-hidden="true">
-                    <img src="/LogoSBL.svg" alt="" />
-                  </span>
-                  <span className="schedule-slot-copy">
-                    <h3>Cek Jadwal Mingguan</h3>
-                    <span className="schedule-announcer">
-                      <Mic2 size={14} color="#64748B" />
-                      <span className="schedule-announcer-links">Penyiar belum ditentukan</span>
-                    </span>
-                  </span>
-                </span>
-              </button>
-            )}
-          </DashboardPanel>
+        <section className="dashboard-secondary-section" aria-label="Detail siaran dan arsip">
+          <details className="dashboard-secondary-details">
+            <summary>
+              <span>
+                <strong>Detail siaran & arsip</strong>
+                <small>Jadwal berikutnya dan podcast tetap tersedia saat dibutuhkan.</small>
+              </span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </summary>
 
-          <DashboardPanel
-            icon={<Podcast size={20} />}
-            title="Podcast Unggulan"
-            tone="amber"
-            actionLabel="Lihat Semua"
-            onAction={() => handleNavigate("podcast")}
-          >
-            <div className="dashboard-podcast-list">
-              {featuredPodcastEpisodes.map((episode) => (
-                <article
-                  key={episode.title}
-                  className="podcast-episode-card dashboard-podcast-card"
-                  onClick={() => handleNavigate("podcast")}
-                >
-                  <span className="podcast-episode-art">
-                    <img src={episode.image} alt={episode.title} />
-                  </span>
-                  <span className="podcast-episode-copy">
-                    <strong>{episode.title}</strong>
-                    <small>{episode.meta}</small>
-                  </span>
-                  <button
-                    type="button"
-                    className="podcast-card-play"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleNavigate("podcast");
-                    }}
-                    aria-label={`Buka ${episode.title}`}
-                  >
-                    <Play fill="currentColor" size={16} />
+            <section className="dashboard-stack">
+              <DashboardPanel
+                icon={<CalendarClock size={20} />}
+                title="Jadwal Berikutnya"
+                actionLabel="Lihat Semua"
+                onAction={() => handleNavigate("schedule")}
+              >
+                {nextSlot ? (
+                  <button type="button" className="dashboard-next-card" onClick={() => handleNavigate("schedule")}>
+                    <span className="dashboard-next-cover" aria-hidden="true">
+                      <img src={nextProgramInfo?.imageUrl ?? "/LogoSBL.svg"} alt="" />
+                    </span>
+                    <span className="dashboard-next-copy">
+                      <h3>{nextSlot.program}</h3>
+                      <span className="dashboard-next-meta">
+                        <Mic2 size={14} color="#64748B" />
+                        <span>{nextSlot.announcer}</span>
+                      </span>
+                      <span className="dashboard-next-time">
+                        <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
+                      </span>
+                      <p>{nextProgramInfo?.description}</p>
+                    </span>
                   </button>
-                </article>
-              ))}
-            </div>
-          </DashboardPanel>
+                ) : (
+                  <button type="button" className="schedule-slot-card dashboard-schedule-card" onClick={() => onNavigate("schedule")}>
+                    <span className="schedule-slot-main">
+                      <span className="schedule-slot-art" aria-hidden="true">
+                        <img src="/LogoSBL.svg" alt="" />
+                      </span>
+                      <span className="schedule-slot-copy">
+                        <h3>Cek Jadwal Mingguan</h3>
+                        <span className="schedule-announcer">
+                          <Mic2 size={14} color="#64748B" />
+                          <span className="schedule-announcer-links">Penyiar belum ditentukan</span>
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                )}
+              </DashboardPanel>
+
+              <DashboardPanel
+                icon={<Podcast size={20} />}
+                title="Podcast Unggulan"
+                tone="amber"
+                actionLabel="Lihat Semua"
+                onAction={() => handleNavigate("podcast")}
+              >
+                <div className="dashboard-podcast-list">
+                  {featuredPodcastEpisodes.map((episode) => (
+                    <article
+                      key={episode.title}
+                      className="podcast-episode-card dashboard-podcast-card"
+                      onClick={() => handleNavigate("podcast")}
+                    >
+                      <span className="podcast-episode-art">
+                        <img src={episode.image} alt={episode.title} />
+                      </span>
+                      <span className="podcast-episode-copy">
+                        <strong>{episode.title}</strong>
+                        <small>{episode.meta}</small>
+                      </span>
+                      <button
+                        type="button"
+                        className="podcast-card-play"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleNavigate("podcast");
+                        }}
+                        aria-label={`Buka ${episode.title}`}
+                      >
+                        <Play fill="currentColor" size={16} />
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </DashboardPanel>
+            </section>
+          </details>
         </section>
       </div>
 
@@ -1253,7 +1455,7 @@ export function DashboardPage({
             {showLogoutConfirm && (
               <div className="dashboard-logout-confirm">
                 <strong>Keluar dari akun ini?</strong>
-                <p>Sesi demo atau login aktif akan ditutup dari perangkat ini.</p>
+                <p>Sesi login akan ditutup dari perangkat ini.</p>
                 <div>
                   <button type="button" onClick={() => setShowLogoutConfirm(false)}>Batal</button>
                   <button type="button" className="danger" onClick={onLogout}>Keluar</button>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type FormEvent } from "react";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, FileText, X, CalendarClock, Mic2, Radio, Search, RotateCcw, Headphones, Sparkles, PlayCircle } from "lucide-react";
+import { ArrowLeftRight, BarChart3, ChevronLeft, ChevronRight, FileText, X, CalendarClock, Mic2, Radio, Search, RotateCcw, Headphones, Sparkles, PlayCircle } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { announcers, getProgramInfo, type PageKey, type ProgramInfo } from "../data/radioData";
@@ -18,6 +18,7 @@ import { listUserProfiles } from "../services/userProfile.service";
 import { resolveAnnouncerText, type ResolvedAnnouncerPart } from "../utils/announcerResolver";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import type { AppUser, BroadcastProgramSlot } from "../types/domain";
+import { parseTimeRangeMinutes } from "../utils/scheduleClock";
 
 type ScheduleProgramParts = {
   primary: string;
@@ -49,6 +50,31 @@ function getScheduleStatusClass(slot: BroadcastProgramSlot, isLive: boolean): st
   if (slot.source === "special") return "special";
   if (slot.source === "override") return "replacement";
   return "regular";
+}
+
+function getSlotDurationLabel(time: string): string {
+  const { start, end } = parseTimeRangeMinutes(time);
+  const duration = end >= start ? end - start : end + 1440 - start;
+
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return "Durasi fleksibel";
+  }
+
+  if (duration >= 60) {
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    return minutes > 0 ? `${hours}j ${minutes}m` : `${hours} jam`;
+  }
+
+  return `${duration} menit`;
+}
+
+function getProgramOccurrences(program: string, slots: BroadcastProgramSlot[]) {
+  const normalizedProgram = splitProgramParts(program).primary.toLowerCase();
+
+  return slots.filter((slot) => {
+    return splitProgramParts(slot.program).primary.toLowerCase() === normalizedProgram;
+  });
 }
 
 export function BroadcastSchedulePage({
@@ -327,6 +353,25 @@ export function BroadcastSchedulePage({
     return getScheduleStatusClass(slot, isCurrentlyPlaying) === "tentative";
   });
   const nextPrioritySlot = liveSlot ?? ownedSlots[0] ?? activeSlots[0];
+  const selectedProgramStats = useMemo(() => {
+    if (!selectedProgram) return null;
+
+    const weeklySlots = getProgramOccurrences(selectedProgram.slot.program, data.weeklySchedule as BroadcastProgramSlot[]);
+    const announcerNames = new Set(weeklySlots.map((slot) => slot.announcer));
+    const programParts = splitProgramParts(selectedProgram.slot.program);
+    const isLive = selectedDate === todayDate &&
+      currentSlot.title === selectedProgram.slot.program &&
+      getScheduleDayName(today) === selectedProgram.slot.day;
+
+    return {
+      statusLabel: getScheduleStatusLabel(selectedProgram.slot, isLive),
+      duration: getSlotDurationLabel(selectedProgram.slot.time),
+      weeklyCount: weeklySlots.length || 1,
+      announcerCount: announcerNames.size || 1,
+      optionalProgram: programParts.optional,
+      primaryProgram: programParts.primary
+    };
+  }, [currentSlot.title, data.weeklySchedule, selectedDate, selectedProgram, today, todayDate]);
 
   function goToPreviousDay() {
     const date = parseScheduleDate(selectedDate);
@@ -644,6 +689,53 @@ export function BroadcastSchedulePage({
               <span><Mic2 size={16} /> {selectedProgram.slot.announcer}</span>
             </div>
             <p className="program-detail-description">{selectedProgram.info.description}</p>
+            {selectedProgramStats && (
+              <>
+                <div className="program-detail-stats" aria-label="Statistik program">
+                  <article>
+                    <CalendarClock size={17} />
+                    <span>
+                      <small>Durasi</small>
+                      <strong>{selectedProgramStats.duration}</strong>
+                    </span>
+                  </article>
+                  <article>
+                    <BarChart3 size={17} />
+                    <span>
+                      <small>Frekuensi</small>
+                      <strong>{selectedProgramStats.weeklyCount}x/minggu</strong>
+                    </span>
+                  </article>
+                  <article>
+                    <Mic2 size={17} />
+                    <span>
+                      <small>Penyiar</small>
+                      <strong>{selectedProgramStats.announcerCount} tim</strong>
+                    </span>
+                  </article>
+                  <article>
+                    <Radio size={17} />
+                    <span>
+                      <small>Status</small>
+                      <strong>{selectedProgramStats.statusLabel}</strong>
+                    </span>
+                  </article>
+                </div>
+                <div className="program-detail-ecosystem" aria-label="Ekosistem program">
+                  <div>
+                    <small>Program Identity</small>
+                    <strong>{selectedProgramStats.primaryProgram}</strong>
+                    <p>{selectedProgramStats.optionalProgram ? `Tentative: ${selectedProgramStats.optionalProgram}` : "Program aktif dalam ekosistem siaran Radio SBL."}</p>
+                  </div>
+                  <div className="program-detail-continuity" aria-label="Kontinuitas workflow program">
+                    <span>Naskah</span>
+                    <span>Request</span>
+                    <span>Live</span>
+                    <span>Arsip</span>
+                  </div>
+                </div>
+              </>
+            )}
             <div className="program-detail-workflow" aria-label="Aksi lanjutan program">
               <button type="button" onClick={() => navigateFromProgramDetail("aiScript")}>
                 <Sparkles size={16} />

@@ -32,6 +32,7 @@ import { AttendancePage } from "./components/AttendancePage";
 import { StreamingPage } from "./components/StreamingPage";
 import { SplashPage } from "./components/SplashPage";
 import { PodcastPage } from "./components/PodcastPage";
+import { PinrangBerkabarPage } from "./components/PinrangBerkabarPage";
 import { CoveragePage } from "./components/CoveragePage";
 import { UsersManagementPage } from "./components/UsersManagementPage";
 import { ScheduleSwapPage } from "./components/ScheduleSwapPage";
@@ -95,6 +96,7 @@ function getInitialPageFromUrl(): PageKey | null {
     "streaming",
     "liveOb",
     "coverage",
+    "pinrangBerkabar",
     "podcast",
     "requests",
     "complaints",
@@ -464,6 +466,8 @@ export default function App() {
         return <SongRequestsPage />;
       case "podcast":
         return <PodcastPage />;
+      case "pinrangBerkabar":
+        return <PinrangBerkabarPage />;
       case "complaints":
         return <ComplaintsPage data={dashboardData} session={session} />;
       case "aiScript":

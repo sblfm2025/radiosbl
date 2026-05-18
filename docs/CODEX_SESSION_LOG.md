@@ -2908,3 +2908,309 @@ pm run typecheck\.
   - `node --check scripts/capture-docs-screenshots.mjs` berhasil.
   - `npm run docs:screenshots` berhasil dan menghasilkan screenshot dokumentasi di `docs/screenshots`.
   - `npm run typecheck` berhasil.
+
+### Koreksi 18 Mei 2026 - Dashboard AI Operational Assistant Batch 33
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_2.md` bagian AI Operational Assistant, Smart Recommendation, dan Smart Summary.
+- Perbaikan:
+  - `DashboardPage` punya panel `AI Operational Assistant` untuk user yang memiliki permission `ai:use`;
+  - panel menampilkan tiga insight operasional: ringkasan shift/on-air, rekomendasi cue naskah, dan tindak lanjut;
+  - insight membaca data existing: jadwal user, program berjalan/berikutnya, absensi hari ini, request lagu aktif, dan request populer hari ini;
+  - setiap insight punya aksi langsung ke halaman relevan seperti Jadwal, Request, Absensi, Rekap Absen, Profil, atau Naskah AI;
+  - CSS panel assistant dibuat responsif dan mobile satu kolom.
+- Batasan:
+  - tidak ada pemanggilan AI eksternal baru, perubahan prompt backend, schema Firebase, service, role/permission, auth, atau workflow produksi;
+  - panel hanya smart summary presentation-layer dari data dashboard existing.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: panel assistant tampil, 3 kartu insight tampil, `scrollWidth=390`, `clientWidth=390`, tidak ada tombol tanpa label, dan screenshot audit tersimpan di `tmp/dashboard-assistant-audit.png`.
+
+### Koreksi 18 Mei 2026 - Program Ecosystem Detail Batch 34
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_2.md` bagian Program Ecosystem, Program Identity, dan Cross-Module Continuity.
+- Perbaikan:
+  - modal detail program di `BroadcastSchedulePage` ditingkatkan menjadi mini page program;
+  - menambahkan statistik sederhana: durasi, frekuensi mingguan, jumlah tim penyiar, dan status slot;
+  - menambahkan blok `Program Identity` dengan informasi program utama/tentative;
+  - menambahkan chip kontinuitas workflow: Naskah, Request, Live, dan Arsip;
+  - styling mobile dipadatkan agar seluruh workflow detail program terlihat di viewport 390x844 tanpa horizontal overflow.
+- Batasan:
+  - tidak ada perubahan service jadwal, schema/rules Firebase, role/permission, auth, edit jadwal, tukar jadwal, request, streaming, Live/OB, atau workflow produksi;
+  - perubahan hanya presentation-layer dan kalkulasi statistik dari jadwal existing.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\BroadcastSchedulePage.tsx src\components\DashboardPage.tsx` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test membuka `?page=schedule`, klik kartu program, modal detail tampil, 4 statistik tampil, 4 chip kontinuitas tampil, 4 tombol workflow tampil, `scrollWidth=390`, `clientWidth=390`, workflow terlihat dalam modal, tidak ada tombol tanpa label, dan screenshot audit tersimpan di `tmp/program-detail-ecosystem-audit.png`.
+
+### Koreksi 18 Mei 2026 - Program Brief Pinrang Berkabar Batch 35
+
+- Fokus mengisi `docs/PINRANG_BERKABAR.md` yang masih kosong sebagai bagian dokumentasi program/newsroom.
+- Perbaikan:
+  - menambahkan program brief `Pinrang Berkabar` berisi fungsi, karakter program, role pengguna, workflow produksi, rundown 30 menit, template opening/headline/bridging/closing, checklist verifikasi berita, integrasi modul RadioSBL, prompt aman untuk Naskah AI, dan acceptance criteria;
+  - menambahkan link `Pinrang Berkabar` di portal dokumentasi `docs/index.html`.
+- Batasan:
+  - tidak ada perubahan kode aplikasi, service, schema/rules Firebase, role/permission, auth, prompt backend, atau workflow produksi;
+  - dokumen menekankan verifikasi berita dan larangan mengarang fakta.
+- Verifikasi:
+  - `rg -n "Pinrang Berkabar|PINRANG_BERKABAR" docs\index.html docs\PINRANG_BERKABAR.md` berhasil menemukan brief dan link portal.
+
+### Koreksi 18 Mei 2026 - Video Pinrang Berkabar Batch 36
+
+- Fokus melanjutkan `docs/PINRANG_BERKABAR.md` yang berisi arahan fitur video YouTube Pinrang Berkabar.
+- Perbaikan:
+  - melengkapi dokumen arahan dengan header halaman, empty/error state, fallback data, integrasi navigasi, dan acceptance criteria;
+  - mengganti contoh API key nyata menjadi placeholder agar tidak mendorong hardcode credential di frontend;
+  - menambahkan service `pinrangBerkabar.service` dengan urutan aman: proxy `VITE_PINRANG_BERKABAR_FEED_URL`, env `VITE_YOUTUBE_API_KEY` bila ada, lalu fallback playlist resmi;
+  - menambahkan halaman `PinrangBerkabarPage` dengan hero, tombol `Coba lagi`, tombol `Buka playlist`, loading skeleton, card video 16:9, dan fallback playlist;
+  - menambahkan page key/menu `pinrangBerkabar` ke route, sidebar desktop, dan Menu Lengkap grup Konten;
+  - menambahkan style responsif untuk mobile satu kolom dan desktop grid.
+- Batasan:
+  - tidak ada perubahan Firebase schema/rules, auth, role/permission, absensi, jadwal, request lagu, podcast, streaming, atau AI naskah;
+  - API key tidak di-hardcode dan fallback tidak mengarang judul video spesifik.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\components\PinrangBerkabarPage.tsx src\components\MenuPage.tsx src\components\Shell.tsx src\data\radioData.ts src\lib\env.ts src\services\pinrangBerkabar.service.ts` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test membuka `?page=pinrangBerkabar`, judul tampil, fallback card tampil, link playlist tersedia, `scrollWidth=390`, `clientWidth=390`, tidak ada tombol tanpa label, dan screenshot audit tersimpan di `tmp/pinrang-berkabar-video-audit.png`.
+  - Setelah `VITE_YOUTUBE_API_KEY` diset di `.env.local`, simulasi Playwright mobile mode test memuat 12 video dari YouTube API, sumber tampil `YouTube API`, link playlist tersedia, `scrollWidth=390`, `clientWidth=390`, tanpa console error, dan screenshot audit tersimpan di `tmp/pinrang-berkabar-youtube-api-audit.png`.
+  - `rg -n "AIzaSyBuOovBzt|VITE_YOUTUBE_API_KEY=.*AIza" . --glob "!.env.local" --glob "!node_modules/**" --glob "!dist/**"` tidak menemukan key di file repo yang akan di-commit.
+
+### Koreksi 18 Mei 2026 - Video Pinrang Berkabar Pagination Batch 37
+
+- Fokus melanjutkan `docs/PINRANG_BERKABAR.md` bagian `pageToken`, pagination, dan scanability video.
+- Perbaikan:
+  - service `listPinrangBerkabarVideos` sekarang mengembalikan `videos`, `nextPageToken`, dan `source`;
+  - proxy feed dan YouTube API mendukung `pageToken`;
+  - halaman `PinrangBerkabarPage` menambahkan tombol `Muat lagi` untuk mengambil halaman video berikutnya;
+  - menambahkan pencarian lokal untuk memfilter video yang sudah termuat berdasarkan judul, deskripsi, kanal, atau tanggal;
+  - menambahkan empty state `Video tidak ditemukan` dan tombol `Reset pencarian`;
+  - acceptance criteria dokumen diperbarui untuk pagination dan pencarian lokal.
+- Batasan:
+  - tidak ada perubahan Firebase schema/rules, auth, role/permission, modul lama, atau hardcode API key;
+  - pencarian hanya memfilter video yang sudah termuat, tidak membuat query YouTube baru.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\services\pinrangBerkabar.service.ts` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test dengan YouTube API: video awal 12, tombol `Muat lagi` tersedia, setelah klik menjadi 24 video, search kosong menampilkan empty state, `scrollWidth=390`, `clientWidth=390`, tidak ada tombol tanpa label, tanpa console error, dan screenshot audit tersimpan di `tmp/pinrang-berkabar-pagination-audit.png`.
+
+### Koreksi 18 Mei 2026 - Dokumentasi Screenshot Pinrang Berkabar Batch 38
+
+- Fokus melanjutkan dokumentasi fitur Video Pinrang Berkabar agar ikut masuk portal dokumentasi dan screenshot otomatis.
+- Perbaikan:
+  - `scripts/capture-docs-screenshots.mjs` sekarang mengambil `pinrang-berkabar-mobile.png`;
+  - fungsi capture menunggu gambar selesai load/decode sebelum screenshot agar thumbnail YouTube tidak kosong;
+  - `docs/user-guide/README.md` menambahkan bagian `Pinrang Berkabar`;
+  - `docs/index.html` menambahkan screenshot Pinrang Berkabar di bagian screenshot utama;
+  - screenshot baru tersimpan di `docs/screenshots/pinrang-berkabar-mobile.png`.
+- Batasan:
+  - tidak ada perubahan service runtime selain script dokumentasi;
+  - screenshot tetap memakai sesi demo dan konfigurasi lokal yang aman dari commit.
+- Verifikasi:
+  - `node --check scripts/capture-docs-screenshots.mjs` berhasil.
+  - `npm run docs:screenshots` berhasil menghasilkan ulang screenshot dokumentasi.
+  - Inspeksi visual `docs/screenshots/pinrang-berkabar-mobile.png` menunjukkan thumbnail video sudah ter-render.
+
+### Koreksi 18 Mei 2026 - Smoke Test Pinrang Berkabar Batch 39
+
+- Fokus menambahkan guard e2e ringan untuk halaman video `Pinrang Berkabar`.
+- Perbaikan:
+  - menambahkan `src/e2e/pinrang-berkabar.smoke.spec.ts`;
+  - test membuka `?page=pinrangBerkabar` dengan sesi demo admin;
+  - memverifikasi judul, link playlist, input pencarian, kartu video/fallback, aksi `Muat lagi` bila tersedia, empty state pencarian, tombol reset, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Batasan:
+  - test tidak memaksa data YouTube live selalu tersedia;
+  - bila API/fetch tidak tersedia, fallback playlist tetap dianggap jalur valid.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\e2e\pinrang-berkabar.smoke.spec.ts src\components\Shell.tsx` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil.
+
+### Koreksi 18 Mei 2026 - Shell Connectivity Polish Batch 40
+
+- Fokus melanjutkan `src/components/Shell.tsx` untuk memperjelas status online/offline global.
+- Perbaikan:
+  - status koneksi sidebar sekarang memakai ikon dan label `Sinkron aktif` / `Mode offline`;
+  - menambahkan deskripsi singkat `Data studio tersambung` atau `Data lokal tetap bisa dibuka`;
+  - menambahkan `role="status"` dan `aria-live="polite"` pada status koneksi;
+  - menambahkan strip offline di area konten agar operator sadar beberapa data akan sinkron saat koneksi kembali.
+- Batasan:
+  - tidak ada perubahan routing, Firebase schema/rules, auth, role/permission, atau service data;
+  - perubahan hanya presentation-layer Shell.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Shell Navigation Continuity Batch 41
+
+- Fokus melanjutkan `src/components/Shell.tsx` agar navigasi tetap natural ketika fitur bertambah tanpa menambah item bottom nav.
+- Perbaikan:
+  - memindahkan `Pinrang Berkabar` dari grup sidebar `Siaran` ke grup `Konten` sesuai arahan dokumentasi;
+  - bottom nav sekarang menandai `Menu` sebagai active saat user berada di halaman yang tidak punya item bottom nav langsung;
+  - menambahkan `aria-current="page"` untuk item sidebar/bottom nav yang benar-benar sedang aktif;
+  - smoke test Pinrang Berkabar memastikan tombol `Menu` aktif di viewport mobile.
+- Batasan:
+  - tidak ada perubahan route, permission, Firebase schema/rules, auth, atau service data;
+  - bottom nav tetap lima item utama dan tidak ditambah.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Menu Recently Used Batch 42
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_2.md` bagian Smart Shortcut System, Recently Used, Session Continuity, dan Cognitive Load Reduction.
+- Perbaikan:
+  - `Shell` sekarang menyimpan halaman terakhir yang dibuka ke `radiosbl.recentPages:<userId>` secara global;
+  - `MenuPage` membaca daftar halaman terakhir dipakai dari storage yang sama;
+  - menambahkan panel `Terakhir dipakai` di Menu Lengkap untuk melanjutkan pekerjaan tanpa mencari ulang;
+  - quick action dan tile menu memakai handler navigasi yang ikut memperbarui recent pages;
+  - grup `Pinrang Berkabar` di Menu Lengkap disamakan dengan sidebar, yaitu masuk `Konten`;
+  - smoke test Pinrang Berkabar memverifikasi recent panel muncul di mobile setelah membuka halaman Pinrang Berkabar lalu masuk Menu.
+- Batasan:
+  - tidak ada route baru, service baru, schema/rules Firebase, permission baru, atau perubahan business logic inti;
+  - recent pages hanya local convenience dan tetap aman bila localStorage tidak tersedia.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\components\MenuPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Dashboard Calm Shortcut Batch 43
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_3.md` bagian masalah dashboard terlalu padat, terlalu banyak shortcut, dan semua fitur terasa sama penting.
+- Perbaikan:
+  - dashboard sekarang hanya menampilkan 4 shortcut utama secara default;
+  - shortcut tambahan tetap tersedia melalui tombol expand `Tampilkan semua menu`;
+  - menambahkan smoke test `src/e2e/dashboard-calm.smoke.spec.ts` untuk menjaga grid shortcut tetap 4 item secara default;
+  - test juga memverifikasi tombol expand membuka lebih banyak menu, tidak ada horizontal overflow, dan tidak ada tombol ikon tanpa label.
+- Batasan:
+  - tidak ada perubahan route, permission, service, Firebase schema/rules, auth, atau business logic inti;
+  - fitur tetap dapat diakses lewat expand dashboard dan Menu Lengkap.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Dashboard Briefing Priority Batch 45
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_3.md` bagian hierarchy visual belum jelas, semua fitur terasa sama penting, dan cognitive load tinggi.
+- Perbaikan:
+  - `Operational Briefing` sekarang menampilkan 1 kartu prioritas utama secara default;
+  - prioritas pendukung dipindahkan ke disclosure `Prioritas lain`;
+  - layout briefing dibuat lebih tenang: satu fokus utama, detail lain tetap satu tap;
+  - smoke test dashboard memverifikasi hanya satu briefing card langsung tampil dan prioritas pendukung muncul setelah disclosure dibuka.
+- Batasan:
+  - tidak ada perubahan data, permission, service, route, Firebase schema/rules, auth, atau business logic inti;
+  - semua aksi briefing lama tetap tersedia.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - LANJUTAN UI 3 Completion Batch 46
+
+- Fokus menuntaskan `docs/LANJUTAN_UI_3.md`, khususnya target `Pinrang Berkabar terasa profesional` dan `video diputar dalam aplikasi`.
+- Perbaikan:
+  - `PinrangBerkabarPage` sekarang memiliki player YouTube embed di dalam aplikasi;
+  - kartu video berubah dari link langsung keluar menjadi tombol `Putar` yang memilih video di player halaman;
+  - player fallback memakai embed playlist resmi bila feed/API belum tersedia;
+  - detail `Now Playing`, deskripsi, dan link `Buka di YouTube` tetap tersedia;
+  - styling player dibuat responsif untuk desktop dan mobile;
+  - smoke test Pinrang Berkabar memverifikasi iframe player dan status `Now Playing`;
+  - `docs/LANJUTAN_UI_3.md` ditambahkan bagian status implementasi tuntas.
+- Batasan:
+  - tidak ada API key hardcode, route baru, permission baru, Firebase schema/rules, auth, atau business logic inti;
+  - link YouTube eksternal tetap dipertahankan sebagai fallback.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\components\PinrangBerkabarPage.tsx src\e2e\dashboard-calm.smoke.spec.ts src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - LANJUTAN UI 3 Docs Refresh Batch 47
+
+- Fokus melanjutkan setelah `LANJUTAN_UI_3.md` tuntas agar portal dokumentasi dan screenshot mencerminkan hasil final.
+- Perbaikan:
+  - `docs/index.html` menambahkan kartu `LANJUTAN UI 3`;
+  - `docs/user-guide/README.md` memperbarui bagian Pinrang Berkabar agar menyebut player video in-app;
+  - screenshot dokumentasi diperbarui untuk dashboard mobile, dashboard desktop, dan Pinrang Berkabar mobile.
+- Verifikasi:
+  - `node --check scripts\capture-docs-screenshots.mjs` berhasil.
+  - `npm run docs:screenshots` berhasil.
+  - Cek file screenshot menunjukkan `dashboard-mobile.png`, `dashboard-desktop.png`, dan `pinrang-berkabar-mobile.png` terbarui.
+
+### Koreksi 18 Mei 2026 - Pinrang Berkabar Identity Carousel Batch 48
+
+- Fokus hasil baca ulang `docs/LANJUTAN_UI_3.md`, terutama bagian `/PinrangBerkabar.png`, hero section, dan `Video Lainnya`.
+- Perbaikan:
+  - hero Pinrang Berkabar sekarang memakai logo resmi `/PinrangBerkabar.png`;
+  - daftar video setelah player diberi heading `Video Lainnya`;
+  - daftar video terkait dibuat sebagai carousel horizontal responsif;
+  - thumbnail kartu video memakai lazy loading;
+  - smoke test Pinrang Berkabar memverifikasi logo resmi, player, `Now Playing`, heading `Video Lainnya`, dan carousel.
+- Batasan:
+  - tidak ada API key hardcode, route baru, permission baru, Firebase schema/rules, auth, atau perubahan service.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - LANJUTAN UI 3 Evaluation Batch 49
+
+- Fokus evaluasi ulang `docs/LANJUTAN_UI_3.md` terhadap implementasi aktual.
+- Temuan:
+  - dashboard calm, progressive disclosure, Pinrang in-app player, related video carousel, Request Lagu card stack, dan bottom nav 5 item sudah tertutup;
+  - gap yang masih jelas adalah sidebar desktop belum punya grup `Tim` sesuai dokumen.
+- Perbaikan:
+  - `Shell` memindahkan `Penyiar` dari grup `Siaran` ke grup baru `Tim`;
+  - `MenuPage` juga menambahkan grup `Tim` agar navigasi lengkap konsisten;
+  - `docs/LANJUTAN_UI_3.md` ditambahkan bagian `Hasil Evaluasi Ulang`.
+- Batasan:
+  - tidak ada perubahan route, permission, Firebase schema/rules, auth, service, atau business logic inti.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\components\MenuPage.tsx src\e2e\login.smoke.spec.ts` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Copy Teknis Cleanup Batch 50
+
+- Fokus mengevaluasi teks yang masih terasa demo atau instruksi teknis developer.
+- Perbaikan:
+  - `PinrangBerkabarPage` menghapus copy user-facing seperti `API key`, `frontend`, dan `Feed belum terhubung`;
+  - label sumber video dibuat lebih human-friendly: `Feed resmi`, `YouTube resmi`, dan `Playlist resmi`;
+  - konfirmasi logout dashboard tidak lagi menyebut `Sesi demo`;
+  - `docs/user-guide/README.md` menghapus instruksi mode demo/test dan mengganti `Firebase` menjadi `konfigurasi sistem`;
+  - `docs/index.html` mengurangi bahasa teknis seperti command screenshot di halaman utama;
+  - `docs/LANJUTAN_UI_3.md` merapikan status evaluasi agar tidak berisi daftar command teknis sebagai instruksi utama.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\components\DashboardPage.tsx` berhasil.
+  - Pencarian ulang `mode demo|Sesi demo|API key|frontend|Feed belum|Firebase|npm run docs|akun/data demo|demo/test` pada UI utama dan docs pengguna tidak menemukan hasil.
+  - `npm run build` berhasil.
+
+### Koreksi 18 Mei 2026 - Dashboard Secondary Detail Disclosure Batch 44
+
+- Fokus melanjutkan `docs/LANJUTAN_UI_3.md` bagian dashboard terlalu panjang, terlalu banyak card besar, dan cognitive load tinggi.
+- Perbaikan:
+  - panel `Jadwal Berikutnya` dan `Podcast Unggulan` dipindahkan ke disclosure `Detail siaran & arsip`;
+  - disclosure tertutup secara default agar first view dashboard lebih ringan;
+  - detail tetap bisa dibuka satu tap dari dashboard tanpa menghapus workflow lama;
+  - styling disclosure dibuat compact dan konsisten dengan dashboard;
+  - smoke test dashboard memverifikasi detail sekunder tersembunyi secara default dan tampil setelah disclosure dibuka.
+- Batasan:
+  - tidak ada perubahan data, route, permission, service, Firebase schema/rules, auth, atau business logic inti;
+  - jadwal dan podcast tetap tersedia dari dashboard, menu, dan halaman masing-masing.
+- Verifikasi:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.

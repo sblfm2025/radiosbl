@@ -7,7 +7,9 @@ type EnvKey =
   | "VITE_FIREBASE_MESSAGING_SENDER_ID"
   | "VITE_FIREBASE_MEASUREMENT_ID"
   | "VITE_GEMINI_PROXY_ENDPOINT"
-  | "VITE_WHATSAPP_PROXY_ENDPOINT";
+  | "VITE_WHATSAPP_PROXY_ENDPOINT"
+  | "VITE_PINRANG_BERKABAR_FEED_URL"
+  | "VITE_YOUTUBE_API_KEY";
 
 export function getEnv(key: EnvKey): string {
   return import.meta.env[key] ?? "";

@@ -71,6 +71,20 @@ async function capture(page, path, options = {}) {
     await page.reload({ waitUntil: "domcontentloaded" });
   }
   await page.waitForTimeout(options.waitMs ?? 900);
+  await page.evaluate(async () => {
+    const images = Array.from(document.images);
+    await Promise.allSettled(images.map(async (image) => {
+      if (image.complete && image.naturalWidth > 0) return;
+      if ("decode" in image) {
+        await image.decode();
+        return;
+      }
+      await new Promise((resolve) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+      });
+    }));
+  });
   await page.screenshot({ path: `${outputDir}/${path}`, fullPage: options.fullPage ?? true });
 }
 
@@ -89,6 +103,7 @@ async function main() {
     await capture(mobile, "attendance-mobile.png", { authenticated: true, query: "?page=attendance" });
     await capture(mobile, "schedule-mobile.png", { authenticated: true, query: "?page=schedule" });
     await capture(mobile, "song-request-mobile.png", { authenticated: true, query: "?page=requests" });
+    await capture(mobile, "pinrang-berkabar-mobile.png", { authenticated: true, query: "?page=pinrangBerkabar", waitMs: 1600 });
     await capture(mobile, "ai-script-mobile.png", { authenticated: true, query: "?page=aiScript" });
     await capture(mobile, "users-mobile.png", { authenticated: true, query: "?page=users" });
     await capture(mobile, "profile-mobile.png", { authenticated: true, query: "?page=profile" });

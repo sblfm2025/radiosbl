@@ -1548,3 +1548,268 @@ npm run seed:import
   - belum dideploy dan belum push ke GitHub;
   - dokumentasi dan screenshot memakai data demo/dummy, bukan data user asli;
   - tidak ada perubahan Firebase schema/rules, service, auth, role/permission, atau workflow produksi.
+
+- Update dashboard AI operational assistant batch 33:
+  - `DashboardPage` punya panel `AI Operational Assistant` untuk user dengan permission `ai:use`;
+  - panel menampilkan ringkasan shift/on-air, rekomendasi cue naskah, dan tindak lanjut;
+  - insight membaca konteks existing: jadwal user, current/next program, absensi hari ini, request aktif, dan request populer hari ini;
+  - setiap insight punya aksi langsung ke halaman relevan seperti Jadwal, Request, Absensi, Rekap Absen, Profil, atau Naskah AI;
+  - CSS assistant responsif dan mobile satu kolom.
+- Verifikasi dashboard assistant batch 33:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: panel assistant tampil, 3 kartu insight tampil, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Catatan dashboard assistant batch 33:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada pemanggilan AI eksternal baru, prompt backend, schema Firebase, service, role/permission, auth, atau workflow produksi;
+  - perubahan hanya presentation-layer dashboard.
+
+- Update program ecosystem detail batch 34:
+  - modal detail program di `BroadcastSchedulePage` ditingkatkan menjadi mini page program;
+  - detail program menampilkan statistik durasi, frekuensi mingguan, jumlah tim penyiar, dan status slot;
+  - detail program punya blok `Program Identity` dan chip kontinuitas `Naskah`, `Request`, `Live`, `Arsip`;
+  - workflow cross-module existing tetap tersedia: Buat naskah, Request, Streaming, Live/OB;
+  - styling mobile dipadatkan agar seluruh workflow terlihat di viewport 390x844.
+- Verifikasi program ecosystem batch 34:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\BroadcastSchedulePage.tsx src\components\DashboardPage.tsx` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: modal detail tampil, 4 statistik tampil, 4 chip kontinuitas tampil, 4 tombol workflow tampil, tidak ada horizontal overflow, workflow terlihat dalam modal, dan tidak ada tombol tanpa label.
+- Catatan program ecosystem batch 34:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan service jadwal, schema/rules Firebase, role/permission, auth, edit jadwal, tukar jadwal, request, streaming, Live/OB, atau workflow produksi;
+  - perubahan hanya presentation-layer dan kalkulasi statistik dari jadwal existing.
+
+- Update program brief Pinrang Berkabar batch 35:
+  - `docs/PINRANG_BERKABAR.md` diisi sebagai brief program/newsroom;
+  - isi mencakup fungsi, karakter program, role pengguna, workflow produksi, rundown 30 menit, template opening/headline/bridging/closing, checklist verifikasi berita, integrasi modul RadioSBL, prompt aman untuk Naskah AI, dan acceptance criteria;
+  - `docs/index.html` menambahkan kartu/link ke brief `Pinrang Berkabar`.
+- Verifikasi program brief batch 35:
+  - `rg -n "Pinrang Berkabar|PINRANG_BERKABAR" docs\index.html docs\PINRANG_BERKABAR.md` menemukan brief dan link portal.
+- Catatan program brief batch 35:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan kode aplikasi, service, schema/rules Firebase, role/permission, auth, prompt backend, atau workflow produksi;
+  - dokumen menekankan verifikasi berita dan larangan mengarang fakta.
+
+- Update video Pinrang Berkabar batch 36:
+  - `docs/PINRANG_BERKABAR.md` dilanjutkan sebagai arahan fitur video YouTube Pinrang Berkabar;
+  - contoh API key nyata diganti placeholder agar tidak mendorong hardcode credential;
+  - service `pinrangBerkabar.service` ditambahkan dengan urutan aman: proxy `VITE_PINRANG_BERKABAR_FEED_URL`, env `VITE_YOUTUBE_API_KEY`, lalu fallback playlist resmi;
+  - halaman `PinrangBerkabarPage` ditambahkan dengan hero, tombol `Coba lagi`, tombol `Buka playlist`, loading skeleton, card video 16:9, dan fallback playlist;
+  - page key/menu `pinrangBerkabar` masuk route, sidebar desktop, dan Menu Lengkap grup Konten.
+- Verifikasi video Pinrang Berkabar batch 36:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\App.tsx src\components\PinrangBerkabarPage.tsx src\components\MenuPage.tsx src\components\Shell.tsx src\data\radioData.ts src\lib\env.ts src\services\pinrangBerkabar.service.ts` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 mode test: `?page=pinrangBerkabar` tampil, fallback card dan link playlist tersedia, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+  - Setelah `VITE_YOUTUBE_API_KEY` diset di `.env.local`, simulasi Playwright mobile mode test memuat 12 video dari YouTube API, sumber tampil `YouTube API`, tidak ada horizontal overflow, dan tanpa console error.
+  - Pencarian secret di repo selain `.env.local` tidak menemukan key YouTube.
+- Catatan video Pinrang Berkabar batch 36:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan Firebase schema/rules, auth, role/permission, absensi, jadwal, request lagu, podcast, streaming, atau AI naskah;
+  - API key tidak di-hardcode dan fallback tidak mengarang judul video spesifik.
+
+- Update video Pinrang Berkabar pagination batch 37:
+  - service `listPinrangBerkabarVideos` sekarang mengembalikan `videos`, `nextPageToken`, dan `source`;
+  - proxy feed dan YouTube API mendukung `pageToken`;
+  - halaman `PinrangBerkabarPage` punya tombol `Muat lagi` dan pencarian lokal video yang sudah termuat;
+  - empty state `Video tidak ditemukan` dan tombol `Reset pencarian` ditambahkan;
+  - acceptance criteria `docs/PINRANG_BERKABAR.md` diperbarui untuk pagination dan pencarian.
+- Verifikasi video Pinrang Berkabar pagination batch 37:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\services\pinrangBerkabar.service.ts` berhasil.
+  - Simulasi mandiri Playwright mobile 390x844 dengan YouTube API: awal 12 video, klik `Muat lagi` menjadi 24 video, empty state search tampil, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Catatan video Pinrang Berkabar pagination batch 37:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan Firebase schema/rules, auth, role/permission, modul lama, atau hardcode API key;
+  - pencarian hanya memfilter video yang sudah termuat.
+
+- Update dokumentasi screenshot Pinrang Berkabar batch 38:
+  - `scripts/capture-docs-screenshots.mjs` mengambil screenshot baru `pinrang-berkabar-mobile.png`;
+  - fungsi capture menunggu gambar selesai load/decode sebelum screenshot agar thumbnail YouTube tidak kosong;
+  - `docs/user-guide/README.md` menambahkan bagian `Pinrang Berkabar`;
+  - `docs/index.html` menambahkan screenshot Pinrang Berkabar di bagian screenshot utama;
+  - screenshot tersimpan di `docs/screenshots/pinrang-berkabar-mobile.png`.
+- Verifikasi dokumentasi Pinrang Berkabar batch 38:
+  - `node --check scripts/capture-docs-screenshots.mjs` berhasil.
+  - `npm run docs:screenshots` berhasil menghasilkan ulang screenshot dokumentasi.
+  - Inspeksi visual screenshot menunjukkan thumbnail video sudah ter-render.
+- Catatan dokumentasi Pinrang Berkabar batch 38:
+  - belum dideploy dan belum push ke GitHub;
+  - screenshot memakai sesi demo dan konfigurasi lokal yang aman dari commit.
+
+- Update smoke test Pinrang Berkabar batch 39:
+  - `src/e2e/pinrang-berkabar.smoke.spec.ts` ditambahkan;
+  - test memakai sesi demo admin dan membuka `?page=pinrangBerkabar`;
+  - test memverifikasi heading, link playlist, input pencarian, kartu video/fallback, aksi `Muat lagi` bila tersedia, empty state pencarian, reset pencarian, tidak ada horizontal overflow, dan tidak ada tombol tanpa label.
+- Verifikasi smoke test Pinrang Berkabar batch 39:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\e2e\pinrang-berkabar.smoke.spec.ts src\components\Shell.tsx` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil.
+- Catatan smoke test Pinrang Berkabar batch 39:
+  - belum dideploy dan belum push ke GitHub;
+  - test menerima fallback playlist sebagai kondisi valid bila data YouTube live tidak tersedia.
+
+- Update Shell connectivity batch 40:
+  - status koneksi sidebar di `src/components/Shell.tsx` diperjelas dengan ikon, label `Sinkron aktif` / `Mode offline`, dan deskripsi singkat;
+  - status koneksi memakai `role="status"` dan `aria-live="polite"`;
+  - saat offline, area konten menampilkan strip pendek bahwa sebagian data akan sinkron saat koneksi kembali;
+  - styling terkait ditambahkan di `src/styles/app.css`.
+- Verifikasi Shell connectivity batch 40:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npm run build` berhasil.
+- Catatan Shell connectivity batch 40:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan routing, Firebase schema/rules, auth, role/permission, atau service data.
+
+- Update Shell navigation continuity batch 41:
+  - `Pinrang Berkabar` dipindahkan dari grup sidebar `Siaran` ke grup `Konten`;
+  - bottom nav menandai `Menu` sebagai active saat halaman aktif tidak punya item bottom nav langsung;
+  - item sidebar/bottom nav yang sedang aktif mendapatkan `aria-current="page"`;
+  - smoke test Pinrang Berkabar menambahkan pengecekan active state `Menu` di viewport mobile.
+- Verifikasi Shell navigation continuity batch 41:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan Shell navigation continuity batch 41:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan route, permission, Firebase schema/rules, auth, atau service data;
+  - bottom nav tetap lima item utama.
+
+- Update Menu recently used batch 42:
+  - `Shell` menyimpan halaman terakhir yang dibuka ke `radiosbl.recentPages:<userId>` secara global;
+  - `MenuPage` membaca daftar halaman terakhir dipakai dari storage yang sama;
+  - Menu Lengkap punya panel `Terakhir dipakai` agar user bisa melanjutkan pekerjaan tanpa mencari ulang;
+  - quick action dan tile menu memakai handler navigasi yang ikut memperbarui recent pages;
+  - grup `Pinrang Berkabar` di Menu Lengkap disamakan dengan sidebar, yaitu masuk `Konten`;
+  - smoke test Pinrang Berkabar memverifikasi recent panel muncul di mobile setelah membuka halaman Pinrang Berkabar lalu masuk Menu.
+- Verifikasi Menu recently used batch 42:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\components\MenuPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan Menu recently used batch 42:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada route baru, service baru, schema/rules Firebase, permission baru, atau perubahan business logic inti;
+  - recent pages hanya local convenience dan tetap aman bila localStorage tidak tersedia.
+
+- Update dashboard calm shortcut batch 43:
+  - dashboard hanya menampilkan 4 shortcut utama secara default;
+  - shortcut tambahan tetap tersedia lewat tombol expand `Tampilkan semua menu`;
+  - menambahkan `src/e2e/dashboard-calm.smoke.spec.ts` untuk menjaga grid shortcut tetap 4 item secara default;
+  - test juga memverifikasi tombol expand membuka lebih banyak menu, tidak ada horizontal overflow, dan tidak ada tombol ikon tanpa label.
+- Verifikasi dashboard calm shortcut batch 43:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan dashboard calm shortcut batch 43:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan route, permission, service, Firebase schema/rules, auth, atau business logic inti;
+  - fitur tetap dapat diakses lewat expand dashboard dan Menu Lengkap.
+
+- Update dashboard secondary detail disclosure batch 44:
+  - panel `Jadwal Berikutnya` dan `Podcast Unggulan` dipindahkan ke disclosure `Detail siaran & arsip`;
+  - disclosure tertutup secara default agar first view dashboard lebih ringan;
+  - detail tetap bisa dibuka satu tap dari dashboard tanpa menghapus workflow lama;
+  - styling disclosure dibuat compact dan konsisten dengan dashboard;
+  - smoke test dashboard memverifikasi detail sekunder tersembunyi secara default dan tampil setelah disclosure dibuka.
+- Verifikasi dashboard secondary detail batch 44:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan dashboard secondary detail batch 44:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan data, route, permission, service, Firebase schema/rules, auth, atau business logic inti;
+  - jadwal dan podcast tetap tersedia dari dashboard, menu, dan halaman masing-masing.
+
+- Update dashboard briefing priority batch 45:
+  - `Operational Briefing` hanya menampilkan 1 kartu prioritas utama secara default;
+  - prioritas pendukung dipindahkan ke disclosure `Prioritas lain`;
+  - layout briefing menjadi lebih tenang: satu fokus utama, detail lain tetap satu tap;
+  - smoke test dashboard memverifikasi hanya satu briefing card langsung tampil dan prioritas pendukung muncul setelah disclosure dibuka.
+- Verifikasi dashboard briefing priority batch 45:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\DashboardPage.tsx src\e2e\dashboard-calm.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan dashboard briefing priority batch 45:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan data, permission, service, route, Firebase schema/rules, auth, atau business logic inti;
+  - semua aksi briefing lama tetap tersedia.
+
+- Update LANJUTAN UI 3 completion batch 46:
+  - `PinrangBerkabarPage` memiliki player YouTube embed di dalam aplikasi;
+  - kartu video berubah dari link langsung keluar menjadi tombol `Putar` yang memilih video di player halaman;
+  - player fallback memakai embed playlist resmi bila feed/API belum tersedia;
+  - detail `Now Playing`, deskripsi, dan link `Buka di YouTube` tetap tersedia;
+  - styling player dibuat responsif untuk desktop dan mobile;
+  - smoke test Pinrang Berkabar memverifikasi iframe player dan status `Now Playing`;
+  - `docs/LANJUTAN_UI_3.md` ditambahkan bagian status implementasi tuntas.
+- Verifikasi LANJUTAN UI 3 completion batch 46:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npx eslint src\components\DashboardPage.tsx src\components\PinrangBerkabarPage.tsx src\e2e\dashboard-calm.smoke.spec.ts src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test dashboard-calm.smoke.spec.ts pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan LANJUTAN UI 3 completion batch 46:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada API key hardcode, route baru, permission baru, Firebase schema/rules, auth, atau business logic inti;
+  - link YouTube eksternal tetap dipertahankan sebagai fallback.
+
+- Update LANJUTAN UI 3 docs refresh batch 47:
+  - `docs/index.html` menambahkan kartu `LANJUTAN UI 3`;
+  - `docs/user-guide/README.md` memperbarui bagian Pinrang Berkabar agar menyebut player video in-app;
+  - screenshot dokumentasi diperbarui untuk dashboard mobile, dashboard desktop, dan Pinrang Berkabar mobile.
+- Verifikasi LANJUTAN UI 3 docs refresh batch 47:
+  - `node --check scripts\capture-docs-screenshots.mjs` berhasil.
+  - `npm run docs:screenshots` berhasil.
+  - Cek file screenshot menunjukkan `dashboard-mobile.png`, `dashboard-desktop.png`, dan `pinrang-berkabar-mobile.png` terbarui.
+- Catatan LANJUTAN UI 3 docs refresh batch 47:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan runtime aplikasi pada batch ini.
+
+- Update Pinrang Berkabar identity carousel batch 48:
+  - hero Pinrang Berkabar memakai logo resmi `/PinrangBerkabar.png`;
+  - daftar video setelah player diberi heading `Video Lainnya`;
+  - daftar video terkait dibuat sebagai carousel horizontal responsif;
+  - thumbnail kartu video memakai lazy loading;
+  - smoke test Pinrang Berkabar memverifikasi logo resmi, player, `Now Playing`, heading `Video Lainnya`, dan carousel.
+- Verifikasi Pinrang Berkabar identity carousel batch 48:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\e2e\pinrang-berkabar.smoke.spec.ts` berhasil.
+  - `npx playwright test pinrang-berkabar.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+- Catatan Pinrang Berkabar identity carousel batch 48:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada API key hardcode, route baru, permission baru, Firebase schema/rules, auth, atau perubahan service.
+
+- Update LANJUTAN UI 3 evaluation batch 49:
+  - evaluasi ulang `docs/LANJUTAN_UI_3.md` menunjukkan dashboard calm, progressive disclosure, Pinrang in-app player, related video carousel, Request Lagu card stack, dan bottom nav 5 item sudah tertutup;
+  - gap yang tersisa: sidebar desktop belum punya grup `Tim` sesuai dokumen;
+  - `Shell` memindahkan `Penyiar` dari grup `Siaran` ke grup baru `Tim`;
+  - `MenuPage` juga menambahkan grup `Tim` agar navigasi lengkap konsisten;
+  - `docs/LANJUTAN_UI_3.md` ditambahkan bagian `Hasil Evaluasi Ulang`.
+- Catatan LANJUTAN UI 3 evaluation batch 49:
+  - belum dideploy dan belum push ke GitHub;
+  - tidak ada perubahan route, permission, Firebase schema/rules, auth, service, atau business logic inti.
+- Verifikasi LANJUTAN UI 3 evaluation batch 49:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\Shell.tsx src\components\MenuPage.tsx src\e2e\login.smoke.spec.ts` berhasil.
+  - `npx playwright test login.smoke.spec.ts` berhasil untuk desktop dan mobile.
+  - `npm run build` berhasil.
+
+- Update copy teknis cleanup batch 50:
+  - `PinrangBerkabarPage` menghapus copy user-facing seperti `API key`, `frontend`, dan `Feed belum terhubung`;
+  - label sumber video dibuat lebih human-friendly: `Feed resmi`, `YouTube resmi`, dan `Playlist resmi`;
+  - konfirmasi logout dashboard tidak lagi menyebut `Sesi demo`;
+  - `docs/user-guide/README.md` menghapus instruksi mode demo/test dan mengganti `Firebase` menjadi `konfigurasi sistem`;
+  - `docs/index.html` mengurangi bahasa teknis seperti command screenshot di halaman utama;
+  - `docs/LANJUTAN_UI_3.md` merapikan status evaluasi agar tidak berisi daftar command teknis sebagai instruksi utama.
+- Verifikasi copy teknis cleanup batch 50:
+  - `npm run typecheck` berhasil.
+  - `npx eslint src\components\PinrangBerkabarPage.tsx src\components\DashboardPage.tsx` berhasil.
+  - Pencarian ulang `mode demo|Sesi demo|API key|frontend|Feed belum|Firebase|npm run docs|akun/data demo|demo/test` pada UI utama dan docs pengguna tidak menemukan hasil.
+  - `npm run build` berhasil.

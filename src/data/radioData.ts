@@ -30,6 +30,7 @@ export type PageKey =
   | "streaming"
   | "liveOb"
   | "coverage"
+  | "pinrangBerkabar"
   | "podcast"
   | "requests"
   | "complaints"
@@ -58,6 +59,7 @@ export const primaryNav: NavItem[] = [
   { key: "requests", label: "Request", icon: Headphones, requiredPermission: "complaints:submit" },
   { key: "liveOb", label: "Live OB", icon: Video, requiredPermission: "live_ob:manage" },
   { key: "podcast", label: "Podcast", icon: Podcast, requiredPermission: "dashboard:read" },
+  { key: "pinrangBerkabar", label: "Pinrang Berkabar", icon: Video, requiredPermission: "dashboard:read" },
   { key: "coverage", label: "Event", icon: CalendarRange, requiredPermission: "coverage:manage" },
   { key: "announcers", label: "Penyiar", icon: Mic2, requiredPermission: "schedule:read" },
   { key: "attendance", label: "Absensi", icon: ClipboardCheck, requiredPermission: "attendance:self" },

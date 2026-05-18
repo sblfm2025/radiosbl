@@ -1,4 +1,4 @@
-import { Bell, LogIn, LogOut, ChevronLeft, ChevronRight, Volume2, User } from "lucide-react";
+import { Bell, LogIn, LogOut, ChevronLeft, ChevronRight, Volume2, User, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useRef, useState, useEffect } from "react";
 import { bottomNav, primaryNav, type NavItem, type PageKey } from "../data/radioData";
 import { MenuPage } from "./MenuPage";
@@ -26,11 +26,15 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Siaran",
-    items: ["streaming", "podcast", "announcers"]
+    items: ["streaming", "podcast"]
+  },
+  {
+    label: "Tim",
+    items: ["announcers"]
   },
   {
     label: "Konten",
-    items: ["aiScript", "coverage", "liveOb", "complaints"]
+    items: ["pinrangBerkabar", "aiScript", "coverage", "liveOb", "complaints"]
   },
   {
     label: "Administrasi",
@@ -67,9 +71,23 @@ export function Shell({
     icon: User
   };
   const shellNavItems = [...primaryNav, profileNavItem];
+  const ConnectionIcon = online ? Wifi : WifiOff;
+  const connectionLabel = online ? "Sinkron aktif" : "Mode offline";
+  const connectionDescription = online ? "Data studio tersambung" : "Data lokal tetap bisa dibuka";
   const allowedNavItems = shellNavItems.filter(
     (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
   );
+  const allowedBottomNavItems = bottomNav.filter(
+    (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
+  );
+  const isDirectNavActive = useCallback((item: NavItem) => (
+    activePage === item.key || (activePage === "announcerProfile" && item.key === "schedule")
+  ), [activePage]);
+  const isBottomNavActive = useCallback((item: NavItem) => {
+    if (isDirectNavActive(item)) return true;
+    if (item.key !== "menu") return false;
+    return !allowedBottomNavItems.some((navItem) => isDirectNavActive(navItem));
+  }, [allowedBottomNavItems, isDirectNavActive]);
   const hideNavigation =
     activePage === "splash" ||
     activePage === "login" ||
@@ -216,6 +234,20 @@ export function Shell({
     }
   }, [activePage, checkScroll]);
 
+  useEffect(() => {
+    if (!session || hideNavigation || activePage === "menu") return;
+
+    try {
+      const storageKey = `radiosbl.recentPages:${session.user.id}`;
+      const existing = JSON.parse(window.localStorage.getItem(storageKey) || "[]") as unknown;
+      const list = Array.isArray(existing) ? existing.filter((item): item is PageKey => typeof item === "string") : [];
+      const next = [activePage, ...list.filter((item) => item !== activePage)].slice(0, 6);
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch {
+      // Recent navigation is a convenience; keep the shell usable if storage is blocked.
+    }
+  }, [activePage, hideNavigation, session]);
+
   return (
     <div className={`app-shell app-shell-${activePage}${hasMiniPlayer ? " has-mini-player" : ""}${hideNavigation ? " no-sidebar" : ""}`}>
       {hideNavigation ? null : (
@@ -244,13 +276,14 @@ export function Shell({
                 <div className="side-nav-items">
                   {groupItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = activePage === item.key || (activePage === "announcerProfile" && item.key === "schedule");
+                    const isActive = isDirectNavActive(item);
 
                     return (
                       <button
                         key={item.key}
                         onClick={() => onNavigate(item.key)}
                         className={`shell-nav-button${isActive ? " active" : ""}`}
+                        aria-current={isActive ? "page" : undefined}
                       >
                         <Icon size={18} />
                         <span>{item.label}</span>
@@ -267,9 +300,18 @@ export function Shell({
             );
           })}
         </nav>
-        <div className={`connection-pill ${online ? "online" : "offline"}`}>
-          <span />
-          {online ? "Online" : "Offline mode"}
+        <div
+          className={`connection-pill ${online ? "online" : "offline"}`}
+          role="status"
+          aria-live="polite"
+          title={`${connectionLabel}: ${connectionDescription}`}
+        >
+          <span className="connection-dot" aria-hidden="true" />
+          <ConnectionIcon size={15} aria-hidden="true" />
+          <span className="connection-copy">
+            <strong>{connectionLabel}</strong>
+            <small>{connectionDescription}</small>
+          </span>
         </div>
         <div className="session-card">
           <button
@@ -308,6 +350,15 @@ export function Shell({
       </aside>)}
 
       <main className={`content content-${activePage}`}>
+        {!hideNavigation && !online && (
+          <div className="shell-offline-strip" role="status" aria-live="polite">
+            <WifiOff size={18} aria-hidden="true" />
+            <span>
+              <strong>Mode offline</strong>
+              <small>Beberapa data akan sinkron saat koneksi kembali.</small>
+            </span>
+          </div>
+        )}
         {showAudioPrompt && !hideNavigation && (
           <div className={`shell-audio-prompt${hasMiniPlayer ? " with-mini-player" : ""}`}>
             <div className="shell-audio-prompt-icon">
@@ -366,15 +417,17 @@ export function Shell({
           onTouchMove={checkScroll}
           onTouchEnd={checkScroll}
         >
-          {bottomNav.filter(item => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)).map((item) => {
+          {allowedBottomNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePage === item.key || (activePage === "announcerProfile" && item.key === "schedule");
+            const isActive = isBottomNavActive(item);
+            const isDirectActive = isDirectNavActive(item);
             return (
               <button
                 key={item.key}
                 className={isActive ? "active" : ""}
                 onClick={() => onNavigate(item.key)}
                 aria-label={item.label}
+                aria-current={isDirectActive ? "page" : undefined}
               >
                 <div className="shell-bottom-nav-icon">
                   <Icon size={26} strokeWidth={isActive ? 2.5 : 2} />

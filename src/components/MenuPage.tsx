@@ -1,5 +1,5 @@
-import { Bell, LogIn, LogOut, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Bell, Clock3, LogIn, LogOut, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { primaryNav, type NavItem, type PageKey } from "../data/radioData";
 import type { AuthSession } from "../services/auth.service";
 import { canUser, getRoleLabel } from "../utils/rbac";
@@ -19,11 +19,15 @@ const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Siaran",
-    items: ["streaming", "podcast", "announcers"]
+    items: ["streaming", "podcast"]
+  },
+  {
+    label: "Tim",
+    items: ["announcers"]
   },
   {
     label: "Konten",
-    items: ["aiScript", "coverage", "liveOb", "complaints"]
+    items: ["pinrangBerkabar", "aiScript", "coverage", "liveOb", "complaints"]
   },
   {
     label: "Administrasi",
@@ -41,7 +45,7 @@ const profileNavItem: NavItem = {
   icon: LogIn
 };
 
-const quickActionKeys: PageKey[] = ["attendance", "scheduleSwap", "requests", "aiScript", "liveOb", "coverage"];
+const quickActionKeys: PageKey[] = ["attendance", "scheduleSwap", "requests", "aiScript", "pinrangBerkabar", "liveOb", "coverage"];
 
 export function MenuPage({
   activePage,
@@ -51,6 +55,7 @@ export function MenuPage({
   onLogout
 }: MenuPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentPages, setRecentPages] = useState<PageKey[]>([]);
   const navItems = [...primaryNav, profileNavItem];
   const allowedItems = navItems.filter(
     (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
@@ -60,6 +65,13 @@ export function MenuPage({
     .map((key) => allowedItems.find((item) => item.key === key))
     .filter((item): item is (typeof allowedItems)[number] => Boolean(item))
     .slice(0, 4);
+  const recentItems = useMemo(() => (
+    recentPages
+      .map((key) => allowedItems.find((item) => item.key === key))
+      .filter((item): item is (typeof allowedItems)[number] => Boolean(item))
+      .filter((item) => item.key !== "profile")
+      .slice(0, 5)
+  ), [allowedItems, recentPages]);
   const groupedItems = useMemo(
     () =>
       menuGroups
@@ -82,6 +94,39 @@ export function MenuPage({
   );
   const hasSearchResult = groupedItems.length > 0;
 
+  useEffect(() => {
+    if (!session) return;
+
+    try {
+      const storageKey = `radiosbl.recentPages:${session.user.id}`;
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        setRecentPages(parsed.filter((item): item is PageKey => typeof item === "string"));
+      }
+    } catch {
+      setRecentPages([]);
+    }
+  }, [session]);
+
+  function handleNavigate(page: PageKey) {
+    try {
+      if (session && page !== "menu") {
+        const storageKey = `radiosbl.recentPages:${session.user.id}`;
+        const existing = JSON.parse(window.localStorage.getItem(storageKey) || "[]") as unknown;
+        const list = Array.isArray(existing) ? existing.filter((item): item is PageKey => typeof item === "string") : [];
+        const next = [page, ...list.filter((item) => item !== page)].slice(0, 6);
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+        setRecentPages(next);
+      }
+    } catch {
+      // Recent navigation is optional and should not block movement.
+    }
+
+    onNavigate(page);
+  }
+
   return (
     <main className="menu-page">
       <section className="menu-hero" aria-label="Menu lengkap Radio SBL">
@@ -98,7 +143,7 @@ export function MenuPage({
         <button
           type="button"
           className="menu-profile-chip"
-          onClick={() => onNavigate("profile")}
+          onClick={() => handleNavigate("profile")}
         >
           <span className="session-avatar" aria-hidden="true">
             {session?.user.photoUrl ? (
@@ -131,7 +176,7 @@ export function MenuPage({
               const Icon = item.icon;
 
               return (
-                <button type="button" key={item.key} onClick={() => onNavigate(item.key)}>
+                <button type="button" key={item.key} onClick={() => handleNavigate(item.key)}>
                   <Icon size={18} />
                   <span>{getQuickActionLabel(item.key)}</span>
                   {item.key === "scheduleSwap" && pendingSwaps > 0 && <em>{pendingSwaps}</em>}
@@ -141,6 +186,30 @@ export function MenuPage({
           </div>
         )}
       </section>
+
+      {recentItems.length > 0 && !normalizedSearch && (
+        <section className="menu-recent-panel" aria-label="Halaman terakhir dipakai">
+          <div>
+            <Clock3 size={18} />
+            <span>
+              <strong>Terakhir dipakai</strong>
+              <small>Lanjutkan pekerjaan tanpa mencari ulang.</small>
+            </span>
+          </div>
+          <div className="menu-recent-actions">
+            {recentItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <button type="button" key={item.key} onClick={() => handleNavigate(item.key)}>
+                  <Icon size={17} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="menu-group-stack" aria-label="Daftar menu aplikasi">
         {hasSearchResult ? (
@@ -157,7 +226,7 @@ export function MenuPage({
                         type="button"
                         key={item.key}
                         className={isActive ? "menu-tile active" : "menu-tile"}
-                        onClick={() => onNavigate(item.key)}
+                        onClick={() => handleNavigate(item.key)}
                       >
                         <span className="menu-tile-icon">
                           <Icon size={21} />
@@ -184,7 +253,7 @@ export function MenuPage({
       </section>
 
       <section className="menu-session-actions" aria-label="Aksi akun">
-        <button type="button" onClick={() => onNavigate("scheduleSwap")}>
+        <button type="button" onClick={() => handleNavigate("scheduleSwap")}>
           <Bell size={18} />
           <span>Notifikasi tukar jadwal</span>
           {pendingSwaps > 0 && <em>{pendingSwaps}</em>}
@@ -211,6 +280,7 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     users: "user staf role akses manajemen",
     streaming: "radio online live player siaran",
     podcast: "podcast arsip audio spotify",
+    pinrangBerkabar: "video youtube pinrang berkabar playlist kabar berita",
     announcers: "penyiar kru profil air name",
     complaints: "aduan saran keluhan warga",
     profile: "profil akun password preferensi"
@@ -236,6 +306,8 @@ function getQuickActionLabel(key: PageKey): string {
       return "Buat naskah";
     case "liveOb":
       return "Live OB";
+    case "pinrangBerkabar":
+      return "Video Pinrang";
     case "coverage":
       return "Agenda liputan";
     default:
@@ -259,6 +331,8 @@ function getMenuDescription(key: PageKey): string {
       return "Radio online";
     case "podcast":
       return "Arsip audio";
+    case "pinrangBerkabar":
+      return "Video YouTube";
     case "announcers":
       return "Profil kru siaran";
     case "aiScript":

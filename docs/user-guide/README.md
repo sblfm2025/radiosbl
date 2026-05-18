@@ -18,7 +18,7 @@ Panduan ini membantu pengguna baru memahami RadioSBL App sebagai pusat kerja ope
 ## Fitur Utama
 
 ### Login
-Masukkan email atau nomor WA dan kata sandi. Jika memakai mode demo/test, gunakan akun demo yang sudah disiapkan tim.
+Masukkan email atau nomor WA dan kata sandi yang diberikan oleh admin.
 
 ![Login mobile](../screenshots/login-mobile.png)
 
@@ -42,6 +42,11 @@ Gunakan menu `Request` untuk melihat request masuk, antrean, dan riwayat. Penyia
 
 ![Request lagu mobile](../screenshots/song-request-mobile.png)
 
+### Pinrang Berkabar
+Gunakan menu `Pinrang Berkabar` di grup Konten untuk menonton video terbaru dari playlist YouTube resmi langsung di dalam aplikasi. Pilih kartu video untuk memutar di player halaman; tombol `Buka di YouTube` tetap tersedia sebagai opsi luar.
+
+![Pinrang Berkabar mobile](../screenshots/pinrang-berkabar-mobile.png)
+
 ### Buat Naskah AI
 Gunakan menu `Naskah AI` untuk membuat draft pembuka, bridging, cue, dan penutup siaran.
 
@@ -54,7 +59,7 @@ Gunakan menu `Profil` untuk memperbarui data pribadi, kontak operasional, dan me
 
 ## Catatan Penting
 - Jangan membagikan akun kepada orang lain.
-- Jangan menyimpan token, password, atau konfigurasi Firebase di dokumentasi.
+- Jangan menyimpan token, password, atau konfigurasi sistem di dokumentasi.
 - Jika data tidak muncul, cek koneksi atau hubungi admin.
 
 ## Troubleshooting
@@ -69,6 +74,5 @@ Gunakan menu `Profil` untuk memperbarui data pribadi, kontak operasional, dan me
 **Apakah aplikasi bisa dipakai di HP?**  
 Bisa. UI utama dibuat mobile-first.
 
-**Apakah data demo aman?**  
-Ya, dokumentasi dan screenshot memakai akun/data demo.
-
+**Apakah data panduan aman?**  
+Ya, dokumentasi dan screenshot memakai data contoh yang tidak berisi data pribadi.
