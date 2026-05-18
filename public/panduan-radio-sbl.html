@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panduan Aplikasi RadioSBL</title>
+  
+  <!-- Open Graph Meta Tags untuk Preview Link (WhatsApp, FB, dsb) -->
+  <meta property="og:title" content="Panduan Aplikasi RadioSBL">
+  <meta property="og:description" content="Pusat operasional komprehensif mulai dari penyiar hingga admin newsroom Radio SBL.">
+  <meta property="og:image" content="https://radiosbl.web.app/panduan-radiosblapp.jpg">
+  <meta property="og:url" content="https://radiosbl.web.app/panduan-radio-sbl.html">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Panduan Aplikasi RadioSBL">
+  <meta name="twitter:description" content="Pusat operasional komprehensif mulai dari penyiar hingga admin newsroom Radio SBL.">
+  <meta name="twitter:image" content="https://radiosbl.web.app/panduan-radiosblapp.jpg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --soft: #f6f9fc;
+      --line: #dbe5f2;
+      --blue: #1677ed;
+      --blue-dark: #0b4fae;
+      --cyan: #14bfd1;
+      --lime: #d1ff00;
+      --coral: #ff5757;
+      --panel: rgba(255, 255, 255, 0.88);
+      --shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+      --radius: 28px;
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(20, 191, 209, 0.16), transparent 28%),
+        radial-gradient(circle at 86% 4%, rgba(209, 255, 0, 0.14), transparent 24%),
+        linear-gradient(180deg, #eef6ff 0%, #f8fafc 34%, #ffffff 100%);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    button,
+    summary {
+      font: inherit;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid rgba(219, 229, 242, 0.76);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .header-inner {
+      width: min(1180px, calc(100% - 32px));
+      height: 68px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      font-weight: 900;
+    }
+
+    .brand img {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 10px 24px rgba(22, 119, 237, 0.18);
+    }
+
+    .brand span {
+      display: grid;
+      line-height: 1.15;
+    }
+
+    .brand small {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-actions a {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 14px;
+      border-radius: 999px;
+      color: #ffffff;
+      background: var(--blue);
+      font-size: 0.82rem;
+      font-weight: 850;
+      box-shadow: 0 12px 24px rgba(22, 119, 237, 0.22);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      color: #ffffff;
+      background:
+        linear-gradient(135deg, rgba(5, 16, 38, 0.76), rgba(7, 39, 86, 0.88)),
+        url("../public/sbl-auth-studio-bg.png") center / cover;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 78%);
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, calc(100% - 32px));
+      min-height: calc(100dvh - 68px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr);
+      gap: clamp(28px, 6vw, 72px);
+      align-items: center;
+      padding: 52px 0;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      min-height: 32px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: #061934;
+      background: var(--lime);
+      font-size: 0.72rem;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 22px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", Inter, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .hero h1 {
+      max-width: 760px;
+      font-size: clamp(2.6rem, 8vw, 5.7rem);
+      line-height: 0.96;
+      font-weight: 900;
+    }
+
+    .hero p {
+      max-width: 640px;
+      margin: 0;
+      color: rgba(255,255,255,0.82);
+      font-size: clamp(1rem, 2.5vw, 1.16rem);
+      line-height: 1.72;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 680px;
+    }
+
+    .hero-stats div {
+      min-height: 90px;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.09);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-stats strong {
+      font-size: 1.55rem;
+      line-height: 1;
+    }
+
+    .hero-stats span {
+      color: rgba(255,255,255,0.72);
+      font-size: 0.76rem;
+      font-weight: 750;
+    }
+
+    .hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .primary-link,
+    .secondary-link {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 18px;
+      border-radius: 999px;
+      font-weight: 900;
+    }
+
+    .primary-link {
+      color: #061934;
+      background: linear-gradient(135deg, var(--lime), #fff06a);
+    }
+
+    .secondary-link {
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .hero-device {
+      justify-self: center;
+      width: min(360px, 100%);
+      display: grid;
+      gap: 14px;
+    }
+
+    .phone-shell {
+      position: relative;
+      overflow: hidden;
+      border: 10px solid #111827;
+      border-radius: 42px;
+      background: #111827;
+      box-shadow: 0 36px 90px rgba(0,0,0,0.42);
+    }
+
+    .phone-shell::before {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      top: 10px;
+      left: 50%;
+      width: 82px;
+      height: 20px;
+      border-radius: 999px;
+      background: #111827;
+      transform: translateX(-50%);
+    }
+
+    .phone-shell img {
+      width: 100%;
+      aspect-ratio: 390 / 844;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 30px;
+      background: #ffffff;
+    }
+
+    .device-caption {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.72);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .layout {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 278px minmax(0, 1fr);
+      gap: 34px;
+      padding: 34px 0 72px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 92px;
+      align-self: start;
+      display: grid;
+      gap: 14px;
+      max-height: calc(100dvh - 112px);
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.76);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+    }
+
+    .sidebar h2 {
+      padding: 4px 4px 0;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .nav-group {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav-link {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      min-height: 40px;
+      padding: 7px 9px;
+      border-radius: 14px;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .nav-link i {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: #eef5ff;
+      color: var(--blue);
+      font-size: 1rem;
+    }
+
+    .nav-link.active,
+    .nav-link:hover {
+      color: var(--blue-dark);
+      background: rgba(22,119,237,0.08);
+    }
+
+    .content {
+      display: grid;
+      gap: 26px;
+      min-width: 0;
+    }
+
+    .section {
+      scroll-margin-top: 94px;
+      overflow: hidden;
+      border: 1px solid rgba(219, 229, 242, 0.84);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-inner {
+      display: grid;
+      gap: 22px;
+      padding: clamp(20px, 4vw, 34px);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      color: var(--blue);
+      font-size: 0.72rem;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section h2 {
+      margin-top: 8px;
+      font-size: clamp(1.45rem, 4vw, 2.25rem);
+      line-height: 1.12;
+      font-weight: 900;
+    }
+
+    .section-head p {
+      max-width: 680px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .section-number {
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      color: #061934;
+      background: var(--lime);
+      font-family: "Plus Jakarta Sans", Inter, sans-serif;
+      font-weight: 900;
+      box-shadow: 0 16px 30px rgba(209, 255, 0, 0.24);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.58fr);
+      gap: clamp(20px, 4vw, 34px);
+      align-items: center;
+    }
+
+    .two-col.reverse {
+      grid-template-columns: minmax(280px, 0.58fr) minmax(0, 0.9fr);
+    }
+
+    .copy-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .copy-stack p,
+    .copy-stack li {
+      color: #536176;
+    }
+
+    .copy-stack p {
+      margin: 0;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: steps;
+    }
+
+    .step-list li {
+      counter-increment: steps;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      min-height: 52px;
+      padding: 12px;
+      border: 1px solid #e7eef8;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .step-list li::before {
+      content: counter(steps);
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      color: #ffffff;
+      background: var(--blue);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .feature-card {
+      display: grid;
+      gap: 10px;
+      min-height: 148px;
+      padding: 17px;
+      border: 1px solid #e7eef8;
+      border-radius: 20px;
+      background: #ffffff;
+    }
+
+    .feature-card i {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      color: var(--blue);
+      background: #eef5ff;
+      font-size: 1.25rem;
+    }
+
+    .feature-card strong {
+      font-family: "Plus Jakarta Sans", Inter, sans-serif;
+      font-size: 0.98rem;
+    }
+
+    .feature-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .mockup {
+      position: relative;
+      width: min(320px, 100%);
+      margin: 0 auto;
+    }
+
+    .mockup.wide {
+      width: 100%;
+    }
+
+    .mockup-frame {
+      overflow: hidden;
+      border: 9px solid #111827;
+      border-radius: 38px;
+      background: #111827;
+      box-shadow: 0 22px 54px rgba(15, 23, 42, 0.24);
+    }
+
+    .mockup-frame img {
+      width: 100%;
+      aspect-ratio: 390 / 844;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 28px;
+      background: #ffffff;
+    }
+
+    .desktop-frame {
+      overflow: hidden;
+      border: 10px solid #111827;
+      border-bottom-width: 22px;
+      border-radius: 18px 18px 10px 10px;
+      background: #111827;
+      box-shadow: 0 24px 56px rgba(15, 23, 42, 0.18);
+    }
+
+    .desktop-frame img {
+      width: 100%;
+      aspect-ratio: 1440 / 900;
+      object-fit: cover;
+      object-position: top;
+      background: #ffffff;
+    }
+
+    .callout {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+      border: 1px solid rgba(22,119,237,0.16);
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(22,119,237,0.1), rgba(20,191,209,0.08));
+    }
+
+    .callout strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--blue-dark);
+    }
+
+    .role-grid,
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .role-card,
+    details {
+      border: 1px solid #e7eef8;
+      border-radius: 20px;
+      background: #ffffff;
+    }
+
+    .role-card {
+      display: grid;
+      gap: 8px;
+      padding: 18px;
+    }
+
+    .role-card span {
+      width: fit-content;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #061934;
+      background: #eaf3ff;
+      font-size: 0.68rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .role-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    details {
+      overflow: hidden;
+    }
+
+    summary {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      cursor: pointer;
+      font-weight: 900;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary i {
+      color: var(--blue);
+      transition: transform 0.18s ease;
+    }
+
+    details[open] summary i {
+      transform: rotate(180deg);
+    }
+
+    details div {
+      padding: 0 18px 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .workflow-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .workflow-strip div {
+      min-height: 118px;
+      display: grid;
+      gap: 8px;
+      padding: 15px;
+      border-radius: 18px;
+      color: #ffffff;
+      background: #10213d;
+    }
+
+    .workflow-strip i {
+      color: var(--lime);
+      font-size: 1.45rem;
+    }
+
+    .workflow-strip span {
+      color: rgba(255,255,255,0.72);
+      font-size: 0.78rem;
+    }
+
+    .pwa-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .platform-card {
+      padding: 18px;
+      border: 1px solid #e7eef8;
+      border-radius: 20px;
+      background: #ffffff;
+    }
+
+    .platform-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 1rem;
+    }
+
+    .platform-card ol {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding-left: 20px;
+      color: #536176;
+      font-size: 0.88rem;
+    }
+
+    .floating-demo {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 22px;
+      color: #ffffff;
+      background: #081226;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .mini-player-demo,
+    .bottom-nav-demo {
+      display: grid;
+      align-items: center;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(16px);
+    }
+
+    .mini-player-demo {
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      gap: 10px;
+      min-height: 64px;
+      padding: 10px;
+    }
+
+    .mini-player-demo img {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: rgba(255,255,255,0.12);
+    }
+
+    .mini-player-demo span {
+      display: grid;
+      min-width: 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .mini-player-demo strong {
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-player-demo button {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 15px;
+      color: #061934;
+      background: var(--lime);
+    }
+
+    .bottom-nav-demo {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      min-height: 68px;
+      padding: 8px;
+    }
+
+    .bottom-nav-demo span {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      color: rgba(255,255,255,0.68);
+      font-size: 0.66rem;
+      font-weight: 850;
+    }
+
+    .bottom-nav-demo span.active {
+      color: var(--lime);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .bottom-nav-demo i {
+      font-size: 1.22rem;
+    }
+
+    .footer {
+      padding: 36px 16px calc(36px + var(--safe-bottom));
+      color: var(--muted);
+      text-align: center;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .footer strong {
+      display: block;
+      color: var(--ink);
+      font-family: "Plus Jakarta Sans", Inter, sans-serif;
+      font-size: 1rem;
+    }
+
+    .print-page-header,
+    .print-page-footer {
+      display: none;
+    }
+
+    .mobile-jump {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(10px + var(--safe-bottom));
+      z-index: 40;
+      display: none;
+      overflow-x: auto;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 22px;
+      background: rgba(8, 18, 38, 0.9);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+      backdrop-filter: blur(18px);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(110%);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .mobile-jump.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .mobile-jump a {
+      flex: 0 0 auto;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.76);
+      background: rgba(255,255,255,0.08);
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    @media (max-width: 960px) {
+      .hero-inner,
+      .layout,
+      .two-col,
+      .two-col.reverse {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .hero-inner {
+        min-height: auto;
+        padding: 44px 0 118px;
+      }
+
+      .hero-device {
+        width: min(310px, 100%);
+      }
+
+      .layout {
+        gap: 20px;
+        padding-bottom: 110px;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .mobile-jump {
+        display: flex;
+      }
+
+      .section-head {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .section-number {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+      }
+
+      .feature-grid,
+      .role-grid,
+      .faq-grid,
+      .workflow-strip,
+      .pwa-tabs {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .header-inner {
+        width: calc(100% - 24px);
+        height: 62px;
+      }
+
+      .brand span strong {
+        font-size: 0.9rem;
+      }
+
+      .brand small,
+      .header-actions a span {
+        display: none;
+      }
+
+      .hero-inner,
+      .layout {
+        width: calc(100% - 24px);
+      }
+
+      .hero-stats {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .section-inner {
+        padding: 18px;
+      }
+
+      .section {
+        border-radius: 22px;
+      }
+
+      .section h2 {
+        font-size: 1.42rem;
+      }
+
+      .section-head p,
+      .copy-stack p,
+      .copy-stack li {
+        font-size: 0.94rem;
+      }
+
+      .step-list li {
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 10px;
+        padding: 11px;
+      }
+
+      .step-list li::before {
+        width: 30px;
+        height: 30px;
+        border-radius: 11px;
+      }
+
+      .mockup-frame {
+        border-width: 7px;
+        border-radius: 34px;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4;
+        margin: 18mm 14mm 18mm;
+
+        @top-left {
+          content: "Panduan Aplikasi RadioSBL";
+          color: #475569;
+          font-family: Inter, sans-serif;
+          font-size: 8.5pt;
+          font-weight: 800;
+        }
+
+        @top-right {
+          content: "Radio SBL 92.4 FM Pinrang";
+          color: #475569;
+          font-family: Inter, sans-serif;
+          font-size: 8.5pt;
+          font-weight: 800;
+        }
+
+        @bottom-left {
+          content: "Developer MAROA Project";
+          color: #475569;
+          font-family: Inter, sans-serif;
+          font-size: 8.5pt;
+          font-weight: 800;
+        }
+
+        @bottom-right {
+          content: "Halaman " counter(page);
+          color: #475569;
+          font-family: Inter, sans-serif;
+          font-size: 8.5pt;
+          font-weight: 800;
+        }
+      }
+
+      * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        animation: none !important;
+        transition: none !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      html,
+      body {
+        width: 210mm;
+        min-width: 0;
+        color: #111827;
+        background: #ffffff !important;
+        font-size: 10.5pt;
+        line-height: 1.45;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .site-header,
+      .sidebar,
+      .mobile-jump,
+      .header-actions,
+      .hero-links,
+      .device-caption,
+      .footer {
+        display: none !important;
+      }
+
+      .print-page-header,
+      .print-page-footer {
+        display: none !important;
+      }
+
+      .hero {
+        color: #111827;
+        background: #ffffff !important;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .hero::after {
+        display: none;
+      }
+
+      .hero-inner {
+        width: 100%;
+        min-height: auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 50mm;
+        gap: 10mm;
+        padding: 0;
+      }
+
+      .hero h1 {
+        max-width: none;
+        color: #0f172a;
+        font-size: 30pt;
+        line-height: 1;
+      }
+
+      .hero p {
+        max-width: none;
+        color: #334155;
+        font-size: 11pt;
+      }
+
+      .eyebrow,
+      .section-kicker {
+        color: #0b4fae;
+        background: transparent;
+        padding: 0;
+        min-height: 0;
+        letter-spacing: 0.06em;
+      }
+
+      .hero-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5mm;
+      }
+
+      .hero-stats div {
+        min-height: 24mm;
+        padding: 5mm;
+        border: 0.5pt solid #cbd5e1;
+        background: #f8fafc !important;
+      }
+
+      .hero-stats strong {
+        color: #0f172a;
+        font-size: 18pt;
+      }
+
+      .hero-stats span {
+        color: #475569;
+      }
+
+      .phone-shell,
+      .mockup-frame,
+      .desktop-frame {
+        border: 1.2mm solid #111827;
+        border-radius: 8mm;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .phone-shell::before {
+        display: none;
+      }
+
+      .phone-shell img,
+      .mockup-frame img {
+        border-radius: 6mm;
+      }
+
+      .layout {
+        width: 100%;
+        display: block;
+        padding: 0;
+      }
+
+      .content {
+        display: block;
+      }
+
+      .section {
+        margin: 0 0 6mm;
+        overflow: visible;
+        border: 0 !important;
+        border-top: 0.5pt solid #d8e2ef !important;
+        border-radius: 0;
+        background: transparent !important;
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+
+      .section-inner {
+        gap: 5mm;
+        padding: 6mm 0 0;
+      }
+
+      #login {
+        break-before: page;
+        page-break-before: always;
+      }
+
+      .section-head {
+        grid-template-columns: minmax(0, 1fr) 12mm;
+        gap: 6mm;
+        break-inside: avoid;
+        break-after: avoid;
+        page-break-inside: avoid;
+        page-break-after: avoid;
+      }
+
+      .section h2 {
+        color: #0f172a;
+        font-size: 18pt;
+        line-height: 1.15;
+      }
+
+      .section-head p,
+      .copy-stack p,
+      .copy-stack li,
+      .platform-card ol,
+      details div {
+        color: #334155;
+        font-size: 9.5pt;
+      }
+
+      .section-number {
+        width: 12mm;
+        height: 12mm;
+        border: 0.5pt solid #94a3b8;
+        border-radius: 4mm;
+        color: #0f172a;
+        background: #eef2ff !important;
+        font-size: 9pt;
+      }
+
+      .two-col,
+      .two-col.reverse {
+        grid-template-columns: minmax(0, 1fr) 52mm;
+        gap: 7mm;
+        align-items: start;
+      }
+
+      .two-col.reverse {
+        grid-template-columns: 52mm minmax(0, 1fr);
+      }
+
+      .mockup {
+        width: 52mm;
+      }
+
+      .mockup.wide {
+        width: 100%;
+      }
+
+      .desktop-frame {
+        border-radius: 5mm;
+      }
+
+      .feature-grid,
+      .role-grid,
+      .faq-grid,
+      .workflow-strip,
+      .pwa-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4mm;
+      }
+
+      .feature-card,
+      .role-card,
+      .platform-card,
+      .callout,
+      .workflow-strip div,
+      details,
+      .step-list li {
+        border: 0.5pt solid #d1d9e6;
+        background: #ffffff !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .feature-card,
+      .role-card,
+      .platform-card,
+      .callout {
+        min-height: 0;
+        padding: 4.5mm;
+        border-radius: 5mm;
+      }
+
+      .feature-card i,
+      .role-card span,
+      .step-list li::before {
+        color: #0b4fae;
+        background: #eef5ff !important;
+      }
+
+      .step-list {
+        gap: 3mm;
+      }
+
+      .step-list li {
+        min-height: 0;
+        padding: 4mm;
+      }
+
+      .workflow-strip div,
+      .floating-demo {
+        color: #111827;
+        background: #f8fafc !important;
+      }
+
+      .workflow-strip i,
+      .workflow-strip span,
+      .bottom-nav-demo span,
+      .mini-player-demo span,
+      .mini-player-demo strong {
+        color: #334155;
+      }
+
+      .floating-demo,
+      .mini-player-demo,
+      .bottom-nav-demo {
+        border: 0.5pt solid #d1d9e6;
+        background: #f8fafc !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .mini-player-demo button {
+        color: #ffffff;
+        background: #1677ed !important;
+      }
+
+      summary {
+        min-height: 0;
+        padding: 4mm 5mm;
+      }
+
+      details div {
+        padding: 0 5mm 5mm;
+      }
+
+      h1,
+      h2,
+      h3,
+      .section-head,
+      .callout strong {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .eyebrow i,
+      .section-kicker i,
+      .platform-card h3 i,
+      .feature-card i,
+      .workflow-strip i,
+      .callout i,
+      summary i {
+        display: none !important;
+      }
+
+      img,
+      .mockup,
+      .feature-card,
+      .role-card,
+      .platform-card,
+      .callout,
+      details,
+      .step-list li {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-page-header" aria-hidden="true">
+    <span>Panduan Aplikasi RadioSBL</span>
+    <span>Radio SBL 92.4 FM Pinrang</span>
+  </div>
+  <div class="print-page-footer" aria-hidden="true">
+    <span>Developer MAROA Project</span>
+    <span class="page-number"></span>
+  </div>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#top" class="brand" aria-label="Kembali ke awal panduan">
+        <img src="../public/logoapp.png" alt="Radio SBL">
+        <span>
+          <strong>Panduan RadioSBL</strong>
+          <small>Panduan Pengguna</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <a href="#instalasi"><i class="ph ph-download-simple"></i><span>Install App</span></a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" id="top">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow"><i class="ph ph-broadcast"></i> Panduan aplikasi RadioSBL</span>
+        <h1>Panduan mudah menggunakan Aplikasi RadioSBL.</h1>
+        <p>
+          Pusat orientasi untuk kru, penyiar, admin, reporter, dan operator agar cepat memahami alur kerja aplikasi: install PWA, login, dashboard, navigasi floating, request lagu, Smart Script Studio, dan Pinrang Berkabar.
+        </p>
+        <div class="hero-stats" aria-label="Cakupan panduan">
+          <div>
+            <strong>14</strong>
+            <span>Topik operasional</span>
+          </div>
+          <div>
+            <strong>10+</strong>
+            <span>Screenshot aplikasi</span>
+          </div>
+          <div>
+            <strong>PWA</strong>
+            <span>Terasa seperti aplikasi</span>
+          </div>
+        </div>
+        <div class="hero-links">
+          <a href="#dashboard" class="primary-link">Mulai walkthrough <i class="ph ph-arrow-right"></i></a>
+          <a href="#faq" class="secondary-link">Buka FAQ <i class="ph ph-question"></i></a>
+        </div>
+      </div>
+      <div class="hero-device">
+        <div class="phone-shell">
+          <img src="screenshots/dashboard-mobile.png" alt="Dashboard mobile RadioSBL App">
+        </div>
+        <div class="device-caption"><i class="ph ph-sparkle"></i> Tampilan dashboard terbaru</div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="mobile-jump" aria-label="Navigasi cepat mobile">
+    <a href="#instalasi"><i class="ph ph-download-simple"></i>Install</a>
+    <a href="#dashboard"><i class="ph ph-house"></i>Dashboard</a>
+    <a href="#floating"><i class="ph ph-navigation-arrow"></i>Nav</a>
+    <a href="#script"><i class="ph ph-sparkle"></i>Script</a>
+    <a href="#faq"><i class="ph ph-question"></i>FAQ</a>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar" aria-label="Daftar isi">
+      <h2>Mulai di sini</h2>
+      <div class="nav-group">
+        <a class="nav-link" href="#instalasi"><i class="ph ph-download-simple"></i>Install PWA</a>
+        <a class="nav-link" href="#akses"><i class="ph ph-key"></i>Hak akses</a>
+        <a class="nav-link" href="#login"><i class="ph ph-sign-in"></i>Login</a>
+        <a class="nav-link" href="#dashboard"><i class="ph ph-house"></i>Dashboard</a>
+        <a class="nav-link" href="#floating"><i class="ph ph-navigation-arrow"></i>Floating layer</a>
+      </div>
+      <h2>Operasional</h2>
+      <div class="nav-group">
+        <a class="nav-link" href="#absensi"><i class="ph ph-map-pin"></i>Absensi</a>
+        <a class="nav-link" href="#jadwal"><i class="ph ph-calendar"></i>Jadwal</a>
+        <a class="nav-link" href="#script"><i class="ph ph-sparkle"></i>Smart Script</a>
+        <a class="nav-link" href="#request"><i class="ph ph-music-notes"></i>Request Lagu</a>
+        <a class="nav-link" href="#pinrang"><i class="ph ph-youtube-logo"></i>Pinrang Berkabar</a>
+      </div>
+      <h2>Admin & bantuan</h2>
+      <div class="nav-group">
+        <a class="nav-link" href="#users"><i class="ph ph-users"></i>Manajemen user</a>
+        <a class="nav-link" href="#profil"><i class="ph ph-user-circle"></i>Profil kru</a>
+        <a class="nav-link" href="#faq"><i class="ph ph-question"></i>FAQ</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="section" id="instalasi">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-download-simple"></i> PWA install experience</span>
+              <h2>Pasang RadioSBL seperti aplikasi native.</h2>
+              <p>RadioSBL adalah Progressive Web App. Pengguna bisa membuka lewat browser, tetapi pengalaman terbaik didapat saat aplikasi dipasang ke layar utama.</p>
+            </div>
+            <span class="section-number">01</span>
+          </div>
+          <div class="two-col">
+            <div class="copy-stack">
+              <div class="pwa-tabs">
+                <article class="platform-card">
+                  <h3><i class="ph ph-android-logo"></i> Android Chrome</h3>
+                  <ol>
+                    <li>Buka <strong>radiosbl.web.app</strong> di Google Chrome.</li>
+                    <li>Tekan tombol <strong>Install RadioSBL App</strong> pada layar login jika tersedia.</li>
+                    <li>Jika prompt tidak muncul, buka menu titik tiga lalu pilih <strong>Install app</strong> atau <strong>Tambahkan ke layar utama</strong>.</li>
+                    <li>Konfirmasi pemasangan dan buka dari ikon RadioSBL.</li>
+                  </ol>
+                </article>
+                <article class="platform-card">
+                  <h3><i class="ph ph-apple-logo"></i> iPhone Safari</h3>
+                  <ol>
+                    <li>Buka aplikasi memakai Safari.</li>
+                    <li>Tekan tombol <strong>Share</strong>.</li>
+                    <li>Pilih <strong>Add to Home Screen</strong>.</li>
+                    <li>Tekan <strong>Add</strong>, lalu buka dari ikon di Home Screen.</li>
+                  </ol>
+                </article>
+              </div>
+              <div class="callout">
+                <strong><i class="ph ph-lightning"></i> Kenapa perlu install?</strong>
+                <p>Lebih cepat dibuka, tampilan fullscreen, akses lebih mudah untuk penyiar yang sering berpindah antara dashboard, jadwal, request, dan naskah.</p>
+              </div>
+            </div>
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/pwa-install.png" alt="Panduan install PWA RadioSBL">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="akses">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-key"></i> Role based access</span>
+              <h2>Setiap kru melihat fitur sesuai tugasnya.</h2>
+              <p>Aplikasi menjaga fokus operasional dengan membatasi modul berdasarkan role dan permission.</p>
+            </div>
+            <span class="section-number">02</span>
+          </div>
+          <div class="role-grid">
+            <article class="role-card">
+              <span>Tamu</span>
+              <strong>Akses awal setelah login Google</strong>
+              <p>Menunggu admin menghubungkan email ke profil kru sebelum fitur operasional dibuka.</p>
+            </article>
+            <article class="role-card">
+              <span>Penyiar</span>
+              <strong>Fokus siaran harian</strong>
+              <p>Akses dashboard, absensi, jadwal, request lagu, profil, dan Smart Script Studio.</p>
+            </article>
+            <article class="role-card">
+              <span>Reporter</span>
+              <strong>Liputan dan redaksi</strong>
+              <p>Mengakses tugas lapangan, dokumentasi, serta kanal Pinrang Berkabar sesuai kebutuhan redaksi.</p>
+            </article>
+            <article class="role-card">
+              <span>Admin</span>
+              <strong>Kontrol operasional</strong>
+              <p>Mengelola user, memantau absensi, mengatur role, dan mengawasi workflow studio.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="login">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-sign-in"></i> First impression</span>
+              <h2>Login dibuat ringan, lega, dan langsung terasa sebagai aplikasi.</h2>
+              <p>Layar login menjadi pintu masuk utama: masuk dengan akun, pasang aplikasi, lalu lanjut ke dashboard operasional.</p>
+            </div>
+            <span class="section-number">03</span>
+          </div>
+          <div class="two-col reverse">
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/login-mobile.png" alt="Login mobile RadioSBL">
+              </div>
+            </div>
+            <div class="copy-stack">
+              <ol class="step-list">
+                <li>Masukkan akun yang diberikan admin atau gunakan Google jika diaktifkan.</li>
+                <li>Aktifkan <strong>Ingat saya</strong> pada perangkat pribadi agar sesi tidak cepat hilang.</li>
+                <li>Gunakan tombol <strong>Install RadioSBL App</strong> untuk memasang aplikasi ke layar utama.</li>
+                <li>Setelah masuk, sistem mengarahkan pengguna ke dashboard sesuai hak akses.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="dashboard">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-house"></i> Operational dashboard</span>
+              <h2>Dashboard menjawab: apa yang perlu dilakukan sekarang?</h2>
+              <p>Dashboard bukan launcher menu. Ia menampilkan status siaran, fokus operasional, briefing prioritas, request realtime, dan aksi cepat sesuai role.</p>
+            </div>
+            <span class="section-number">04</span>
+          </div>
+          <div class="mockup wide">
+            <div class="desktop-frame">
+              <img src="screenshots/dashboard-desktop.png" alt="Dashboard desktop RadioSBL">
+            </div>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <i class="ph ph-radio"></i>
+              <strong>Status siaran</strong>
+              <p>Widget radio menampilkan program aktif, penyiar, dan kontrol play tanpa membuka halaman streaming.</p>
+            </article>
+            <article class="feature-card">
+              <i class="ph ph-warning-circle"></i>
+              <strong>Operational briefing</strong>
+              <p>Satu prioritas utama tampil jelas. Prioritas lain tetap tersedia lewat disclosure.</p>
+            </article>
+            <article class="feature-card">
+              <i class="ph ph-lightning"></i>
+              <strong>Aksi cepat</strong>
+              <p>Shortcut mengikuti role: penyiar, admin, reporter, operator, atau publik.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="floating">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-navigation-arrow"></i> App shell</span>
+              <h2>Bottom nav dan mini player adalah global floating layer.</h2>
+              <p>Konten halaman boleh scroll, tetapi menu bawah dan mini player tetap menempel pada viewport agar aplikasi terasa native.</p>
+            </div>
+            <span class="section-number">05</span>
+          </div>
+          <div class="two-col">
+            <div class="copy-stack">
+              <div class="floating-demo" aria-label="Ilustrasi floating navigation">
+                <div class="mini-player-demo">
+                  <img src="../public/LogoSBL.svg" alt="">
+                  <span><strong>LIVE - Aga Kareba</strong>Radio SBL FM Pinrang</span>
+                  <button type="button" aria-label="Play demo"><i class="ph ph-play-fill"></i></button>
+                </div>
+                <div class="bottom-nav-demo">
+                  <span class="active"><i class="ph ph-house"></i>Beranda</span>
+                  <span><i class="ph ph-broadcast"></i>Live</span>
+                  <span><i class="ph ph-calendar"></i>Jadwal</span>
+                  <span><i class="ph ph-headphones"></i>Request</span>
+                  <span><i class="ph ph-list"></i>Menu</span>
+                </div>
+              </div>
+              <div class="callout">
+                <strong><i class="ph ph-stack"></i> Aturan anti player ganda</strong>
+                <p>Mini player tidak tampil di Dashboard, Streaming, Podcast, Splash, Login, dan Menu. Halaman lain boleh menampilkan mini player di atas bottom navigation.</p>
+              </div>
+            </div>
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/song-request-mobile.png" alt="Request mobile dengan floating layer">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="absensi">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-map-pin"></i> Attendance workflow</span>
+              <h2>Absensi berbasis lokasi dan bukti selfie.</h2>
+              <p>Absensi membantu studio memantau kehadiran kru, validasi radius, dan catatan tugas luar dengan lebih rapi.</p>
+            </div>
+            <span class="section-number">06</span>
+          </div>
+          <div class="two-col reverse">
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/attendance-mobile.png" alt="Absensi mobile RadioSBL">
+              </div>
+            </div>
+            <div class="copy-stack">
+              <ol class="step-list">
+                <li>Buka menu <strong>Absensi</strong> dari dashboard atau Menu.</li>
+                <li>Izinkan akses lokasi dan kamera saat diminta browser.</li>
+                <li>Periksa status radius, lalu ambil selfie sebagai bukti kehadiran.</li>
+                <li>Kirim absensi dan tunggu status tersimpan.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="jadwal">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-calendar"></i> Broadcast schedule</span>
+              <h2>Jadwal siaran, roster, dan tukar jadwal dalam satu alur.</h2>
+              <p>Penyiar dapat memantau slot mingguan, melihat program, dan mengoordinasikan pergantian jadwal.</p>
+            </div>
+            <span class="section-number">07</span>
+          </div>
+          <div class="two-col">
+            <div class="copy-stack">
+              <div class="workflow-strip">
+                <div><i class="ph ph-calendar-check"></i><strong>Cek slot</strong><span>Lihat jadwal utama dan jam siaran.</span></div>
+                <div><i class="ph ph-user-focus"></i><strong>Lihat penyiar</strong><span>Buka profil penyiar dari slot terkait.</span></div>
+                <div><i class="ph ph-arrows-left-right"></i><strong>Tukar jadwal</strong><span>Kirim permintaan jika berhalangan.</span></div>
+                <div><i class="ph ph-bell-ringing"></i><strong>Konfirmasi</strong><span>Admin dan kru melihat notifikasi.</span></div>
+              </div>
+            </div>
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/schedule-mobile.png" alt="Jadwal mobile RadioSBL">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="script">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-sparkle"></i> Smart Script Studio</span>
+              <h2>Buat naskah siaran cepat, lalu baca di teleprompter.</h2>
+              <p>AI membantu menyusun opening, bridging, adlibs, berita singkat, dan cue program agar penyiar lebih siap sebelum on-air.</p>
+            </div>
+            <span class="section-number">08</span>
+          </div>
+          <div class="two-col reverse">
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/ai-script-mobile.png" alt="Smart Script Studio mobile">
+              </div>
+            </div>
+            <div class="copy-stack">
+              <ol class="step-list">
+                <li>Pilih tipe naskah: opening, berita, bridging, promosi, atau closing.</li>
+                <li>Tulis konteks program dan gaya bicara yang diinginkan.</li>
+                <li>Generate naskah dan sunting bagian yang perlu disesuaikan.</li>
+                <li>Buka mode teleprompter untuk membaca dengan ritme stabil.</li>
+              </ol>
+              <div class="callout">
+                <strong><i class="ph ph-microphone-stage"></i> Tips penyiar</strong>
+                <p>Tambahkan nama program, segmen, narasumber, dan suasana siaran agar hasil AI lebih natural.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="request">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-music-notes"></i> Listener interaction</span>
+              <h2>Request lagu dibuat realtime dan mudah dipindai.</h2>
+              <p>Penyiar melihat request masuk, antrean, dan riwayat dalam card stack mobile yang ringkas.</p>
+            </div>
+            <span class="section-number">09</span>
+          </div>
+          <div class="two-col">
+            <div class="copy-stack">
+              <div class="feature-grid">
+                <article class="feature-card">
+                  <i class="ph ph-dot-outline"></i>
+                  <strong>Masuk sekarang</strong>
+                  <p>Request baru yang perlu dibaca atau diproses.</p>
+                </article>
+                <article class="feature-card">
+                  <i class="ph ph-queue"></i>
+                  <strong>Siap diputar</strong>
+                  <p>Lagu yang sudah masuk antrean operator.</p>
+                </article>
+                <article class="feature-card">
+                  <i class="ph ph-check-circle"></i>
+                  <strong>Riwayat</strong>
+                  <p>Request selesai dan catatan interaksi pendengar.</p>
+                </article>
+              </div>
+            </div>
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/song-request-mobile.png" alt="Request lagu mobile">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pinrang">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-youtube-logo"></i> Pinrang Berkabar</span>
+              <h2>Kanal video berita resmi di dalam aplikasi.</h2>
+              <p>Pinrang Berkabar terasa sebagai mini media portal: identitas resmi, player in-app, carousel video, dan link cadangan ke YouTube.</p>
+            </div>
+            <span class="section-number">10</span>
+          </div>
+          <div class="two-col reverse">
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/pinrang-berkabar-mobile.png" alt="Pinrang Berkabar mobile">
+              </div>
+            </div>
+            <div class="copy-stack">
+              <ol class="step-list">
+                <li>Buka modul <strong>Pinrang Berkabar</strong> dari Menu.</li>
+                <li>Pilih video utama atau carousel <strong>Video Lainnya</strong>.</li>
+                <li>Tonton langsung di aplikasi lewat player YouTube embed.</li>
+                <li>Gunakan link YouTube bila perlu membuka video di luar aplikasi.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="users">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-users"></i> Admin center</span>
+              <h2>Manajemen user menjaga akses tetap aman.</h2>
+              <p>Admin mengatur role, status aktif, dan profil kru agar setiap pengguna mendapat fitur yang benar.</p>
+            </div>
+            <span class="section-number">11</span>
+          </div>
+          <div class="two-col">
+            <div class="copy-stack">
+              <div class="callout">
+                <strong><i class="ph ph-shield-check"></i> Prinsip akses</strong>
+                <p>Jangan naikkan role tanpa kebutuhan operasional. Setiap modul admin berdampak pada data kru, absensi, dan workflow studio.</p>
+              </div>
+              <ol class="step-list">
+                <li>Cari user berdasarkan nama, email, atau role.</li>
+                <li>Periksa status aktif dan data profil utama.</li>
+                <li>Ubah role sesuai tanggung jawab nyata.</li>
+                <li>Simpan perubahan dan minta user login ulang bila diperlukan.</li>
+              </ol>
+            </div>
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/users-mobile.png" alt="Manajemen user mobile">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="profil">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-user-circle"></i> Crew profile</span>
+              <h2>Profil kru menjadi identitas operasional dan publik.</h2>
+              <p>Lengkapi nama udara, kontak, foto, dan detail kerja agar dashboard, jadwal, dan profil penyiar saling sinkron.</p>
+            </div>
+            <span class="section-number">12</span>
+          </div>
+          <div class="two-col reverse">
+            <div class="mockup">
+              <div class="mockup-frame">
+                <img src="screenshots/profile-mobile.png" alt="Profil kru mobile">
+              </div>
+            </div>
+            <div class="copy-stack">
+              <ol class="step-list">
+                <li>Buka profil dari avatar dashboard atau Menu.</li>
+                <li>Lengkapi nama siaran, nomor WhatsApp, dan data utama.</li>
+                <li>Perbarui foto profil jika tersedia.</li>
+                <li>Gunakan tombol keluar hanya saat berpindah perangkat atau akun.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pedoman">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-scales"></i> Redaksi dan etika</span>
+              <h2>Pedoman media menjaga konten tetap profesional.</h2>
+              <p>Reporter dan tim redaksi wajib menjaga verifikasi, hak jawab, koreksi, dan keamanan identitas narasumber.</p>
+            </div>
+            <span class="section-number">13</span>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <i class="ph ph-check-circle"></i>
+              <strong>Verifikasi</strong>
+              <p>Berita yang merugikan pihak lain perlu konfirmasi dan konteks yang cukup.</p>
+            </article>
+            <article class="feature-card">
+              <i class="ph ph-warning-circle"></i>
+              <strong>UGC dan komentar</strong>
+              <p>Konten fitnah, sadis, diskriminatif, atau melanggar hukum harus ditangani cepat.</p>
+            </article>
+            <article class="feature-card">
+              <i class="ph ph-copyright"></i>
+              <strong>Hak cipta</strong>
+              <p>Gunakan video, foto, dan audio dengan sumber jelas dan izin yang sesuai.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker"><i class="ph ph-question"></i> FAQ modern</span>
+              <h2>Solusi cepat untuk kendala umum.</h2>
+              <p>Gunakan FAQ ini sebelum menghubungi admin teknis. Banyak masalah mobile selesai lewat izin browser atau refresh ringan.</p>
+            </div>
+            <span class="section-number">14</span>
+          </div>
+          <div class="faq-grid">
+            <details open>
+              <summary>Jadwal saya kosong, kenapa?<i class="ph ph-caret-down"></i></summary>
+              <div>Akun mungkin masih berstatus tamu, role belum diset admin, atau jadwal belum dihubungkan dengan nama udara Anda.</div>
+            </details>
+            <details>
+              <summary>GPS absensi tidak akurat?<i class="ph ph-caret-down"></i></summary>
+              <div>Aktifkan lokasi presisi tinggi, izinkan lokasi untuk browser, lalu coba dekat area terbuka selama beberapa detik.</div>
+            </details>
+            <details>
+              <summary>Tombol install tidak muncul?<i class="ph ph-caret-down"></i></summary>
+              <div>Gunakan menu browser: Chrome Android lewat titik tiga, Safari iPhone lewat tombol Share lalu Add to Home Screen.</div>
+            </details>
+            <details>
+              <summary>Mini player tidak muncul di dashboard?<i class="ph ph-caret-down"></i></summary>
+              <div>Itu memang sengaja. Dashboard, Streaming, dan Podcast punya player utama masing-masing agar tidak ada player ganda.</div>
+            </details>
+            <details>
+              <summary>Request lagu belum berubah realtime?<i class="ph ph-caret-down"></i></summary>
+              <div>Periksa koneksi internet, tekan sinkronkan, lalu pastikan status request belum masuk ke riwayat.</div>
+            </details>
+            <details>
+              <summary>Teleprompter terasa terlalu cepat?<i class="ph ph-caret-down"></i></summary>
+              <div>Turunkan speed, pause sebentar, lalu lanjutkan. Siapkan naskah pendek per segmen agar pembacaan lebih stabil.</div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <strong>Radio SBL 92.4 FM Pinrang</strong>
+    <span>Panduan Aplikasi RadioSBL - 2026</span>
+    <span>Developer MAROA Project</span>
+  </footer>
+
+  <script>
+    const sections = Array.from(document.querySelectorAll(".section"));
+    const navLinks = Array.from(document.querySelectorAll(".nav-link, .mobile-jump a"));
+    const mobileJump = document.querySelector(".mobile-jump");
+    const hero = document.querySelector(".hero");
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+      if (!visible) return;
+
+      navLinks.forEach((link) => {
+        const isActive = link.getAttribute("href") === `#${visible.target.id}`;
+        link.classList.toggle("active", isActive);
+      });
+    }, { rootMargin: "-18% 0px -68% 0px", threshold: [0.1, 0.35, 0.6] });
+
+    sections.forEach((section) => observer.observe(section));
+
+    function updateMobileJump() {
+      if (!mobileJump || !hero) return;
+      const showAfter = hero.offsetHeight - 160;
+      mobileJump.classList.toggle("is-visible", window.scrollY > showAfter);
+    }
+
+    updateMobileJump();
+    window.addEventListener("scroll", updateMobileJump, { passive: true });
+  </script>
+</body>
+</html>
