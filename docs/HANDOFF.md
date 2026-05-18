@@ -1872,3 +1872,11 @@ pm run build\ (\	sc --noEmit && vite build\) secara menyeluruh.
 - Update Master Tutorial System (Expansion) batch 57:
   - Melengkapi halaman \TutorialPage.tsx\ dengan artikel panduan komprehensif untuk "Panduan Cepat", "Tutorial Penyiar", dan "Tutorial Admin" sesuai hierarki \ARAHAN_TUTORIAL.md\.
   - Mengimplementasikan \ctiveCategory\ *state* untuk navigasi interaktif antara menu grid kategori dan isi konten panduan, lengkap dengan tombol kembali tanpa membebani sistem *routing* utama.
+
+- Penyempurnaan Final Dokumentasi Tuntas (Non-Demo) batch 58:
+  - Merombak total isi \TutorialPage.tsx\ menjadi *user guide* definitif yang memuat petunjuk riil penggunaan sistem.
+  - Menulis ulang \PedomanMediaPage.tsx\ agar selaras dengan **Peraturan Dewan Pers Nasional tentang Pedoman Pemberitaan Media Siber**. Dokumen kini memuat 9 pasal kode etik (Verifikasi, Konten Pengguna/UGC, Hak Jawab, Pencabutan Berita, Plagiarisme, dsb) secara eksklusif dan profesional.
+  - Memperbaiki komponen visual (ikonologi *lucide-react*) agar relevan dengan bobot setiap pasal regulasi.
+- Verifikasi Dokumentasi batch 58:
+  - \
+pm run typecheck\ lulus 100% setelah melengkapi modul *User* pada ikonologi.

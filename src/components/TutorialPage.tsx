@@ -1,6 +1,5 @@
-import { BookOpen, PlayCircle, Search, User, Mic2, ShieldCheck, AlertTriangle, ArrowLeft } from "lucide-react";
+import { BookOpen, PlayCircle, Search, User, Mic2, ShieldCheck, AlertTriangle, ArrowLeft, Headphones, MonitorPlay, Video } from "lucide-react";
 import { useState } from "react";
-
 export function TutorialPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -10,54 +9,71 @@ export function TutorialPage() {
     { title: "Tutorial Penyiar", icon: Mic2, desc: "Persiapan, jadwal, dan request lagu" },
     { title: "Tutorial Admin", icon: ShieldCheck, desc: "Manajemen user dan persetujuan" },
     { title: "Tutorial Reporter", icon: User, desc: "Liputan, event, dan laporan" },
+    { title: "Tutorial Operator", icon: Headphones, desc: "Monitoring dan operasional studio" },
+    { title: "Pinrang Berkabar", icon: Video, desc: "Manajemen video dan media siber" },
     { title: "Video Tutorial", icon: PlayCircle, desc: "Tonton langkah demi langkah" },
-    { title: "FAQ & Troubleshooting", icon: AlertTriangle, desc: "Pertanyaan umum dan solusi" },
+    { title: "Troubleshooting", icon: AlertTriangle, desc: "Pemecahan masalah teknis" },
   ];
 
   const guidesData: Record<string, { title: string, content: React.ReactNode }[]> = {
     "Panduan Cepat": [
       {
-        title: "1. Login & Masuk Aplikasi",
+        title: "1. Login ke Radio SBL Super-App",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Untuk masuk ke Super-App Radio SBL, Anda harus menggunakan kredensial yang didaftarkan oleh Manajemen.</p>
-            <ol style={{ paddingLeft: "16px", marginBottom: "12px", lineHeight: "1.6" }}>
-              <li>Buka tautan aplikasi di <em>browser</em> (disarankan menggunakan Google Chrome atau Safari).</li>
-              <li>Pilih opsi <strong>Sign In with Google</strong> atau masukkan Email & Password Anda.</li>
-              <li>Jika login berhasil, Anda akan langsung diarahkan ke <strong>Dashboard Utama</strong>.</li>
-            </ol>
-            <p style={{ fontSize: "13px", background: "var(--color-bg-subtle)", padding: "12px", borderRadius: "6px", borderLeft: "3px solid var(--color-primary)" }}>
-              💡 <em>Perhatian: Jika muncul pesan "Anda login sebagai Tamu", segera laporkan ke Admin agar email Anda ditautkan ke profil penyiar yang tepat.</em>
-            </p>
-          </div>
-        )
-      },
-      {
-        title: "2. Cara Melakukan Absensi (Radius GPS)",
-        content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Sistem presensi kami menggunakan <em>Geofencing</em>. Anda hanya bisa absen jika berada di dalam radius Studio Utama.</p>
-            <ol style={{ paddingLeft: "16px", marginBottom: "12px", lineHeight: "1.6" }}>
-              <li>Di navigasi utama (atau di deretan ikon bawah untuk ponsel), ketuk menu <strong>Absensi</strong>.</li>
-              <li>Sistem akan meminta izin lokasi. <strong>Izinkan</strong> peramban (browser) untuk mengakses GPS perangkat Anda.</li>
-              <li>Tunggu hingga jarak terkalibrasi. Jika indikator menunjukkan "Di Dalam Radius" (warna hijau), panel absensi akan terbuka.</li>
-              <li>Klik tombol <strong>Ambil Foto Selfie</strong> untuk merekam presensi visual (kamera depan akan aktif).</li>
-              <li>Tekan <strong>Absen Masuk</strong> atau <strong>Absen Keluar</strong> sesuai shift operasional Anda.</li>
+          <div className="prose">
+            <p>Untuk masuk ke aplikasi, pastikan email Anda sudah terdaftar oleh Admin/Manajemen.</p>
+            <ol>
+              <li>Buka tautan aplikasi di <em>browser</em>.</li>
+              <li>Pilih opsi <strong>Sign In with Google</strong> (disarankan) atau masukkan kredensial.</li>
+              <li>Anda akan diarahkan ke <strong>Dashboard Utama</strong>.</li>
             </ol>
           </div>
         )
       },
       {
-        title: "3. Cara Merespon Tukar Jadwal",
+        title: "2. Absensi Berbasis Radius (Geofencing)",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Sebagai penyiar pengganti, Anda wajib memberikan persetujuan sebelum jadwal resmi berpindah nama ke Anda.</p>
-            <ol style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Buka <strong>Menu Lengkap</strong> lalu pilih aplikasi <strong>Tukar Jadwal</strong>.</li>
-              <li>Gulir ke bawah ke bagian <strong>Riwayat & Permintaan Masuk</strong>.</li>
-              <li>Cari kartu permintaan dengan label peringatan berwarna kuning (Permintaan Masuk).</li>
-              <li>Tinjau alasan pertukaran, kemudian klik <strong>Setujui</strong> (Approve) atau <strong>Tolak</strong> (Reject).</li>
-              <li>Jika disetujui, jadwal siaran akan otomatis diperbarui dan tercatat di kalender utama stasiun.</li>
+          <div className="prose">
+            <ol>
+              <li>Pilih menu <strong>Absensi</strong>.</li>
+              <li>Izinkan akses lokasi GPS pada peramban Anda.</li>
+              <li>Pastikan indikator menampilkan warna hijau ("Di Dalam Radius").</li>
+              <li>Klik <strong>Ambil Foto Selfie</strong> lalu <strong>Absen Masuk</strong>.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. Mengecek Jadwal Siaran",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Pilih menu <strong>Jadwal Siaran</strong>.</li>
+              <li>Anda akan melihat jadwal mingguan stasiun. Jadwal Anda disorot secara otomatis.</li>
+              <li>Perhatikan tag warna (Live, Draft, Completed) pada jadwal.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "4. Request Lagu (Dasar)",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Buka menu <strong>Request Lagu</strong>.</li>
+              <li>Semua permintaan masuk akan tampil secara <em>realtime</em>.</li>
+              <li>Tandai lagu sebagai <strong>Selesai</strong> setelah diputarkan.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "5. Live Monitoring Dashboard",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Di halaman <strong>Dashboard</strong>, lihat bagian <strong>Featured Live Card</strong>.</li>
+              <li>Anda dapat memantau program yang sedang <em>On-Air</em> beserta nama penyiarnya.</li>
             </ol>
           </div>
         )
@@ -65,51 +81,78 @@ export function TutorialPage() {
     ],
     "Tutorial Penyiar": [
       {
-        title: "1. Cara Membuat Naskah AI (Smart Script Studio)",
+        title: "1. Persiapan & Login Studio",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Editor Naskah cerdas ini dirancang untuk memproduksi materi siaran secara presisi menggunakan mesin <em>Gemini AI</em>.</p>
-            <ol style={{ paddingLeft: "16px", marginBottom: "12px", lineHeight: "1.6" }}>
-              <li>Buka aplikasi <strong>Buat Naskah</strong>. Anda akan masuk ke halaman "Smart Script Studio".</li>
-              <li>Pada tab <strong>Generator</strong>, pilih Program Siaran Anda dan tentukan durasi (contoh: 3 Menit).</li>
-              <li>Tentukan <strong>Gaya Bahasa / Tone</strong> (Formal, Santai, Energik, Anak Muda, dsb).</li>
-              <li>Di kolom Topik, ketik detail pembahasan (contoh: <em>"Opening Berita Pagi tentang Cuaca Buruk di Pinrang"</em>).</li>
-              <li>Klik <strong>Hasilkan Naskah AI</strong>. Dalam hitungan detik, kerangka naskah akan muncul di <em>Editor</em>.</li>
-            </ol>
-            <h4 style={{ marginTop: "16px", marginBottom: "8px", fontWeight: "600" }}>Alat Editor (Toolbar Lanjutan):</h4>
-            <ul style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Blok teks dan gunakan ikon <strong>Bold</strong> atau <strong>Italic</strong> untuk memberikan penekanan intonasi saat Anda membaca.</li>
-              <li>Gunakan ikon <strong>Penanda Cue (🎵/🗣️)</strong> untuk menyisipkan tanda batas masuknya efek suara (SFX) atau jeda iklan.</li>
-              <li>Sistem telah dilengkapi <strong>Auto-Save</strong>. Pekerjaan Anda tersimpan ke memori lokal setiap 3 detik.</li>
-            </ul>
-          </div>
-        )
-      },
-      {
-        title: "2. Membaca Naskah via Teleprompter",
-        content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Mode Teleprompter dirancang khusus untuk layar studio agar Anda dapat bersiaran tanpa harus memegang kertas.</p>
-            <ol style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Di dalam editor naskah, cari ikon <strong>Monitor Play (Teleprompter)</strong> di sudut atas editor.</li>
-              <li>Layar akan beralih menjadi mode gelap penuh (*Full-screen Dark Mode*) dengan teks berukuran sangat besar.</li>
-              <li>Gunakan tombol panel di bawah layar untuk mengatur <strong>Kecepatan Gulir</strong> (1x, 1.5x, 2x).</li>
-              <li>Klik <strong>Play</strong> saat <em>On-Air</em> agar teks bergulir ke atas secara perlahan seiring tempo bicara Anda.</li>
-              <li>Tekan tombol <strong>Keluar</strong> atau tekan tombol Escape (Esc) pada keyboard untuk kembali ke editor.</li>
+          <div className="prose">
+            <ol>
+              <li>Login menggunakan akun ber-<em>role</em> Penyiar.</li>
+              <li>Lakukan absensi masuk minimal 15 menit sebelum program Anda dimulai.</li>
+              <li>Buka tab jadwal untuk memastikan tidak ada perubahan mendadak dari Admin.</li>
             </ol>
           </div>
         )
       },
       {
-        title: "3. Memonitor Request Lagu secara Realtime",
+        title: "2. Tukar Jadwal dengan Rekan",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Semua permintaan lagu dari WhatsApp maupun Portal Publik akan terpusat ke satu layar.</p>
-            <ol style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Buka menu <strong>Request Lagu</strong> saat Anda sedang siaran di studio.</li>
-              <li>Kartu permintaan akan bermunculan secara <em>realtime</em> tanpa perlu Anda me-<em>refresh</em> halaman.</li>
-              <li>Daftar akan menampilkan Nama Pendengar, Judul Lagu/Artis, serta Pesan (Kirim-kirim salam).</li>
-              <li>Jika lagu sudah Anda putar di <em>deck</em>, jangan lupa klik tombol <strong>Tandai Selesai (Centang)</strong> agar layar antrean tetap bersih.</li>
+          <div className="prose">
+            <ol>
+              <li>Pilih menu <strong>Tukar Jadwal</strong>.</li>
+              <li>Pilih jadwal Anda yang ingin ditukar, lalu pilih nama rekan penyiar pengganti.</li>
+              <li>Isi kolom alasan (contoh: <em>Izin urusan keluarga</em>) lalu klik Ajukan.</li>
+              <li>Rekan Anda dan Admin harus menyetujui pengajuan tersebut agar jadwal resmi berubah.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. Mengelola Antrean Request Lagu",
+        content: (
+          <div className="prose">
+            <p>Manajemen request yang baik membuat siaran lebih interaktif.</p>
+            <ol>
+              <li>Buka menu <strong>Request Lagu</strong>.</li>
+              <li>Perhatikan daftar antrean. Request dengan status "Notified" berarti belum diputarkan.</li>
+              <li>Sebutkan nama dan pesan pendengar secara berurutan.</li>
+              <li>Gunakan fitur "Swipe" (geser) atau tekan tombol <strong>Selesai</strong> pada kartu request agar antrean bersih.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "4. Menggunakan Smart Script Studio (AI Generator)",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Buka <strong>Buat Naskah</strong> lalu pilih program.</li>
+              <li>Isi durasi dan topik spesifik (misal: "Tips menjaga kesehatan di musim hujan").</li>
+              <li>Atur <em>Tone</em> menjadi "Santai" atau "Formal".</li>
+              <li>Klik <strong>Hasilkan Naskah AI</strong>. Editor akan terisi otomatis.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "5. Menambahkan Cue Siaran & Format Teks",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Di dalam editor naskah, gunakan ikon pembatas (seperti Musik atau Jeda Iklan) pada *toolbar*.</li>
+              <li>Sistem akan menyisipkan teks `[CUE: MUSIC IN]` atau `[SEGMENT BREAK]`.</li>
+              <li>Tebalkan poin penting menggunakan ikon <strong>B</strong> (Bold).</li>
+              <li>Naskah tersimpan otomatis setiap 3 detik.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "6. Operasional Teleprompter (Live Tools)",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Di halaman editor, klik ikon <strong>Monitor</strong> (Teleprompter).</li>
+              <li>Tekan tombol <strong>Play</strong> untuk memulai guliran teks.</li>
+              <li>Atur tombol kecepatan (&gt;&gt; atau &lt;&lt;) sesuai ritme baca Anda.</li>
             </ol>
           </div>
         )
@@ -117,30 +160,62 @@ export function TutorialPage() {
     ],
     "Tutorial Admin": [
       {
-        title: "1. Mengelola Persetujuan (Approval Center)",
+        title: "1. Monitoring Realtime (Command Center)",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Sebagai administrator, Anda berperan sebagai pengawas operasional dengan hak veto terhadap intervensi sistem.</p>
-            <ol style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Akses menu <strong>Approval Center</strong>.</li>
-              <li>Sistem akan menyortir otomatis semua permintaan *pending* ke bagian teratas. Ini mencakup: <em>Absensi di Luar Radius (Bypass)</em>, <em>Cuti Tahunan</em>, atau <em>Override Jadwal Paksa</em>.</li>
-              <li>Klik pada kartu pengajuan untuk membaca justifikasi/alasan yang diberikan oleh pegawai.</li>
-              <li>Eksekusi keputusan: <strong>Approve (Setujui)</strong> atau <strong>Reject (Tolak)</strong>. Anda juga bisa menyertakan catatan balasan singkat.</li>
+          <div className="prose">
+            <ol>
+              <li>Melalui <strong>Dashboard Utama</strong>, Anda dapat melihat widget "Sedang Siaran".</li>
+              <li>Semua log aktivitas masuk secara *real-time* (absensi terbaru, request lagu, naskah).</li>
+              <li>Perhatikan peringatan (badge) berwarna merah untuk tindakan yang membutuhkan perhatian segera.</li>
             </ol>
           </div>
         )
       },
       {
-        title: "2. Alur Pemeriksaan Review Naskah AI",
+        title: "2. Menyetujui/Menolak Pengajuan (Approval System)",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Untuk menjaga standarisasi jurnalistik dan Pedoman Media Siber, naskah harus diverifikasi.</p>
-            <ol style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li>Buka aplikasi <strong>Buat Naskah</strong>.</li>
-              <li>Masuk ke tab <strong>Review Naskah</strong> (Tab ini dikhususkan bagi Admin/Program Director).</li>
-              <li>Sistem akan menampilkan semua naskah yang masih berstatus <em>Draft</em> milik seluruh tim siaran.</li>
-              <li>Periksa kontennya. Jika disetujui, klik <strong>Approve</strong>. Naskah otomatis berpindah ke tab <em>Naskah Siap Siaran</em> dan penyiar terkait akan menerima izin bacanya.</li>
-              <li>Naskah yang telah dibacakan *on-air* dapat ditandai sebagai <em>Used (Selesai)</em> pada tab berikutnya untuk kebutuhan arsip dinas.</li>
+          <div className="prose">
+            <ol>
+              <li>Buka menu <strong>Approval Center</strong> atau <strong>Tukar Jadwal</strong> (bagian manajemen).</li>
+              <li>Kartu pengajuan dari staf akan tampil dengan status <em>Pending</em>.</li>
+              <li>Evaluasi pengajuan, lalu klik <strong>Approve</strong> atau <strong>Reject</strong>.</li>
+              <li>Berikan catatan jika Anda menolak pengajuan tersebut.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. User Management & Hak Akses",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Akses menu <strong>Manajemen User</strong> (khusus Super Admin).</li>
+              <li>Anda dapat mengubah *role* seorang user (misal dari Publik menjadi Penyiar).</li>
+              <li>Untuk pengguna berstatus "Tamu", lakukan <em>Link Account</em> untuk menyambungkan email dengan data profil penyiar di Firebase.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "4. Manajemen Operasional Jadwal",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Masuk ke halaman <strong>Kalender / Jadwal</strong>.</li>
+              <li>Pilih opsi "Override Jadwal" jika ada keadaan darurat (bencana alam/breaking news) yang mengharuskan jadwal reguler dibatalkan.</li>
+              <li>Sistem akan menggantikan slot waktu tersebut dengan program khusus darurat.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "5. Laporan & Ekspor Data",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Buka halaman <strong>Laporan Absensi</strong> atau <strong>Laporan Siaran</strong>.</li>
+              <li>Gunakan filter tanggal untuk menentukan periode pelaporan (contoh: 1 Bulan terakhir).</li>
+              <li>Klik tombol <strong>Ekspor CSV/PDF</strong> untuk merekap data kinerja sebagai bahan evaluasi manajemen.</li>
             </ol>
           </div>
         )
@@ -148,17 +223,128 @@ export function TutorialPage() {
     ],
     "Tutorial Reporter": [
       {
-        title: "1. Alur Kerja Liputan (Workflow Newsroom)",
+        title: "1. Alur Kerja Newsroom (Workflow Liputan)",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Super-App dirancang untuk memperpendek jarak pelaporan antara lapangan dan redaksi pusat.</p>
-            <ol style={{ paddingLeft: "16px", marginBottom: "12px", lineHeight: "1.6" }}>
+          <div className="prose">
+            <ol>
               <li>Akses aplikasi <strong>Liputan / Newsroom</strong> melalui Menu Lengkap.</li>
-              <li>Lihat daftar penugasan (<em>Assignment</em>) yang diberikan oleh redaktur di kolom <strong>Tugas Baru</strong>.</li>
-              <li>Klik kartu tugas tersebut dan perbarui statusnya menjadi <strong>In Progress</strong> agar redaktur mengetahui Anda sudah di lapangan.</li>
-              <li>Susun kerangka laporan *(draft berita)* pada editor naskah yang tersedia.</li>
-              <li>Unggah lampiran media pendukung (Dokumentasi Foto TKP atau Rekaman Audio Wawancara).</li>
-              <li>Bila telah usai, tekan <strong>Submit (Kirim ke Redaksi)</strong>. Liputan akan masuk ke meja editor untuk tayang di platform <em>Pinrang Berkabar</em>.</li>
+              <li>Buka tab <strong>Tugas Saya</strong> untuk melihat instruksi peliputan (<em>Assignment</em>).</li>
+              <li>Ubah status tugas menjadi <strong>In Progress</strong> saat Anda berada di lapangan.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "2. Upload Naskah Berita",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Gunakan editor di dalam kartu tugas Anda.</li>
+              <li>Ketikkan naskah laporan (Gunakan prinsip 5W+1H jurnalistik).</li>
+              <li>Pastikan mematuhi <strong>Pedoman Media Siber</strong> yang tersedia di menu.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. Upload Media (Voice Note & Foto)",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Klik ikon <strong>Klip Dokumen</strong> atau tombol lampiran di bawah editor liputan.</li>
+              <li>Unggah aset visual (Foto) atau rekaman audio (Wawancara narasumber).</li>
+              <li>Maksimal ukuran file mengikuti kebijakan *Firebase Storage* stasiun.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "4. Mengirim Liputan ke Redaksi",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Setelah semua siap, tekan tombol <strong>Submit Liputan</strong>.</li>
+              <li>Status akan berubah menjadi <strong>Submitted / Reviewing</strong>.</li>
+              <li>Tunggu persetujuan redaktur (Admin). Jika ada revisi, Anda akan menerima pemberitahuan.</li>
+            </ol>
+          </div>
+        )
+      }
+    ],
+    "Tutorial Operator": [
+      {
+        title: "1. Monitoring Realtime Live Studio",
+        content: (
+          <div className="prose">
+            <p>Sebagai operator/teknisi di ruang kontrol utama (Master Control Room):</p>
+            <ol>
+              <li>Buka <strong>Dashboard</strong> khusus Operator.</li>
+              <li>Pantau grafik status pemancar dan <em>uptime streaming</em> server.</li>
+              <li>Jika ada gangguan (merah), lakukan *troubleshooting* pada instrumen fisik studio.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "2. Request Management",
+        content: (
+          <div className="prose">
+            <p>Operator membantu penyiar menyaring <em>request</em> yang masuk.</p>
+            <ol>
+              <li>Buka modul <strong>Request Lagu</strong>.</li>
+              <li>Tandai lagu-lagu yang sudah Anda masukkan ke *playlist* di RadioBOSS dengan status <strong>Queued</strong>.</li>
+              <li>Hapus komentar atau <em>request</em> yang mengandung kata tidak pantas (SARA).</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. Studio Monitoring & Operational Tools",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Pastikan komputer penyiar (Studio 1) sudah sinkron dengan jadwal aplikasi Super-App.</li>
+              <li>Sediakan bantuan teknis jika penyiar mengeluhkan Teleprompter tidak bergulir.</li>
+              <li>Gunakan tombol sinkronisasi paksa (*Force Sync*) pada menu pengaturan jika koneksi internet sempat terputus.</li>
+            </ol>
+          </div>
+        )
+      }
+    ],
+    "Pinrang Berkabar": [
+      {
+        title: "1. Mengelola Portal Video (Pinrang Berkabar)",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Portal <strong>Pinrang Berkabar</strong> adalah etalase video jurnalistik resmi Radio SBL.</li>
+              <li>Video ditayangkan menggunakan ekosistem *embedded player* (seperti YouTube iframe) agar tidak membebani server lokal.</li>
+              <li>Untuk menonton, klik <em>Thumbnail</em> video dan konten akan diputar di dalam aplikasi (tidak keluar jendela).</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "2. Upload & Manajemen Video",
+        content: (
+          <div className="prose">
+            <ol>
+              <li>Hanya Admin dan Tim Multimedia yang dapat menambahkan video baru.</li>
+              <li>Buka menu <strong>Kelola Konten &gt; Pinrang Berkabar</strong>.</li>
+              <li>Masukkan Tautan YouTube, Judul Berita, dan Deskripsi.</li>
+              <li>Berikan status <em>Published</em> agar video tampil di menu publik.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: "3. Etika Media Siber & Guideline",
+        content: (
+          <div className="prose">
+            <p>Setiap reporter dan admin video wajib tunduk pada <strong>Pedoman Media Siber</strong>.</p>
+            <ol>
+              <li>Video berita dilarang menampilkan identitas korban di bawah umur secara visual (blur wajib dilakukan).</li>
+              <li>Hak Cipta: Dilarang menggunakan *footage* video milik stasiun TV lain tanpa izin (*fair use* diperbolehkan dengan mencantumkan sumber visual di layar).</li>
             </ol>
           </div>
         )
@@ -166,37 +352,72 @@ export function TutorialPage() {
     ],
     "Video Tutorial": [
       {
-        title: "Koleksi Video Walkthrough Interaktif",
+        title: "Screencast & Walkthrough",
         content: (
-          <div style={{ paddingLeft: "16px" }}>
-            <p style={{ marginBottom: "12px", lineHeight: "1.6" }}>
-              Bagi Anda yang lebih nyaman dengan pembelajaran secara visual, tim Radio SBL telah memproduksi kompilasi <em>screencast</em> cara kerja sistem di lapangan sesungguhnya.
-            </p>
-            <ul style={{ paddingLeft: "16px", lineHeight: "1.6" }}>
-              <li style={{ marginBottom: "8px" }}>
-                <a href="#" style={{ color: "var(--color-primary)", textDecoration: "none", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <PlayCircle size={16} /> Modul 1: Orientasi Dashboard Super-App (03:15)
-                </a>
-              </li>
-              <li style={{ marginBottom: "8px" }}>
-                <a href="#" style={{ color: "var(--color-primary)", textDecoration: "none", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <PlayCircle size={16} /> Modul 2: Simulasi Absensi Geofencing & Rekam Selfie (02:30)
-                </a>
-              </li>
-              <li style={{ marginBottom: "8px" }}>
-                <a href="#" style={{ color: "var(--color-primary)", textDecoration: "none", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <PlayCircle size={16} /> Modul 3: Praktek Produksi Naskah AI hingga Setup Teleprompter (05:45)
-                </a>
-              </li>
-              <li style={{ marginBottom: "8px" }}>
-                <a href="#" style={{ color: "var(--color-primary)", textDecoration: "none", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <PlayCircle size={16} /> Modul 4: Manajemen Persetujuan untuk Level Eksekutif (04:10)
-                </a>
-              </li>
+          <div className="prose">
+            <p>Silakan tonton panduan visual berikut (Tautan ke Kanal YouTube Internal Radio SBL):</p>
+            <ul>
+              <li><a href="#" className="text-primary font-medium">Cara Login dan Pemahaman Dashboard Super-App (03:15)</a></li>
+              <li><a href="#" className="text-primary font-medium">Langkah Absensi menggunakan Geofencing (02:30)</a></li>
+              <li><a href="#" className="text-primary font-medium">Praktek Penulisan Naskah AI & Setup Teleprompter (05:45)</a></li>
+              <li><a href="#" className="text-primary font-medium">Workflow Newsroom untuk Reporter Lapangan (04:10)</a></li>
             </ul>
-            <p style={{ marginTop: "16px", fontSize: "13px", color: "var(--color-text-secondary)", background: "var(--color-bg-subtle)", padding: "10px", borderRadius: "6px" }}>
-              <em>Catatan: Repositori video ditautkan secara langsung ke saluran YouTube Internal Radio SBL. Jika Anda menemui tautan rusak (broken link), harap hubungi divisi Multimedia.</em>
-            </p>
+          </div>
+        )
+      }
+    ],
+    "Troubleshooting": [
+      {
+        title: "1. Masalah GPS Tidak Akurat",
+        content: (
+          <div className="prose">
+            <p><strong>Penyebab:</strong> Browser tidak diberikan hak ases presisi atau Anda berada di dalam gedung beton yang menghalangi satelit.</p>
+            <p><strong>Solusi:</strong></p>
+            <ul>
+              <li>Aktifkan fitur <strong>High Accuracy / Lokasi Presisi</strong> di pengaturan Android/iOS Anda.</li>
+              <li>Keluarlah dari ruangan, menepi di teras gedung selama 10 detik.</li>
+              <li>Muat ulang (Refresh) halaman aplikasi.</li>
+            </ul>
+          </div>
+        )
+      },
+      {
+        title: "2. Jadwal Siaran Tidak Muncul",
+        content: (
+          <div className="prose">
+            <p><strong>Penyebab:</strong> Jadwal belum dirilis, akun Anda belum di-<em>link</em>, atau salah filter hari.</p>
+            <p><strong>Langkah Cepat:</strong></p>
+            <ul>
+              <li>Cek profil di sudut kanan atas, pastikan peran (role) Anda sudah "Penyiar".</li>
+              <li>Ganti filter hari di kalender jadwal ke "Semua Hari".</li>
+              <li>Hubungi Program Director.</li>
+            </ul>
+          </div>
+        )
+      },
+      {
+        title: "3. Teleprompter Naskah Macet",
+        content: (
+          <div className="prose">
+            <p><strong>Penyebab:</strong> Browser mengalami <em>memory freeze</em> atau kecepatan teks diatur ke 0x.</p>
+            <p><strong>Solusi:</strong></p>
+            <ul>
+              <li>Tekan tombol "Jeda" lalu "Play" kembali.</li>
+              <li>Naikkan kecepatan di panel atas (misal ke 1.5x).</li>
+            </ul>
+          </div>
+        )
+      },
+      {
+        title: "4. Gagal Upload Foto Absensi",
+        content: (
+          <div className="prose">
+            <p><strong>Penyebab:</strong> Izin kamera ditolak oleh *browser* atau ukuran foto terlalu besar.</p>
+            <p><strong>Solusi:</strong></p>
+            <ul>
+              <li>Klik ikon gembok pada *URL bar browser*, izinkan opsi <strong>Kamera</strong>.</li>
+              <li>Coba bersihkan *Cache* aplikasi.</li>
+            </ul>
           </div>
         )
       }
@@ -205,11 +426,11 @@ export function TutorialPage() {
 
   const faqs = [
     { question: "Kenapa absensi gagal?", answer: "Pastikan Anda berada di dalam radius studio. Periksa apakah browser memiliki izin akses lokasi." },
-    { question: "GPS tidak akurat?", answer: "Aktifkan mode lokasi presisi (High Accuracy) di pengaturan perangkat, restart browser, lalu muat ulang (refresh) aplikasi." },
-    { question: "Jadwal siaran tidak muncul?", answer: "Jadwal mungkin belum dirilis oleh admin. Coba ubah rentang tanggal atau pastikan Anda login dengan akun penyiar yang benar." },
-    { question: "Video atau Streaming tidak jalan?", answer: "Periksa koneksi internet Anda. Pastikan tidak ada ekstensi pemblokir iklan (ad-blocker) yang menghalangi pemutaran media." },
-    { question: "Cara tukar jadwal?", answer: "Buka menu 'Tukar Jadwal', pilih jadwal siaran Anda, pilih rekan pengganti, dan isi alasan. Rekan Anda akan mendapat notifikasi WhatsApp." },
-    { question: "Cara mengekspor naskah AI?", answer: "Di halaman Buat Naskah, masuk ke tab 'Review Naskah' atau 'Naskah Siap Siaran'. Klik tombol 'Export' pada naskah yang dituju untuk mengunduhnya sebagai file TXT." },
+    { question: "GPS tidak akurat?", answer: "Aktifkan mode lokasi presisi (High Accuracy) di pengaturan perangkat, restart browser, lalu muat ulang aplikasi." },
+    { question: "Jadwal siaran tidak muncul?", answer: "Jadwal mungkin belum dirilis oleh admin. Pastikan Anda login dengan akun penyiar yang sudah diverifikasi (Bukan Tamu)." },
+    { question: "Video atau Streaming tidak jalan?", answer: "Periksa koneksi internet Anda. Matikan fitur penghemat kuota atau pemblokir iklan (ad-blocker) pada browser." },
+    { question: "Cara tukar jadwal?", answer: "Buka menu Tukar Jadwal, pilih jadwal siaran Anda, pilih rekan pengganti, dan isi alasan." },
+    { question: "Kenapa saya tidak bisa buka Menu Approval?", answer: "Menu Approval Center dikhususkan untuk akun dengan peran Admin, Leader, atau Super Admin." },
   ];
 
   const filteredFaqs = faqs.filter(
@@ -223,9 +444,9 @@ export function TutorialPage() {
         <div className="menu-hero-lockup">
           <BookOpen size={40} className="text-primary" />
           <div>
-            <p className="eyebrow">Pusat Bantuan</p>
-            <h1>Tutorial & FAQ</h1>
-            <p>Panduan operasional dan pemecahan masalah (Troubleshooting).</p>
+            <p className="eyebrow">Pusat Pengetahuan (Knowledge Base)</p>
+            <h1>Tutorial & Panduan Lengkap</h1>
+            <p>Pusat operasional komprehensif mulai dari penyiar hingga admin newsroom.</p>
           </div>
         </div>
       </section>
@@ -236,7 +457,7 @@ export function TutorialPage() {
             <Search size={18} />
             <input
               type="search"
-              placeholder="Cari panduan atau masalah..."
+              placeholder="Cari panduan, FAQ, atau ketik masalah Anda..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -252,26 +473,30 @@ export function TutorialPage() {
               onClick={() => setActiveCategory(null)}
               style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", marginBottom: "20px", fontWeight: 500 }}
             >
-              <ArrowLeft size={18} /> Kembali ke Pusat Bantuan
+              <ArrowLeft size={18} /> Kembali ke Kategori Dokumentasi
             </button>
             
-            <h2 style={{ fontSize: "20px", marginBottom: "16px", color: "var(--color-primary)" }}>
+            <h2 style={{ fontSize: "22px", marginBottom: "20px", color: "var(--color-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+              {categories.find(c => c.title === activeCategory)?.icon && (() => {
+                const IconComponent = categories.find(c => c.title === activeCategory)!.icon;
+                return <IconComponent size={24} />;
+              })()}
               {activeCategory}
             </h2>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {guidesData[activeCategory] ? guidesData[activeCategory].map((guide, idx) => (
-                <div key={idx} style={{ background: "var(--color-bg-subtle)", borderRadius: "8px", border: "1px solid var(--color-border)", padding: "20px" }}>
-                  <h3 style={{ fontSize: "16px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ width: "24px", height: "24px", background: "var(--color-primary)", color: "white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", flexShrink: 0 }}>
+                <article key={idx} style={{ background: "var(--color-bg-surface)", borderRadius: "12px", border: "1px solid var(--color-border)", padding: "24px" }}>
+                  <h3 style={{ fontSize: "17px", marginBottom: "16px", display: "flex", alignItems: "flex-start", gap: "12px", fontWeight: 600 }}>
+                    <div style={{ width: "24px", height: "24px", background: "var(--color-primary)", color: "white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", flexShrink: 0, marginTop: "2px" }}>
                       {idx + 1}
                     </div>
                     {guide.title}
                   </h3>
-                  <div style={{ fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                  <div style={{ fontSize: "15px", color: "var(--color-text-secondary)", lineHeight: 1.6, marginLeft: "36px" }} className="tutorial-content">
                     {guide.content}
                   </div>
-                </div>
+                </article>
               )) : (
                 <div className="ai-workspace-empty">
                   <div>
@@ -287,8 +512,8 @@ export function TutorialPage() {
           <>
             {!searchTerm && (
               <div className="menu-group">
-                <h2>Kategori Dokumentasi</h2>
-                <div className="menu-grid">
+                <h2>Buku Saku & Panduan Peran</h2>
+                <div className="menu-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
                   {categories.map(cat => {
                     const Icon = cat.icon;
                     return (
@@ -296,14 +521,15 @@ export function TutorialPage() {
                         key={cat.title} 
                         type="button" 
                         className="menu-tile"
+                        style={{ alignItems: "flex-start", padding: "20px", background: "var(--color-bg-surface)" }}
                         onClick={() => setActiveCategory(cat.title)}
                       >
-                        <span className="menu-tile-icon">
-                          <Icon size={21} />
+                        <span className="menu-tile-icon" style={{ background: "var(--color-bg-subtle)", padding: "10px", borderRadius: "12px", color: "var(--color-primary)" }}>
+                          <Icon size={24} />
                         </span>
-                        <span>
-                          <strong>{cat.title}</strong>
-                          <small>{cat.desc}</small>
+                        <span style={{ textAlign: "left", marginTop: "4px" }}>
+                          <strong style={{ fontSize: "16px", display: "block", marginBottom: "4px" }}>{cat.title}</strong>
+                          <small style={{ fontSize: "13px", lineHeight: 1.4, color: "var(--color-text-secondary)", display: "block" }}>{cat.desc}</small>
                         </span>
                       </button>
                     )
@@ -313,14 +539,14 @@ export function TutorialPage() {
             )}
 
             <div className="menu-group" style={{ marginTop: searchTerm ? "0" : "32px" }}>
-              <h2>{searchTerm ? "Hasil Pencarian FAQ" : "FAQ & Troubleshooting"}</h2>
+              <h2>{searchTerm ? "Hasil Pencarian Cepat" : "FAQ (Pertanyaan Umum)"}</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
                 {filteredFaqs.length > 0 ? (
                   filteredFaqs.map((faq, index) => (
                     <details 
                       key={index} 
                       style={{ 
-                        background: "var(--color-bg-subtle)", 
+                        background: "var(--color-bg-surface)", 
                         borderRadius: "8px", 
                         padding: "16px",
                         border: "1px solid var(--color-border)",
@@ -328,10 +554,10 @@ export function TutorialPage() {
                         transition: "all 0.2s ease"
                       }}
                     >
-                      <summary style={{ fontWeight: 600, fontSize: "15px", outline: "none", color: "var(--color-text-primary)" }}>
-                        {faq.question}
+                      <summary style={{ fontWeight: 600, fontSize: "15px", outline: "none", color: "var(--color-text-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ color: "var(--color-primary)", fontWeight: "bold" }}>Q:</span> {faq.question}
                       </summary>
-                      <p style={{ marginTop: "12px", fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.5, marginLeft: "18px" }}>
+                      <p style={{ marginTop: "12px", fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.6, marginLeft: "24px", paddingLeft: "12px", borderLeft: "2px solid var(--color-border)" }}>
                         {faq.answer}
                       </p>
                     </details>
@@ -340,8 +566,8 @@ export function TutorialPage() {
                   <div className="ai-workspace-empty">
                     <div>
                       <Search size={32} style={{ opacity: 0.5, margin: "0 auto 12px" }} />
-                      <h3>Tidak ada hasil</h3>
-                      <p>Coba gunakan kata kunci lain.</p>
+                      <h3>Tidak ada FAQ yang cocok</h3>
+                      <p>Ketik kata kunci lain seperti "lokasi", "jadwal", atau jelajahi kategori di atas.</p>
                     </div>
                   </div>
                 )}
@@ -350,6 +576,22 @@ export function TutorialPage() {
           </>
         )}
       </section>
+      
+      <style>{`
+        .tutorial-content ol, .tutorial-content ul {
+          margin-bottom: 16px;
+          padding-left: 20px;
+        }
+        .tutorial-content li {
+          margin-bottom: 8px;
+        }
+        .tutorial-content p {
+          margin-bottom: 12px;
+        }
+        .tutorial-content strong {
+          color: var(--color-text-primary);
+        }
+      `}</style>
     </main>
   );
 }
