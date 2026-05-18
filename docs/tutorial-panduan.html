@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio SBL - Panduan Lengkap & Manual Operasional</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1677ed',
+                        'primary-dark': '#0b4fae',
+                        surface: '#f8fafc',
+                        ink: '#172033',
+                        muted: '#68758b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { color: theme('colors.ink'); background-color: theme('colors.surface'); }
+        .hero-pattern {
+            background-color: #0f172a;
+            background-image: radial-gradient(circle at top right, rgba(22, 119, 237, 0.4), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(11, 79, 174, 0.6), transparent 50%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        .content-section {
+            scroll-margin-top: 100px;
+        }
+        
+        /* Mobile Frame for Screenshots */
+        .mobile-mockup {
+            border: 8px solid #1e293b;
+            border-radius: 36px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            max-width: 320px;
+            margin: 0 auto;
+            background: #fff;
+        }
+        .mobile-mockup img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .desktop-mockup {
+            border: 10px solid #1e293b;
+            border-bottom: 24px solid #0f172a;
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            background: #fff;
+        }
+        .desktop-mockup img {
+            width: 100%;
+            display: block;
+        }
+        
+        /* Navigation Styles */
+        .nav-link.active {
+            color: theme('colors.primary');
+            font-weight: 600;
+            border-left-color: theme('colors.primary');
+            background: rgba(22, 119, 237, 0.05);
+        }
+    </style>
+</head>
+<body class="antialiased font-sans flex flex-col min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="fixed top-0 w-full z-50 glass-panel border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white font-heading font-bold">
+                    SBL
+                </div>
+                <span class="font-heading font-bold text-lg">Radio SBL Manual</span>
+            </div>
+            <a href="#pedoman" class="text-sm font-medium text-primary hover:text-primary-dark flex items-center gap-1">
+                <i class="ph ph-shield-check text-lg"></i>
+                Kode Etik Media
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-pattern pt-32 pb-24 text-white">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h1 class="font-heading text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
+                Buku Saku Digital <span class="text-blue-400">Radio SBL</span>
+            </h1>
+            <p class="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto font-medium">
+                Panduan komprehensif operasional penyiaran, absensi geofencing, integrasi naskah cerdas AI, hingga manajemen jurnalistik.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content Layout -->
+    <div class="max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12 flex-1">
+        
+        <!-- Sticky Sidebar Navigation -->
+        <aside class="w-full lg:w-72 flex-shrink-0">
+            <div class="sticky top-24 space-y-8">
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Persiapan Awal</h3>
+                    <nav class="flex flex-col border-l-2 border-gray-100">
+                        <a href="#login" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Login & Autentikasi</a>
+                        <a href="#absensi" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Absensi Berbasis Radius</a>
+                        <a href="#dashboard" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Dashboard Utama</a>
+                    </nav>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tugas Penyiar</h3>
+                    <nav class="flex flex-col border-l-2 border-gray-100">
+                        <a href="#jadwal" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Kalender Siaran & Tukar Jadwal</a>
+                        <a href="#naskah" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Smart Script Studio (AI)</a>
+                        <a href="#request" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Manajemen Request Lagu</a>
+                    </nav>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Manajemen</h3>
+                    <nav class="flex flex-col border-l-2 border-gray-100">
+                        <a href="#admin" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">1. Kontrol Admin & User</a>
+                        <a href="#pedoman" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">2. Pedoman Media Siber</a>
+                        <a href="#troubleshooting" class="nav-link block pl-4 py-2 text-sm text-gray-600 hover:text-primary border-l-2 border-transparent -ml-[2px] transition-colors">3. Solusi Kendala (FAQ)</a>
+                    </nav>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 space-y-24 min-w-0">
+            
+            <!-- SECTION 1 -->
+            <section id="login" class="content-section">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-primary flex items-center justify-center">
+                        <i class="ph ph-sign-in text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">1. Login & Autentikasi</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Untuk masuk ke aplikasi Radio SBL, Anda tidak perlu repot menghafal *password*. Sistem kami terintegrasi penuh dengan <strong>Single Sign-On (SSO) Google</strong>.
+                        </p>
+                        <ol class="list-decimal pl-5 space-y-3 text-gray-700">
+                            <li>Buka alamat aplikasi di <em>browser</em> Chrome atau Safari Anda.</li>
+                            <li>Tekan tombol biru besar <strong>Masuk dengan Google</strong>.</li>
+                            <li>Pilih akun Google Anda. Jika Anda baru pertama kali masuk, Anda akan masuk dengan status <em>Tamu</em> sampai Admin mengaitkan email Anda ke profil Penyiar.</li>
+                            <li>Setelah berhasil, Anda akan diarahkan otomatis ke <strong>Dashboard Utama</strong>.</li>
+                        </ol>
+                    </div>
+                    <div class="mobile-mockup relative">
+                        <img src="screenshots/login-mobile.png" alt="Tampilan Login Mobile" loading="lazy">
+                        <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm border border-gray-200">
+                            SSO Google Auth
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2 -->
+            <section id="absensi" class="content-section">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                        <i class="ph ph-map-pin text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">2. Absensi Berbasis Radius (Geofencing)</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div class="mobile-mockup">
+                        <img src="screenshots/attendance-mobile.png" alt="Tampilan Absensi" loading="lazy">
+                    </div>
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-6">
+                            Absensi tidak lagi dilakukan secara manual di kertas. Radio SBL menggunakan sistem lacak kordinat (GPS) untuk memastikan kehadiran Anda.
+                        </p>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6">
+                            <h4 class="font-bold text-blue-800 flex items-center gap-2 mb-2"><i class="ph ph-warning-circle"></i> Penting</h4>
+                            <p class="text-sm text-blue-700">Izinkan akses <strong>Lokasi/Kamera</strong> pada peramban web (browser) saat pertama kali masuk ke menu Absensi.</p>
+                        </div>
+                        <ol class="list-decimal pl-5 space-y-4 text-gray-700">
+                            <li>Buka menu <strong>Absensi</strong>.</li>
+                            <li>Sistem akan mendeteksi jarak Anda. Jika indikator menunjukkan warna <span class="text-green-600 font-bold">Hijau (Di Dalam Radius)</span>, Anda siap absen.</li>
+                            <li>Klik tombol <strong>Ambil Foto Selfie</strong>. Wajah Anda wajib terlihat jelas.</li>
+                            <li>Klik <strong>Absen Masuk</strong>. Waktu kedatangan Anda akan otomatis terkirim ke Laporan Admin.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3 -->
+            <section id="dashboard" class="content-section">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i class="ph ph-squares-four text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">3. Memahami Dashboard & Menu</h2>
+                </div>
+                
+                <p class="text-gray-600 leading-relaxed mb-8">
+                    Dashboard didesain khusus agar berfungsi ganda sebagai monitor operasional (*orientation page*). Saat Anda membuka aplikasi, <em>widget</em> pintar langsung menyoroti agenda penting hari itu tanpa Anda harus mencarinya.
+                </p>
+
+                <div class="desktop-mockup mb-8">
+                    <img src="screenshots/dashboard-desktop.png" alt="Dashboard Desktop" loading="lazy">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-6 border border-gray-200 rounded-2xl bg-white">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
+                            <i class="ph ph-broadcast text-lg"></i>
+                        </div>
+                        <h4 class="font-bold mb-2">Live Monitor</h4>
+                        <p class="text-sm text-gray-500">Menampilkan penyiar dan program yang sedang <em>On-Air</em> detik ini. Terhubung otomatis dengan jadwal resmi stasiun.</p>
+                    </div>
+                    <div class="p-6 border border-gray-200 rounded-2xl bg-white">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
+                            <i class="ph ph-list text-lg"></i>
+                        </div>
+                        <h4 class="font-bold mb-2">Navigasi Sentral</h4>
+                        <p class="text-sm text-gray-500">Gunakan *Menu Lengkap* (ikon grid di sudut kanan bawah) untuk mengakses fitur seperti Pinrang Berkabar, Manajemen User, atau Laporan.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4 -->
+            <section id="jadwal" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
+                        <i class="ph ph-calendar-check text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">4. Kalender Siaran & Tukar Jadwal</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <p class="text-gray-600 leading-relaxed mb-6">
+                            Setiap slot program disusun rapi berdasarkan hari. Jadwal siaran Anda akan <strong>disorot secara otomatis</strong> agar tidak terlewat.
+                        </p>
+                        <h4 class="font-bold text-lg mb-3">Sistem Tukar Jadwal (Swap)</h4>
+                        <ul class="space-y-4 text-sm text-gray-600">
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Pilih jadwal Anda pada menu <strong>Tukar Jadwal</strong>.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Pilih rekan pengganti dari daftar <em>dropdown</em> penyiar aktif.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-green-500 text-lg mt-0.5"></i>
+                                <span>Isi alasan rasional (contoh: <em>Menghadiri acara keluarga mendadak</em>).</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="ph ph-warning-circle text-yellow-500 text-lg mt-0.5"></i>
+                                <span>Rekan pengganti dan Admin (PD) <strong>wajib menyetujui</strong> pengajuan tersebut sebelum jadwal resmi diubah oleh sistem.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="mobile-mockup">
+                        <img src="screenshots/schedule-mobile.png" alt="Tampilan Jadwal" loading="lazy">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 5 -->
+            <section id="naskah" class="content-section">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+                        <i class="ph ph-magic-wand text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">5. Smart Script Studio (Generasi AI)</h2>
+                </div>
+                
+                <div class="bg-gray-900 rounded-3xl p-8 text-white mb-8">
+                    <h3 class="font-heading text-xl font-bold mb-4">Masa Depan Penulisan Naskah Radio</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                        Fitur unggulan Super App Radio SBL adalah integrasi kecerdasan buatan dari Google (Gemini AI). Anda cukup memberikan instruksi satu kalimat, dan AI akan meracik naskah siaran *(script)* lengkap dengan penanda jeda (*cue*).
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                            <span class="text-xs font-bold text-teal-400 uppercase">Input Penyiar</span>
+                            <p class="font-medium mt-2">"Buatkan naskah <em>opening</em> untuk program Aga Kareba edisi bahas kuliner malam di Pinrang. Nada bicara santai dan ceria."</p>
+                        </div>
+                        <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                            <span class="text-xs font-bold text-blue-400 uppercase">Hasil AI & Teleprompter</span>
+                            <p class="font-medium mt-2 text-sm text-gray-300">"Halo pendengar SBL FM! Malam ini udara cukup dingin ya. Bicara soal malam di Pinrang, ada satu kuliner yang tidak boleh kita lewatkan..."</p>
+                            <div class="mt-3 flex items-center gap-2 text-xs">
+                                <span class="bg-gray-700 px-2 py-1 rounded">[CUE: MUSIC IN]</span>
+                                <span class="text-gray-400">Siap dibaca di Teleprompter</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
+                    <div class="mobile-mockup w-full md:w-1/2 max-w-[280px]">
+                        <img src="screenshots/ai-script-mobile.png" alt="Editor Naskah AI" loading="lazy">
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <h4 class="font-bold mb-3">Cara Menggunakan Teleprompter:</h4>
+                        <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-600">
+                            <li>Klik ikon Monitor di panel editor atas untuk membuka mode pembacaan penuh (*Teleprompter*).</li>
+                            <li>Tekan <strong>Play</strong> agar teks bergulir ke bawah otomatis.</li>
+                            <li>Gunakan tombol kecepatan (1.2x, 1.5x) untuk menyesuaikan ritme baca Anda.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 6 -->
+            <section id="request" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                        <i class="ph ph-music-notes-simple text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">6. Manajemen Request Lagu</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="mobile-mockup order-2 md:order-1">
+                        <img src="screenshots/song-request-mobile.png" alt="Menu Request Lagu" loading="lazy">
+                    </div>
+                    <div class="order-1 md:order-2">
+                        <p class="text-gray-600 leading-relaxed mb-4">
+                            Semua *request* (permintaan) dari pendengar yang masuk melalui platform eksternal atau di-*input* manual oleh admin akan bermuara di layar ini. Data muncul secara <em>realtime</em> tanpa perlu memuat ulang halaman (<em>refresh</em>).
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-3 p-3 rounded-lg bg-yellow-50 border border-yellow-100">
+                                <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                <div>
+                                    <h5 class="text-sm font-bold text-gray-800">New (Baru Masuk)</h5>
+                                    <p class="text-xs text-gray-500">Pesan belum dibaca oleh penyiar.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
+                                <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                                <div>
+                                    <h5 class="text-sm font-bold text-gray-800">Queued (Diantrekan)</h5>
+                                    <p class="text-xs text-gray-500">Sudah dimasukkan ke <em>playlist</em> RadioBOSS oleh operator.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                <div>
+                                    <h5 class="text-sm font-bold text-gray-800">Played (Selesai Diputarkan)</h5>
+                                    <p class="text-xs text-gray-500">Anda menandai request selesai dengan tombol centang.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 7 -->
+            <section id="pedoman" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center">
+                        <i class="ph ph-scales text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">7. Pedoman Pemberitaan Media Siber</h2>
+                </div>
+                
+                <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                    <p class="text-gray-600 mb-6">
+                        Seluruh Reporter, Admin Video (Pinrang Berkabar), dan Kru Redaksi <strong>DIWAJIBKAN</strong> tunduk pada Standar Operasional Prosedur (SOP) berbasis <em>Peraturan Dewan Pers Nasional Nomor: 1/Peraturan-DP/III/2012</em>.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <h4 class="font-bold text-sm mb-2 flex items-center gap-2">
+                                <i class="ph ph-check-circle text-green-500"></i> Verifikasi Jurnalistik
+                            </h4>
+                            <p class="text-xs text-gray-600 leading-relaxed">Berita yang merugikan pihak lain harus melalui verifikasi konfirmasi (<em>cover both sides</em>). Pengecualian hanya berlaku pada peristiwa *Breaking News* mendesak asalkan asal-usul informasi dijelaskan.</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <h4 class="font-bold text-sm mb-2 flex items-center gap-2">
+                                <i class="ph ph-warning-circle text-red-500"></i> Konten Buatan Pengguna (UGC)
+                            </h4>
+                            <p class="text-xs text-gray-600 leading-relaxed">Kolom komentar *request* atau artikel yang mengandung unsur kebohongan, fitnah, sadis, pencabulan, atau diskriminasi SARA wajib <strong>dihapus oleh operator</strong> maksimal 2x24 jam.</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <h4 class="font-bold text-sm mb-2 flex items-center gap-2">
+                                <i class="ph ph-arrow-u-down-left text-blue-500"></i> Hak Jawab & Ralat
+                            </h4>
+                            <p class="text-xs text-gray-600 leading-relaxed">Ralat, meralat fakta yang keliru, harus dicantumkan di berita aslinya dan ditautkan (<em>linked</em>) pada naskah klarifikasi.</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <h4 class="font-bold text-sm mb-2 flex items-center gap-2">
+                                <i class="ph ph-prohibit text-orange-500"></i> Hak Cipta Video (Pinrang Berkabar)
+                            </h4>
+                            <p class="text-xs text-gray-600 leading-relaxed">Dilarang menggunakan potong video stasiun TV/kanal Youtube lain untuk di-*monetize* kecuali sekadar *fair-use* dengan *watermark* sumber jelas. Korban anak di bawah umur wajib disensor (<em>blur</em>).</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 8 -->
+            <section id="troubleshooting" class="content-section pt-10 border-t border-gray-200">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                        <i class="ph ph-wrench text-xl"></i>
+                    </div>
+                    <h2 class="font-heading text-2xl font-bold">8. Troubleshooting & FAQ (Solusi Cepat)</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <details class="group bg-white border border-gray-200 rounded-xl p-4 cursor-pointer">
+                        <summary class="font-bold text-gray-800 outline-none list-none flex justify-between items-center">
+                            1. Mengapa "Jadwal Siaran" saya kosong/tidak muncul?
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="mt-3 text-sm text-gray-600 pl-4 border-l-2 border-gray-200">
+                            <p><strong>Penyebab:</strong> Akun Anda berstatus <em>Tamu</em> karena email belum di-<em>link</em>, atau jadwal belum dibuat oleh Admin.</p>
+                            <p class="mt-2"><strong>Solusi:</strong> Hubungi admin. Jika Anda sudah diverifikasi, coba ubah <em>filter hari</em> pada kalender menjadi "Semua Hari".</p>
+                        </div>
+                    </details>
+                    
+                    <details class="group bg-white border border-gray-200 rounded-xl p-4 cursor-pointer">
+                        <summary class="font-bold text-gray-800 outline-none list-none flex justify-between items-center">
+                            2. GPS Absensi terus memerah (Lokasi Tidak Akurat)?
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="mt-3 text-sm text-gray-600 pl-4 border-l-2 border-gray-200">
+                            <p><strong>Penyebab:</strong> Browser (Chrome/Safari) tidak mendapat izin lokasi presisi tinggi, atau Anda berada di ruangan berdinding tebal.</p>
+                            <p class="mt-2"><strong>Solusi:</strong> Nyalakan "High Accuracy / Lokasi Presisi" di pengaturan HP, lalu berjalanlah menepi ke jendela/teras studio selama 10 detik, lalu muat ulang (<em>refresh</em>) aplikasi.</p>
+                        </div>
+                    </details>
+
+                    <details class="group bg-white border border-gray-200 rounded-xl p-4 cursor-pointer">
+                        <summary class="font-bold text-gray-800 outline-none list-none flex justify-between items-center">
+                            3. Teleprompter / Layar Naskah Tiba-tiba Macet?
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="mt-3 text-sm text-gray-600 pl-4 border-l-2 border-gray-200">
+                            <p><strong>Solusi:</strong> Tekan tombol *Pause* lalu *Play* kembali. Jika masih diam, periksa apakah bar kecepatan (*Speed*) secara tidak sengaja tergeser ke angka 0x. Naikkan menjadi 1.2x.</p>
+                        </div>
+                    </details>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12 py-8 text-center text-gray-500 text-sm">
+        <div class="font-heading font-bold text-gray-800 mb-1">Radio SBL 92.1 FM Pinrang</div>
+        <p>Operational Super App &copy; 2026</p>
+        <div class="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-xs font-medium">
+            Developed by <span class="text-primary font-bold">MAROA Project</span>
+        </div>
+    </footer>
+
+    <script>
+        // Simple script to handle active state of sticky nav
+        const sections = document.querySelectorAll('.content-section');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 120) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current)) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

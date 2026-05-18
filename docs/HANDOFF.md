@@ -1885,3 +1885,8 @@ pm run typecheck\ lulus 100% setelah melengkapi modul *User* pada ikonologi.
   - Menerapkan fungsi *Automatic Scroll Restoration* melalui useRef di App.tsx agar setiap perpindahan menu utama secara otomatis mengatur ulang bilah *scroll* ke paling atas (window.scrollTo(0, 0)). 
   - Menyisipkan pengecualian UX (Penyimpanan Scroll) khusus untuk navigasi detail, yakni saat kembali dari halaman profil penyiar ke daftar penyiar, agar pengguna tidak kehilangan *orientation*.
   - Menambahkan *smooth fade-in transition* berbasis CSS (pp.css) yang terpicu saat melakukan pergantian halaman agar pergantian komponen terasa lebih organik tanpa membebani performa memori.
+
+- Fase Rilis Produksi Akhir (Deployment) batch 60:
+  - Sukses mem-build *production bundle* (Exit Code 0).
+  - Berhasil mengerahkan (Deploy) rilis ini ke *Firebase Hosting* (Project: radiosbl).
+  - Situs resmi mengudara secara global dengan seluruh pembaruan modul fungsional: Sistem Jadwal, Naskah AI, Pedoman Media, Tutorial, dan Pemulihan Scroll UX.
