@@ -224,7 +224,12 @@ export function AttendancePage({
   async function openCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+        video: {
+          facingMode: { ideal: "user" },
+          width: { ideal: 720 },
+          height: { ideal: 960 },
+          aspectRatio: { ideal: 0.75 }
+        },
         audio: false
       });
       setIsCameraOpen(true);

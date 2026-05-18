@@ -76,9 +76,9 @@ export const primaryNav: NavItem[] = [
 
 export const bottomNav: NavItem[] = [
   { key: "dashboard", label: "Beranda", icon: Home, requiredPermission: "dashboard:read" },
+  { key: "streaming", label: "Live", icon: Radio, requiredPermission: "dashboard:read" },
   { key: "schedule", label: "Jadwal", icon: CalendarDays, requiredPermission: "schedule:read" },
-  { key: "attendance", label: "Absensi", icon: ClipboardCheck, requiredPermission: "attendance:self" },
-  { key: "requests", label: "Request", icon: Headphones, requiredPermission: "complaints:submit" },
+  { key: "podcast", label: "Podcast", icon: Podcast, requiredPermission: "dashboard:read" },
   { key: "menu", label: "Menu", icon: Menu }
 ];
 

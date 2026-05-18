@@ -46,6 +46,9 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   }
 ];
 
+const AUDIO_PERMISSION_ACCEPTED_KEY = "audio_permission_accepted";
+const AUDIO_PERMISSION_DISMISSED_KEY = "audio_permission_dismissed";
+
 export function Shell({
   activePage,
   session,
@@ -196,9 +199,31 @@ export function Shell({
   }, []);
 
   useEffect(() => {
-    if (!session || audioPermissionGranted) return;
-    setShowAudioPrompt(true);
-  }, [session, audioPermissionGranted]);
+    if (!session || hideNavigation || audioPermissionGranted) {
+      setShowAudioPrompt(false);
+      return;
+    }
+
+    const alreadyAccepted = window.localStorage.getItem(AUDIO_PERMISSION_ACCEPTED_KEY) === "true";
+    const alreadyDismissed = window.localStorage.getItem(AUDIO_PERMISSION_DISMISSED_KEY) === "true";
+
+    if (alreadyAccepted) {
+      setAudioPermissionGranted(true);
+      setShowAudioPrompt(false);
+      return;
+    }
+
+    if (alreadyDismissed) {
+      setShowAudioPrompt(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowAudioPrompt(true);
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [audioPermissionGranted, hideNavigation, session]);
 
   const handleAllowAudio = async () => {
     try {
@@ -206,7 +231,14 @@ export function Shell({
     } catch {
       // User gesture completed; we still treat this as permission granted.
     }
+    window.localStorage.setItem(AUDIO_PERMISSION_ACCEPTED_KEY, "true");
+    window.localStorage.removeItem(AUDIO_PERMISSION_DISMISSED_KEY);
     setAudioPermissionGranted(true);
+    setShowAudioPrompt(false);
+  };
+
+  const handleDismissAudioPrompt = () => {
+    window.localStorage.setItem(AUDIO_PERMISSION_DISMISSED_KEY, "true");
     setShowAudioPrompt(false);
   };
 
@@ -349,7 +381,7 @@ export function Shell({
         </div>
       </aside>)}
 
-      <main className={`content content-${activePage}`}>
+      <main className={`content content-${activePage}${hasMiniPlayer ? " has-mini-player" : ""}`}>
         {!hideNavigation && !online && (
           <div className="shell-offline-strip" role="status" aria-live="polite">
             <WifiOff size={18} aria-hidden="true" />
@@ -365,10 +397,8 @@ export function Shell({
               <Volume2 size={20} color="white" />
             </div>
             <div className="shell-audio-prompt-copy">
-              <strong>Izinkan Suara</strong>
-              <p>
-                Aktifkan audio untuk mendengar notifikasi.
-              </p>
+              <strong>Aktifkan suara notifikasi</strong>
+              <p>Notifikasi siaran dan jadwal akan terdengar.</p>
             </div>
             <div className="shell-audio-prompt-actions">
               <button 
@@ -380,10 +410,10 @@ export function Shell({
               </button>
               <button
                 type="button"
-                onClick={() => setShowAudioPrompt(false)}
+                onClick={handleDismissAudioPrompt}
                 className="shell-audio-secondary"
               >
-                Nanti
+                Nanti saja
               </button>
             </div>
           </div>

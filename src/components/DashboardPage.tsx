@@ -1138,59 +1138,75 @@ export function DashboardPage({
           </div>
         </section>
 
-        <section className="dashboard-action-board" aria-label="Aksi utama hari ini">
-          {roleActionCards.map((item) => {
-            const Icon = item.icon;
-            return (
-              <ActionCard
-                key={item.key}
-                tone={item.tone}
-                icon={<Icon size={20} />}
-                eyebrow={item.eyebrow}
-                title={item.title}
-                description={item.description}
-                ariaLabel={item.ariaLabel}
-                onClick={() => handleNavigate(item.page)}
-              />
-            );
-          })}
-        </section>
 
-        {canUser(session.user.role, "complaints:submit") && (
-          <section className="dashboard-request-brief" aria-label="Request lagu terkini">
-            <div className="dashboard-request-brief-copy">
-              <span>Request Terkini</span>
-              <strong>
-                {requestQueue.latest
-                  ? `${requestQueue.latest.title}${requestQueue.latest.artist ? ` - ${requestQueue.latest.artist}` : ""}`
-                  : "Belum ada request aktif"}
-              </strong>
-              <p>
-                {requestQueue.latest
-                  ? `Dari ${requestQueue.latest.requesterName} · ${formatRequestTime(requestQueue.latest.createdAt)} WITA`
-                  : "Saat request masuk, penyiar bisa langsung membukanya dari dashboard."}
-              </p>
+
+        <section className="dashboard-smart-panel" aria-label="Aksi cepat dan jadwal">
+          <DashboardPanel
+            icon={<Sparkles size={20} />}
+            title="Aksi Cepat"
+            actionLabel="Semua Menu"
+            onAction={() => handleNavigate("menu")}
+          >
+            <div className="dashboard-shortcut-grid">
+              {quickActions.map((shortcut) => {
+                const Icon = shortcut.icon;
+                return (
+                  <button
+                    type="button"
+                    key={shortcut.key}
+                    className={`dashboard-shortcut-card tone-${shortcut.tone}`}
+                    onClick={() => handleNavigate(shortcut.key)}
+                  >
+                    <span className="dashboard-shortcut-icon">
+                      <Icon size={18} />
+                    </span>
+                    <strong>{shortcut.label}</strong>
+                  </button>
+                );
+              })}
             </div>
-            <div className="dashboard-request-brief-stats" aria-label="Ringkasan request lagu">
-              <span>
-                <strong>{requestQueue.active.length}</strong>
-                <small>Aktif</small>
-              </span>
-              <span>
-                <strong>{requestQueue.queued}</strong>
-                <small>Antrean</small>
-              </span>
-              <span>
-                <strong>{requestQueue.playedToday}</strong>
-                <small>Diputar</small>
-              </span>
-            </div>
-            <button type="button" onClick={() => handleNavigate("requests")}>
-              Buka request
-              <ArrowRight size={16} />
-            </button>
-          </section>
-        )}
+          </DashboardPanel>
+
+          <DashboardPanel
+            icon={<CalendarClock size={20} />}
+            title="Jadwal Berikutnya"
+            actionLabel="Jadwal Lengkap"
+            onAction={() => handleNavigate("schedule")}
+          >
+            {nextSlot ? (
+              <button type="button" className="dashboard-next-card" onClick={() => handleNavigate("schedule")}>
+                <span className="dashboard-next-cover" aria-hidden="true">
+                  <img src={nextProgramInfo?.imageUrl ?? "/LogoSBL.svg"} alt="" />
+                </span>
+                <span className="dashboard-next-copy">
+                  <h3>{nextSlot.program}</h3>
+                  <span className="dashboard-next-meta">
+                    <Mic2 size={14} color="#64748B" />
+                    <span>{nextSlot.announcer}</span>
+                  </span>
+                  <span className="dashboard-next-time">
+                    <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <button type="button" className="schedule-slot-card dashboard-schedule-card" onClick={() => onNavigate("schedule")}>
+                <span className="schedule-slot-main">
+                  <span className="schedule-slot-art" aria-hidden="true">
+                    <img src="/LogoSBL.svg" alt="" />
+                  </span>
+                  <span className="schedule-slot-copy">
+                    <h3>Cek Jadwal Mingguan</h3>
+                    <span className="schedule-announcer">
+                      <Mic2 size={14} color="#64748B" />
+                      <span className="schedule-announcer-links">Penyiar belum ditentukan</span>
+                    </span>
+                  </span>
+                </span>
+              </button>
+            )}
+          </DashboardPanel>
+        </section>
 
         {canUser(session.user.role, "ai:use") && (
           <section className="dashboard-assistant-panel" aria-label="Asisten operasional">
@@ -1208,7 +1224,7 @@ export function DashboardPage({
               </button>
             </div>
             <div className="dashboard-assistant-grid">
-              {assistantInsights.map((item) => {
+              {assistantInsights.slice(0, 1).map((item) => {
                 const Icon = item.icon;
                 return (
                   <article key={`${item.label}-${item.title}`} className={`dashboard-assistant-card tone-${item.tone}`}>
@@ -1230,159 +1246,39 @@ export function DashboardPage({
           </section>
         )}
 
-        <section className="dashboard-smart-panel" aria-label="Aksi cepat dan aktivitas terbaru">
-          <DashboardPanel
-            icon={<Sparkles size={20} />}
-            title="Aksi Cepat"
-            actionLabel="Lihat Semua"
-            onAction={() => handleNavigate("menu")}
-          >
-            <div className="dashboard-shortcut-grid">
-              {quickActions.map((shortcut) => {
-                const Icon = shortcut.icon;
-                return (
-                  <button
-                    type="button"
-                    key={shortcut.key}
-                    className={`dashboard-shortcut-card tone-${shortcut.tone}`}
-                    onClick={() => handleNavigate(shortcut.key)}
-                  >
-                    <span className="dashboard-shortcut-icon">
-                      <Icon size={18} />
-                    </span>
-                    <strong>{shortcut.label}</strong>
-                    <p>{shortcut.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel
-            icon={<Clock3 size={20} />}
-            title="Aktivitas Terbaru"
-            actionLabel="Riwayat"
-            onAction={() => handleNavigate("menu")}
-          >
-            <div className="dashboard-timeline">
-              {timelineItems.map((item) => (
-                <button
-                  key={`${item.title}-${item.detail}`}
-                  type="button"
-                  className={`dashboard-timeline-item tone-${item.tone}`}
-                  onClick={() => item.page && handleNavigate(item.page)}
-                >
-                  <span className="dashboard-timeline-dot" />
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.detail}</small>
-                  </span>
-                </button>
-              ))}
-              {recentMenuItems.length > 0 && (
-                <div className="dashboard-recent-strip" aria-label="Halaman terakhir dipakai">
-                  <small>Terakhir dipakai</small>
-                  <div>
-                    {recentMenuItems.map((item) => (
-                      <button key={item.key} type="button" onClick={() => handleNavigate(item.key)}>
-                        <item.icon size={14} />
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </DashboardPanel>
-        </section>
-
-        <section className="dashboard-menu-section" aria-label="Menu utama dashboard">
-          <div className="dashboard-menu-grid">
-            {visibleMenuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => handleNavigate(item.key)}
-                  className={`dashboard-menu-item dashboard-menu-item-colored tone-${item.tone}`}
-                  aria-label={`Buka menu ${item.label}`}
-                >
-                  <div className="dashboard-menu-item-icon">
-                    <Icon size={24} strokeWidth={2} />
-                  </div>
-                  <span className="dashboard-menu-item-label">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {hasMoreMenu && (
-            <div className="dashboard-menu-more-wrap">
-                <button
-                  type="button"
-                  className={`dashboard-menu-more${showAllMenu ? " is-expanded" : ""}`}
-                  onClick={() => setShowAllMenu((current) => !current)}
-                  aria-label={showAllMenu ? "Sembunyikan menu tambahan" : "Tampilkan semua menu"}
-                >
-                  <span />
-                <span />
-                <span />
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section className="dashboard-secondary-section" aria-label="Detail siaran dan arsip">
+        <section className="dashboard-activity-panel" aria-label="Aktivitas terbaru">
           <details className="dashboard-secondary-details">
             <summary>
               <span>
-                <strong>Detail siaran & arsip</strong>
-                <small>Jadwal berikutnya dan podcast tetap tersedia saat dibutuhkan.</small>
+                <strong>Aktivitas Terbaru & Podcast</strong>
+                <small>Log operasional dan siaran ulang terbaru.</small>
               </span>
               <ArrowRight size={18} aria-hidden="true" />
             </summary>
-
+            
             <section className="dashboard-stack">
               <DashboardPanel
-                icon={<CalendarClock size={20} />}
-                title="Jadwal Berikutnya"
-                actionLabel="Lihat Semua"
-                onAction={() => handleNavigate("schedule")}
+                icon={<Clock3 size={20} />}
+                title="Aktivitas Terbaru"
+                actionLabel="Riwayat Lengkap"
+                onAction={() => handleNavigate("menu")}
               >
-                {nextSlot ? (
-                  <button type="button" className="dashboard-next-card" onClick={() => handleNavigate("schedule")}>
-                    <span className="dashboard-next-cover" aria-hidden="true">
-                      <img src={nextProgramInfo?.imageUrl ?? "/LogoSBL.svg"} alt="" />
-                    </span>
-                    <span className="dashboard-next-copy">
-                      <h3>{nextSlot.program}</h3>
-                      <span className="dashboard-next-meta">
-                        <Mic2 size={14} color="#64748B" />
-                        <span>{nextSlot.announcer}</span>
+                <div className="dashboard-timeline">
+                  {timelineItems.slice(0, 3).map((item) => (
+                    <button
+                      key={`${item.title}-${item.detail}`}
+                      type="button"
+                      className={`dashboard-timeline-item tone-${item.tone}`}
+                      onClick={() => item.page && handleNavigate(item.page)}
+                    >
+                      <span className="dashboard-timeline-dot" />
+                      <span>
+                        <strong>{item.title}</strong>
+                        <small>{item.detail}</small>
                       </span>
-                      <span className="dashboard-next-time">
-                        <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA
-                      </span>
-                      <p>{nextProgramInfo?.description}</p>
-                    </span>
-                  </button>
-                ) : (
-                  <button type="button" className="schedule-slot-card dashboard-schedule-card" onClick={() => onNavigate("schedule")}>
-                    <span className="schedule-slot-main">
-                      <span className="schedule-slot-art" aria-hidden="true">
-                        <img src="/LogoSBL.svg" alt="" />
-                      </span>
-                      <span className="schedule-slot-copy">
-                        <h3>Cek Jadwal Mingguan</h3>
-                        <span className="schedule-announcer">
-                          <Mic2 size={14} color="#64748B" />
-                          <span className="schedule-announcer-links">Penyiar belum ditentukan</span>
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                )}
+                    </button>
+                  ))}
+                </div>
               </DashboardPanel>
 
               <DashboardPanel
@@ -1393,7 +1289,7 @@ export function DashboardPage({
                 onAction={() => handleNavigate("podcast")}
               >
                 <div className="dashboard-podcast-list">
-                  {featuredPodcastEpisodes.map((episode) => (
+                  {featuredPodcastEpisodes.slice(0, 1).map((episode) => (
                     <article
                       key={episode.title}
                       className="podcast-episode-card dashboard-podcast-card"

@@ -1,7 +1,13 @@
-import { Pause, Play } from "lucide-react";
+import { ExternalLink, Pause, Play } from "lucide-react";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
 
-export function GlobalAudioPlayer({ hasBottomNav = true }: { hasBottomNav?: boolean }) {
+export function GlobalAudioPlayer({
+  hasBottomNav = true,
+  onOpenStreaming
+}: {
+  hasBottomNav?: boolean;
+  onOpenStreaming?: () => void;
+}) {
   const {
     playing,
     togglePlayback,
@@ -15,6 +21,15 @@ export function GlobalAudioPlayer({ hasBottomNav = true }: { hasBottomNav?: bool
 
   return (
     <div className={`global-mini-player${hasBottomNav ? " with-bottom-nav" : ""}`}>
+      <div className="global-mini-logo" aria-hidden="true">
+        <img src="/LogoSBL.svg" alt="" />
+      </div>
+
+      <div className="global-mini-copy">
+        <strong><span>LIVE</span> {metadata.title}</strong>
+        <small>{metadata.artist}</small>
+      </div>
+
       <button
         type="button"
         className="global-mini-play"
@@ -24,16 +39,22 @@ export function GlobalAudioPlayer({ hasBottomNav = true }: { hasBottomNav?: bool
         {playing ? <Pause size={18} /> : <Play size={18} fill="white" />}
       </button>
 
-      <div className="global-mini-copy">
-        <strong>{metadata.title}</strong>
-        <span>{metadata.artist}</span>
-      </div>
-
       <div className={`global-mini-eq${playing ? " playing" : ""}`} aria-hidden="true">
         {[0, 1, 2, 3, 4].map((bar) => (
           <span key={bar} />
         ))}
       </div>
+
+      {onOpenStreaming && (
+        <button
+          type="button"
+          className="global-mini-open"
+          onClick={onOpenStreaming}
+          aria-label="Buka halaman streaming"
+        >
+          <ExternalLink size={17} />
+        </button>
+      )}
 
       <label className="global-mini-volume">
         <span>Volume</span>

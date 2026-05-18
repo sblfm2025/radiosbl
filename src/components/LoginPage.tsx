@@ -1,6 +1,7 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   ArrowRight,
+  Download,
   Eye,
   EyeOff,
   Fingerprint,
@@ -10,10 +11,21 @@ import {
   Phone,
   Radio,
   ShieldCheck,
+  Smartphone,
   User,
-  Wifi
+  Wifi,
+  X
 } from "lucide-react";
 import { signIn, signUp, signInWithGoogle, type AuthSession } from "../services/auth.service";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
+type StandaloneNavigator = Navigator & {
+  standalone?: boolean;
+};
 
 export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -28,6 +40,47 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState<"email" | "google" | "reset" | "">("");
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [canShowInstall, setCanShowInstall] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [showSmartInstallPrompt, setShowSmartInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as StandaloneNavigator).standalone === true;
+
+    if (isStandalone) {
+      return;
+    }
+
+    setCanShowInstall(true);
+
+    function handleBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    }
+
+    function handleAppInstalled() {
+      setInstallPrompt(null);
+      setCanShowInstall(false);
+      setShowInstallGuide(false);
+      setShowSmartInstallPrompt(false);
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    const promptTimer = window.setTimeout(() => {
+      setShowSmartInstallPrompt(true);
+    }, 5200);
+
+    return () => {
+      window.clearTimeout(promptTimer);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
 
   function translateFirebaseError(errMessage: string): string {
     if (errMessage.includes("auth/invalid-credential")) return "Email atau kata sandi yang Anda masukkan salah.";
@@ -90,6 +143,22 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
       );
     } finally {
       setLoading("");
+    }
+  }
+
+  async function handleInstallApp() {
+    if (!installPrompt) {
+      setShowSmartInstallPrompt(false);
+      setShowInstallGuide(true);
+      return;
+    }
+
+    setShowSmartInstallPrompt(false);
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+
+    if (choice.outcome === "accepted") {
+      setInstallPrompt(null);
     }
   }
 
@@ -283,6 +352,21 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
                 : <>Daftar Sekarang <ArrowRight size={18} /></>}
           </button>
 
+          {mode === "login" && canShowInstall && (
+            <div className="auth-install-stack">
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                disabled={Boolean(loading)}
+                className="auth-install-button"
+              >
+                <Smartphone size={18} />
+                Install RadioSBL App
+              </button>
+              <span>Lebih cepat &bull; Tampilan fullscreen &bull; Akses mudah</span>
+            </div>
+          )}
+
           <div className="auth-divider"><span>atau masuk dengan</span></div>
 
           <button
@@ -305,6 +389,53 @@ export function LoginPage({ onEnter }: { onEnter: (session: AuthSession) => void
         </form>
         </div>
       </div>
+
+      {canShowInstall && showSmartInstallPrompt && (
+        <div className="auth-install-prompt" role="status">
+          <div>
+            <Download size={18} />
+            <span>Install RadioSBL App untuk pengalaman lebih nyaman</span>
+          </div>
+          <button type="button" onClick={handleInstallApp}>Install</button>
+          <button
+            type="button"
+            className="auth-install-dismiss"
+            onClick={() => setShowSmartInstallPrompt(false)}
+            aria-label="Tutup ajakan install"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {showInstallGuide && (
+        <div className="auth-install-sheet" role="dialog" aria-modal="true" aria-labelledby="install-guide-title">
+          <button
+            type="button"
+            className="auth-sheet-backdrop"
+            onClick={() => setShowInstallGuide(false)}
+            aria-label="Tutup panduan install"
+          />
+          <div className="auth-sheet-panel">
+            <button
+              type="button"
+              className="auth-sheet-close"
+              onClick={() => setShowInstallGuide(false)}
+              aria-label="Tutup panduan install"
+            >
+              <X size={18} />
+            </button>
+            <Smartphone size={24} />
+            <h2 id="install-guide-title">Cara Install RadioSBL App</h2>
+            <p>Nikmati pengalaman seperti aplikasi native dari layar utama perangkat Anda.</p>
+            <ol>
+              <li>Buka menu browser.</li>
+              <li>Pilih Tambahkan ke layar utama atau Install aplikasi.</li>
+              <li>Konfirmasi, lalu buka RadioSBL dari ikon aplikasi.</li>
+            </ol>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

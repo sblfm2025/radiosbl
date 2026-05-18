@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cover Panduan Aplikasi RadioSBL</title>
+  <style>
+    :root {
+      --ink: #07162d;
+      --blue: #1677ed;
+      --blue-deep: #063b83;
+      --cyan: #1ed7ee;
+      --lime: #d1ff00;
+      --paper: #f7fbff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: #dbe7f5;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .cover {
+      position: relative;
+      overflow: hidden;
+      width: min(100%, 794px);
+      aspect-ratio: 210 / 297;
+      background:
+        linear-gradient(150deg, rgba(4, 16, 39, 0.88), rgba(7, 48, 105, 0.78) 42%, rgba(246, 251, 255, 0.98) 42.2%),
+        url("../public/sbl-auth-studio-bg.png") center top / cover;
+      box-shadow: 0 34px 90px rgba(7, 22, 45, 0.22);
+      isolation: isolate;
+    }
+
+    .cover::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 64%);
+    }
+
+    .cover::after {
+      content: "";
+      position: absolute;
+      right: -170px;
+      top: 190px;
+      width: 500px;
+      height: 500px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(209, 255, 0, 0.22), transparent 66%);
+      filter: blur(2px);
+      z-index: -1;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 44px 54px 0;
+      color: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand img {
+      width: 62px;
+      height: 62px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 18px 34px rgba(0,0,0,0.24);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 4px;
+      color: rgba(255,255,255,0.72);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      color: #061934;
+      background: var(--lime);
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 3;
+      max-width: 610px;
+      padding: 76px 54px 0;
+      color: #ffffff;
+    }
+
+    .eyebrow {
+      margin: 0 0 13px;
+      color: var(--lime);
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 550px;
+      font-size: 64px;
+      line-height: 0.98;
+      font-weight: 950;
+      letter-spacing: -1.2px;
+    }
+
+    .subtitle {
+      max-width: 480px;
+      margin: 21px 0 0;
+      padding: 15px 17px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 20px;
+      color: rgba(255,255,255,0.9);
+      background: rgba(5, 18, 42, 0.44);
+      backdrop-filter: blur(14px);
+      font-size: 16px;
+      line-height: 1.58;
+      font-weight: 600;
+    }
+
+    .visual-stage {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .dashboard-card {
+      position: absolute;
+      left: 54px;
+      right: 54px;
+      top: 536px;
+      overflow: hidden;
+      border: 8px solid #0b1427;
+      border-radius: 26px;
+      background: #ffffff;
+      box-shadow: 0 38px 80px rgba(7, 22, 45, 0.20);
+    }
+
+    .dashboard-card img {
+      width: 100%;
+      aspect-ratio: 1440 / 900;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+
+    .phone {
+      position: absolute;
+      top: 724px;
+      width: 166px;
+      overflow: hidden;
+      border: 8px solid #0b1427;
+      border-radius: 34px;
+      background: #0b1427;
+      box-shadow: 0 24px 54px rgba(7, 22, 45, 0.28);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      width: 62px;
+      height: 15px;
+      border-radius: 999px;
+      background: #0b1427;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .phone img {
+      width: 100%;
+      aspect-ratio: 390 / 844;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 25px;
+      display: block;
+    }
+
+    .phone.login {
+      left: 70px;
+    }
+
+    .phone.request {
+      right: 72px;
+      top: 738px;
+    }
+
+    .info-panel {
+      position: absolute;
+      left: 282px;
+      right: 282px;
+      top: 806px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-panel div {
+      min-height: 68px;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      padding: 14px 16px;
+      border: 1px solid rgba(22, 119, 237, 0.16);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .info-panel strong {
+      color: var(--blue-deep);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .info-panel span {
+      color: #59677d;
+      font-size: 10.5px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .footer {
+      position: absolute;
+      left: 54px;
+      right: 54px;
+      bottom: 34px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      color: #334155;
+      z-index: 5;
+    }
+
+    .footer div {
+      padding: 10px 14px;
+      border: 1px solid rgba(219, 229, 242, 0.86);
+      border-radius: 16px;
+      background: rgba(247, 251, 255, 0.88);
+      backdrop-filter: blur(12px);
+    }
+
+    .footer strong {
+      display: block;
+      color: #0f172a;
+      font-size: 15px;
+      font-weight: 950;
+    }
+
+    .footer span {
+      display: block;
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .footer img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+
+      .cover {
+        width: 210mm;
+        height: 297mm;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="cover" aria-label="Cover Panduan Aplikasi RadioSBL">
+    <header class="topbar">
+      <div class="brand">
+        <img src="../public/logoapp.png" alt="RadioSBL">
+        <div>
+          <strong>Radio SBL 92.4 FM</strong>
+          <span>Suara Pinrang, Suara Kita</span>
+        </div>
+      </div>
+      <div class="badge">Panduan Pengguna</div>
+    </header>
+
+    <section class="hero-copy">
+      <p class="eyebrow">Panduan Aplikasi RadioSBL</p>
+      <h1>Panduan Aplikasi RadioSBL</h1>
+      <p class="subtitle">Panduan onboarding untuk kru, penyiar, admin, reporter, dan operator agar cepat memahami alur kerja aplikasi.</p>
+    </section>
+
+    <section class="visual-stage" aria-hidden="true">
+      <div class="dashboard-card">
+        <img src="screenshots/dashboard-desktop.png" alt="">
+      </div>
+      <div class="phone login">
+        <img src="screenshots/login-mobile.png" alt="">
+      </div>
+      <div class="info-panel">
+        <div>
+          <strong>Mobile Friendly</strong>
+          <span>Login, install, dashboard, absensi, jadwal, request lagu.</span>
+        </div>
+        <div>
+          <strong>Siap Dicetak</strong>
+          <span>Format A4 profesional untuk PDF dan buku panduan.</span>
+        </div>
+      </div>
+      <div class="phone request">
+        <img src="screenshots/song-request-mobile.png" alt="">
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>
+        <strong>Developer MAROA Project</strong>
+        <span>Edisi 2026 · Dokumentasi internal RadioSBL</span>
+      </div>
+      <img src="../public/LogoSBL.svg" alt="">
+    </footer>
+  </main>
+</body>
+</html>

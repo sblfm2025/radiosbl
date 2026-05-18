@@ -218,8 +218,14 @@ export function MenuPage({
       <section className="menu-group-stack" aria-label="Daftar menu aplikasi">
         {hasSearchResult ? (
           groupedItems.map((group) => (
-            <div className="menu-group" key={group.label}>
-              <h2>{group.label}</h2>
+            <details 
+              className="menu-group" 
+              key={group.label}
+              open={Boolean(normalizedSearch) || isGroupOpenByDefault(group.label, session?.user.role)}
+            >
+              <summary>
+                <h2>{group.label}</h2>
+              </summary>
                 <div className="menu-grid">
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -246,7 +252,7 @@ export function MenuPage({
                     );
                   })}
                 </div>
-            </div>
+            </details>
           ))
         ) : (
           <div className="menu-empty-search">
@@ -367,4 +373,15 @@ function getMenuDescription(key: PageKey): string {
     default:
       return "Fitur Radio SBL";
   }
+}
+
+function isGroupOpenByDefault(label: string, role?: string): boolean {
+  if (label === "Operasional") return true;
+  if (label === "Siaran") return true;
+  if (label === "Konten") return role === "reporter" || role === "leader";
+  if (label === "Administrasi") return role === "admin" || role === "super_admin";
+  if (label === "Tim") return true;
+  if (label === "Sistem") return false;
+  if (label === "Bantuan & Informasi") return false;
+  return false;
 }

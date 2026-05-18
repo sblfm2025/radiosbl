@@ -583,8 +583,13 @@ export default function App() {
         hasMiniPlayer={!!showMiniPlayer}
       >
         {page}
-        {showMiniPlayer && <GlobalAudioPlayer hasBottomNav={true} />}
       </Shell>
+      {showMiniPlayer && (
+        <GlobalAudioPlayer
+          hasBottomNav={true}
+          onOpenStreaming={() => setActivePage("streaming")}
+        />
+      )}
     </AudioProvider>
   );
 }
