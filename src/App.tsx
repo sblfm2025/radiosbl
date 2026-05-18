@@ -2,7 +2,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState
+  useState,
+  useRef
 } from "react";
 import {
   ArrowRight,
@@ -316,6 +317,39 @@ function AnnouncersPage({
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageKey>("splash");
+  const scrollMap = useRef<Record<string, number>>({});
+  const prevPageRef = useRef<PageKey>("splash");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      scrollMap.current[activePage] = window.scrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [activePage]);
+
+  useEffect(() => {
+    const prevPage = prevPageRef.current;
+    
+    if (!window.location.hash) {
+      const isReturningToAnnouncers = activePage === "announcers" && prevPage === "announcerProfile";
+      if (isReturningToAnnouncers) {
+        window.scrollTo({ top: scrollMap.current[activePage] || 0, behavior: "instant" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+    }
+    
+    const rootEl = document.getElementById("root");
+    if (rootEl) {
+      rootEl.classList.remove("page-transition-enter");
+      void rootEl.offsetWidth; 
+      rootEl.classList.add("page-transition-enter");
+    }
+
+    prevPageRef.current = activePage;
+  }, [activePage]);
+
   const [selectedAnnouncerAirName, setSelectedAnnouncerAirName] = useState("Amar");
   const [session, setSession] = useState<AuthSession | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);

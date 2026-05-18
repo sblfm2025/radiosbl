@@ -1,8 +1,13 @@
 import { BookOpen, PlayCircle, Search, User, Mic2, ShieldCheck, AlertTriangle, ArrowLeft, Headphones, MonitorPlay, Video } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 export function TutorialPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Reset scroll when category changes to give a fresh visual starting point
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeCategory]);
 
   const categories = [
     { title: "Panduan Cepat", icon: BookOpen, desc: "Langkah dasar menggunakan Radio SBL" },
