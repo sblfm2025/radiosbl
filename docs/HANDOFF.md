@@ -1868,3 +1868,7 @@ pm run typecheck\ berhasil.
 pm run build\ (\	sc --noEmit && vite build\) secara menyeluruh.
   - Proses kompilasi kode, optimasi CSS/JS, dan pemisahan *chunk* aset (seperti \irebase-vendor\ dan \eact-vendor\) berjalan mulus tanpa hambatan.
   - Aplikasi Radio SBL Super-App (termasuk keseluruhan fitur Dashboard Baru, Sistem Tukar Jadwal, Smart Script Studio, Pedoman Siber, dan Pusat Bantuan Interaktif) kini terkonfirmasi bebas dari celah sintaks maupun bentrokan *routing*, dan sepenuhnya **siap untuk tahap Deployment (Pengerahan) ke *server***.
+
+- Update Master Tutorial System (Expansion) batch 57:
+  - Melengkapi halaman \TutorialPage.tsx\ dengan artikel panduan komprehensif untuk "Panduan Cepat", "Tutorial Penyiar", dan "Tutorial Admin" sesuai hierarki \ARAHAN_TUTORIAL.md\.
+  - Mengimplementasikan \ctiveCategory\ *state* untuk navigasi interaktif antara menu grid kategori dan isi konten panduan, lengkap dengan tombol kembali tanpa membebani sistem *routing* utama.
