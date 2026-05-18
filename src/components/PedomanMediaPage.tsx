@@ -208,7 +208,9 @@ export function PedomanMediaPage() {
           </article>
 
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-text-secondary)", fontSize: "14px", marginTop: "20px", borderTop: "1px solid var(--color-border)" }}>
-            <p>Dokumen ini ditandatangani dan diberlakukan secara internal sebagai Standard Operating Procedure (SOP) Manajemen LPPL Radio SBL Pinrang 92.1 FM.</p>
+            <p style={{ marginBottom: "16px" }}>Dokumen ini ditandatangani dan diberlakukan secara internal sebagai Standard Operating Procedure (SOP) Manajemen LPPL Radio SBL Pinrang 92.1 FM.</p>
+            <p style={{ fontSize: "13px", fontWeight: 500, letterSpacing: "0.5px" }}>Developed by <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>MAROA Project</span></p>
+            <p style={{ fontSize: "11px", marginTop: "4px", opacity: 0.7 }}>&copy; {new Date().getFullYear()} LPPL Radio Suara Bumi Lasinrang</p>
           </div>
 
         </section>

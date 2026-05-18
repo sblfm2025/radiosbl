@@ -592,6 +592,11 @@ export function TutorialPage() {
           color: var(--color-text-primary);
         }
       `}</style>
+      
+      <div style={{ textAlign: "center", padding: "40px 20px 20px", marginTop: "32px", borderTop: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}>
+        <p style={{ fontSize: "13px", fontWeight: 500, letterSpacing: "0.5px" }}>Developed by <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>MAROA Project</span></p>
+        <p style={{ fontSize: "11px", marginTop: "4px", opacity: 0.7 }}>&copy; {new Date().getFullYear()} LPPL Radio Suara Bumi Lasinrang</p>
+      </div>
     </main>
   );
 }

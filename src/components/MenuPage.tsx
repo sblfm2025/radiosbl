@@ -267,6 +267,11 @@ export function MenuPage({
           <span>{session ? "Keluar" : "Masuk ke akun"}</span>
         </button>
       </section>
+
+      <div style={{ textAlign: "center", padding: "32px 20px 16px", marginTop: "12px", color: "var(--color-text-muted)" }}>
+        <p style={{ fontSize: "13px", fontWeight: 500, letterSpacing: "0.5px" }}>Developed by <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>MAROA Project</span></p>
+        <p style={{ fontSize: "11px", marginTop: "4px", opacity: 0.7 }}>&copy; {new Date().getFullYear()} LPPL Radio Suara Bumi Lasinrang</p>
+      </div>
     </main>
   );
 }
