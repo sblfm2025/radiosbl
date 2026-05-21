@@ -25,19 +25,19 @@ test("dashboard keeps shortcut grid calm by default", async ({ page }) => {
   await expect(page.locator(".dashboard-focus-strip")).toBeVisible();
   await expect(page.locator(".dashboard-briefing-grid > .dashboard-briefing-card")).toHaveCount(1);
   await expect(page.getByText("Prioritas lain")).toBeVisible();
-  await expect(page.locator(".dashboard-menu-grid .dashboard-menu-item")).toHaveCount(4);
-  await expect(page.locator(".dashboard-stack").getByText("Jadwal Berikutnya", { exact: true })).toBeHidden();
+  await expect(page.locator(".dashboard-shortcut-grid .dashboard-shortcut-card")).toHaveCount(4);
+  await expect(page.locator(".dashboard-stack").getByText("Aktivitas Terbaru", { exact: true })).toBeHidden();
 
   await page.getByText("Prioritas lain").click();
   await expect(page.locator(".dashboard-briefing-more .dashboard-briefing-card").first()).toBeVisible();
 
-  const showAllMenu = page.getByRole("button", { name: "Tampilkan semua menu" });
-  await expect(showAllMenu).toBeVisible();
-  await showAllMenu.click();
-  await expect.poll(async () => page.locator(".dashboard-menu-grid .dashboard-menu-item").count()).toBeGreaterThan(4);
+  await page.getByRole("button", { name: "Semua Menu" }).click();
+  await expect(page.getByRole("heading", { name: "Semua fitur Radio SBL" })).toBeVisible();
+  await expect.poll(async () => page.locator(".menu-tile").count()).toBeGreaterThan(4);
 
-  await page.getByText("Detail siaran & arsip").click();
-  await expect(page.locator(".dashboard-stack").getByText("Jadwal Berikutnya", { exact: true })).toBeVisible();
+  await page.goto("/?page=dashboard");
+  await page.getByText("Aktivitas Terbaru & Podcast").click();
+  await expect(page.locator(".dashboard-stack").getByText("Aktivitas Terbaru", { exact: true })).toBeVisible();
   await expect(page.locator(".dashboard-stack").getByText("Podcast Unggulan", { exact: true })).toBeVisible();
 
   const metrics = await page.evaluate(() => ({

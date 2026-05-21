@@ -1,4 +1,4 @@
-import { BookOpen, PlayCircle, Search, User, Mic2, ShieldCheck, AlertTriangle, ArrowLeft, Headphones, MonitorPlay, Video } from "lucide-react";
+import { BookOpen, PlayCircle, Search, User, Mic2, ShieldCheck, AlertTriangle, ArrowLeft, Headphones, Video } from "lucide-react";
 import { useState, useEffect } from "react";
 export function TutorialPage() {
   const [searchTerm, setSearchTerm] = useState("");

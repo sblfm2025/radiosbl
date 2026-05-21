@@ -1,4 +1,4 @@
-import type { BroadcastProgram, BroadcastSchedule, ScheduleSwapRequest } from "../types/domain";
+import type { BroadcastProgram, BroadcastSchedule, ScheduleSwapRequest, TimestampLike } from "../types/domain";
 import { shouldUseLocalFallback } from "../lib/env";
 import { buildProgramSeed, buildScheduleSeed } from "../data/firestoreSeed";
 import { createDocument, listDocuments, upsertDocument } from "./firestore.service";
@@ -48,6 +48,6 @@ export async function requestScheduleSwap(
   return createDocument<Omit<ScheduleSwapRequest, "id">>("scheduleSwapRequests", {
     ...payload,
     status: "pending_target",
-    createdAt: serverTimestamp() as any
+    createdAt: serverTimestamp() as unknown as TimestampLike
   });
 }

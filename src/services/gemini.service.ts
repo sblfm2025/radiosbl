@@ -77,7 +77,7 @@ export async function analyzeAttendancePhoto(imageBlob: Blob, displayName: strin
   const responseText = result.response.text().replace(/```json|```/g, "").trim();
   try {
     return JSON.parse(responseText);
-  } catch (err) {
+  } catch {
     console.error("Gagal parse AI response:", responseText);
     return { isValid: true, reason: "", description: "Foto berhasil dianalisis.", greeting: `Semangat ${timeOfDay} Kak ${displayName}!` };
   }

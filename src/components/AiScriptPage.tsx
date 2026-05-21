@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type FormEvent } from "react";
-import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive, Bold, Italic, Heading, List, Clock, Highlighter, SplitSquareHorizontal, Megaphone, Search, Filter, Download, CheckCircle2 } from "lucide-react";
+import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive, Bold, Italic, Heading, List, Clock, Highlighter, SplitSquareHorizontal, Megaphone, Search, Download, CheckCircle2 } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript, rewriteProgramScript } from "../services/aiScript.service";
@@ -90,7 +90,9 @@ export function AiScriptPage({
       try {
         localStorage.setItem(`radiosbl.draftBackup`, scriptDraft);
         setAutoSaveTime(new Date());
-      } catch (e) {}
+      } catch {
+        return;
+      }
     }, 3000);
     return () => clearTimeout(timer);
   }, [scriptDraft, activeTab]);

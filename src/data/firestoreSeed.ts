@@ -3,6 +3,7 @@ import {
   dailyInsertPrograms,
   directorProfile,
   stationInfo,
+  type AnnouncerProfile,
   weeklyBroadcastSchedule
 } from "./radioData";
 import type {
@@ -35,7 +36,7 @@ function parseTimeRange(day: string, time: string) {
 }
 
 export function buildAnnouncerSeed(): Announcer[] {
-  return announcers.map((profile: any) => {
+  return announcers.map((profile: AnnouncerProfile) => {
     const workload = getAnnouncerWorkload(profile.airName);
 
     return {

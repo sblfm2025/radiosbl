@@ -45,6 +45,21 @@ test("login screen renders without horizontal overflow", async ({ page }) => {
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
 });
 
+test("login from explicit login route redirects to dashboard", async ({ page }) => {
+  await page.addInitScript(() => {
+    try { sessionStorage.clear(); } catch { return; }
+    try { localStorage.clear(); } catch { return; }
+  });
+
+  await page.goto("/?page=login");
+  await page.getByPlaceholder(/Nomor WA atau Email/i).fill("admin@radiosbl.go.id");
+  await page.getByPlaceholder("Kata Sandi").fill("demo12345");
+  await page.locator("form button[type='submit']").first().click();
+
+  await expect(page).toHaveURL(/[?&]page=dashboard(?:&|$)/, { timeout: 10_000 });
+  await expect(page.locator(".dashboard-radio-player")).toBeVisible({ timeout: 10_000 });
+});
+
 test("core app navigation and streaming actions are usable", async ({ page }) => {
   await page.goto("/");
 

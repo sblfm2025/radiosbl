@@ -110,7 +110,7 @@ describe("attendance payload", () => {
     await expect(listAttendanceRecords()).resolves.toEqual([]);
   });
 
-  it("stores successful selfie check-in in local attendance cache", async () => {
+  it("stores demo selfie check-in in local attendance cache", async () => {
     const storage = createMemoryStorage();
     vi.stubGlobal("window", { localStorage: storage });
 
@@ -133,12 +133,14 @@ describe("attendance payload", () => {
     await Promise.resolve();
     expect(listLocalAttendanceRecords()[0]).toMatchObject({
       selfieDriveFileId: "demo-attendance-user-3-selfie",
-      selfieUploadStatus: "uploaded"
+      selfieUploadStatus: "failed",
+      selfieUploadError: "Arsip bukti selfie belum dikonfigurasi, bukti masih berupa metadata sementara."
     });
     await expect(listAttendanceRecords()).resolves.toHaveLength(1);
   });
 
   it("posts browser files to configured Google Drive upload endpoint", async () => {
+    vi.stubEnv("VITE_GOOGLE_DRIVE_APPS_SCRIPT_ENDPOINT", "");
     vi.stubEnv("VITE_GOOGLE_DRIVE_UPLOAD_ENDPOINT", "http://localhost:8787/upload");
     const file = Object.assign(new Blob(["selfie"], { type: "image/png" }), {
       name: "selfie.png"

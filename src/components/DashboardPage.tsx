@@ -88,17 +88,6 @@ type DashboardBriefingItem = {
   icon: LucideIcon;
 };
 
-type DashboardActionItem = {
-  key: string;
-  tone?: string;
-  icon: LucideIcon;
-  eyebrow: string;
-  title: string;
-  description: string;
-  ariaLabel: string;
-  page: PageKey;
-};
-
 type DashboardAssistantInsight = {
   label: string;
   title: string;
@@ -219,16 +208,6 @@ function formatCountdown(minutes: number): string {
   return `${mins}m lagi`;
 }
 
-function formatRequestTime(value: unknown): string {
-  const date = toLocalDate(value);
-  if (!date) return "Baru masuk";
-
-  return date.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
 function getOperationalFocus({
   activeUserSlot,
   dashboardUserSlot,
@@ -310,10 +289,8 @@ export function DashboardPage({
 }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showAllMenu, setShowAllMenu] = useState(false);
   const [activeAnnouncerIndex, setActiveAnnouncerIndex] = useState(0);
   const [scheduleSlots, setScheduleSlots] = useState<BroadcastProgramSlot[]>(weeklyBroadcastSchedule);
-  const [recentPages, setRecentPages] = useState<PageKey[]>([]);
   const [now, setNow] = useState(() => new Date());
   const [songRequests, setSongRequests] = useState<SongRequest[]>([]);
   const currentSlot = useCurrentBroadcastSlot();
@@ -400,16 +377,6 @@ export function DashboardPage({
   const activeUserSlot = todaysUserSlots.find((slot) => slot.time === currentSlot.time || slot.program === currentSlot.title);
   const dashboardUserSlot = activeUserSlot ?? nextUserSlot ?? todaysUserSlots[0];
   const nextUserSlotCountdown = nextUserSlot ? getMinutesUntil(nextUserSlot.time, now) : null;
-  const attendanceLabel = todayAttendance
-    ? todayAttendance.checkOutAt
-      ? "Absen hari ini selesai"
-      : "Sudah absen masuk"
-    : "Belum absen hari ini";
-  const attendanceTone = todayAttendance
-    ? todayAttendance.status === "outside_radius" || todayAttendance.status === "needs_review"
-      ? "warning"
-      : "success"
-    : "warning";
   const operationalFocus = getOperationalFocus({
     activeUserSlot,
     dashboardUserSlot,
@@ -726,13 +693,6 @@ export function DashboardPage({
     return baseItems.filter((item) => canUser(session.user.role, item.requiredPermission));
   }, [session.user.role]);
 
-  const recentMenuItems = useMemo(() => {
-    const lookup = new Map(menuItems.map((item) => [item.key, item] as const));
-    return recentPages
-      .map((page) => lookup.get(page))
-      .filter((item): item is DashboardMenuItem => Boolean(item))
-      .slice(0, 4);
-  }, [menuItems, recentPages]);
   const primaryBriefingItem = briefingItems[0];
   const supportingBriefingItems = briefingItems.slice(1);
 
@@ -799,169 +759,6 @@ export function DashboardPage({
       .slice(0, 4);
   }, [activeUserSlot, menuItems, session.user.role, todayAttendance, todaysUserSlots.length]);
 
-  const roleActionCards = useMemo<DashboardActionItem[]>(() => {
-    const scheduleAction: DashboardActionItem = {
-      key: "schedule",
-      tone: "primary",
-      icon: CalendarClock,
-      eyebrow: "Jadwal saya hari ini",
-      title: dashboardUserSlot?.program ?? "Tidak ada jadwal pribadi",
-      description: dashboardUserSlot
-        ? `${dashboardUserSlot.time.replace(/ WITA/g, "")} WITA - ${dashboardUserSlot.announcer}`
-        : "Cek jadwal mingguan untuk melihat susunan siaran terbaru.",
-      ariaLabel: "Buka jadwal saya",
-      page: "schedule"
-    };
-    const attendanceAction: DashboardActionItem = {
-      key: "attendance",
-      tone: attendanceTone,
-      icon: todayAttendance ? CheckCircle2 : AlertCircle,
-      eyebrow: "Absensi",
-      title: attendanceLabel,
-      description: todayAttendance
-        ? todayAttendance.status === "outside_radius"
-          ? "Absen tercatat, tetapi lokasi perlu ditinjau."
-          : "Status kehadiran sudah tercatat untuk hari ini."
-        : "Lakukan absen masuk sebelum mulai bertugas.",
-      ariaLabel: "Buka absensi",
-      page: "attendance"
-    };
-    const requestAction: DashboardActionItem = {
-      key: "requests",
-      icon: Headphones,
-      eyebrow: activeUserSlot ? "Request on-air" : "Request lagu",
-      title: activeUserSlot ? "Pantau antrean sekarang" : "Cek antrean pendengar",
-      description: activeUserSlot
-        ? "Prioritaskan permintaan pendengar saat siaran berjalan."
-        : "Proses permintaan lagu dengan cepat saat diperlukan.",
-      ariaLabel: "Buka request lagu",
-      page: "requests"
-    };
-    const aiAction: DashboardActionItem = {
-      key: "aiScript",
-      tone: "notice",
-      icon: Sparkles,
-      eyebrow: "Cue cepat",
-      title: "Buat naskah siaran",
-      description: "Siapkan pembuka, bridging, atau penutup program.",
-      ariaLabel: "Buka naskah AI",
-      page: "aiScript"
-    };
-    const streamingAction: DashboardActionItem = {
-      key: "streaming",
-      icon: Radio,
-      eyebrow: "Streaming",
-      title: metadata.isOnline ? "Siaran publik aktif" : "Cek player siaran",
-      description: metadata.isOnline ? "Pantau program berjalan dan kontrol audio." : "Buka streaming untuk mengecek status siaran.",
-      ariaLabel: "Buka streaming",
-      page: "streaming"
-    };
-    const liveObAction: DashboardActionItem = {
-      key: "liveOb",
-      tone: "notice",
-      icon: Radio,
-      eyebrow: "Live tools",
-      title: "Live/OB",
-      description: "Buka checklist, rundown, dan link koordinasi siaran.",
-      ariaLabel: "Buka Live OB",
-      page: "liveOb"
-    };
-    const adminReportAction: DashboardActionItem = {
-      key: "attendanceReport",
-      tone: "primary",
-      icon: FileText,
-      eyebrow: "Monitoring",
-      title: "Rekap absensi",
-      description: "Lihat staf hadir, izin, dan catatan yang perlu validasi.",
-      ariaLabel: "Buka rekap absensi",
-      page: "attendanceReport"
-    };
-    const userAction: DashboardActionItem = {
-      key: "users",
-      icon: Users,
-      eyebrow: "Admin",
-      title: "Kelola user",
-      description: "Pantau akses, role, dan profil operasional tim.",
-      ariaLabel: "Buka kelola user",
-      page: "users"
-    };
-    const complaintsAction: DashboardActionItem = {
-      key: "complaints",
-      tone: "warning",
-      icon: Bell,
-      eyebrow: "Aduan",
-      title: "Tindak lanjut publik",
-      description: "Pantau saran, pengaduan, dan status penyelesaian.",
-      ariaLabel: "Buka aduan",
-      page: "complaints"
-    };
-    const coverageAction: DashboardActionItem = {
-      key: "coverage",
-      tone: "primary",
-      icon: FileText,
-      eyebrow: "Liputan",
-      title: "Tugas lapangan",
-      description: "Cek deadline, upload dokumentasi, dan status tugas.",
-      ariaLabel: "Buka liputan",
-      page: "coverage"
-    };
-    const scheduleSwapAction: DashboardActionItem = {
-      key: "scheduleSwap",
-      tone: "notice",
-      icon: CalendarClock,
-      eyebrow: "Koordinasi",
-      title: "Tukar jadwal",
-      description: "Periksa konfirmasi pengganti atau permintaan rekan.",
-      ariaLabel: "Buka tukar jadwal",
-      page: "scheduleSwap"
-    };
-
-    const byRole: Record<string, DashboardActionItem[]> = {
-      announcer: [requestAction, aiAction, scheduleAction, streamingAction],
-      admin: [adminReportAction, userAction, scheduleSwapAction, complaintsAction],
-      super_admin: [adminReportAction, userAction, scheduleSwapAction, complaintsAction],
-      reporter: [coverageAction, attendanceAction, scheduleAction, aiAction],
-      operator: [streamingAction, liveObAction, requestAction, scheduleAction],
-      leader: [adminReportAction, coverageAction, scheduleAction, complaintsAction],
-      employee: [attendanceAction, scheduleAction, requestAction, streamingAction],
-      public: [streamingAction, requestAction, complaintsAction, scheduleAction]
-    };
-
-    const selected = byRole[session.user.role] ?? [scheduleAction, attendanceAction, requestAction, scheduleSwapAction];
-    const permissionByPage = new Map(menuItems.map((item) => [item.key, item.requiredPermission] as const));
-
-    return selected
-      .filter((item) => canUser(session.user.role, permissionByPage.get(item.page) ?? "dashboard:read"))
-      .slice(0, 4);
-  }, [
-    activeUserSlot,
-    attendanceLabel,
-    attendanceTone,
-    dashboardUserSlot,
-    menuItems,
-    metadata.isOnline,
-    session.user.role,
-    todayAttendance
-  ]);
-
-  useEffect(() => {
-    try {
-      const storageKey = `radiosbl.recentPages:${session.user.id}`;
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        setRecentPages(parsed.filter((item): item is PageKey => typeof item === "string"));
-      }
-    } catch {
-      setRecentPages([]);
-    }
-  }, [session.user.id]);
-
-  const dashboardMenuPreviewCount = 4;
-  const visibleMenuItems = showAllMenu ? menuItems : menuItems.slice(0, dashboardMenuPreviewCount);
-  const hasMoreMenu = menuItems.length > dashboardMenuPreviewCount;
-
   function closeProfileSheet() {
     setShowProfilePopup(false);
     setShowLogoutConfirm(false);
@@ -974,7 +771,6 @@ export function DashboardPage({
       const list = Array.isArray(existing) ? existing.filter((item): item is PageKey => typeof item === "string") : [];
       const next = [page, ...list.filter((item) => item !== page)].slice(0, 4);
       window.localStorage.setItem(storageKey, JSON.stringify(next));
-      setRecentPages(next);
     } catch {
       // ignore persistence failures
     }
@@ -1362,38 +1158,6 @@ export function DashboardPage({
         </div>
       )}
     </div>
-  );
-}
-
-function ActionCard({
-  icon,
-  eyebrow,
-  title,
-  description,
-  tone,
-  ariaLabel,
-  onClick
-}: {
-  icon: ReactNode;
-  eyebrow: string;
-  title: string;
-  description: string;
-  tone?: string;
-  ariaLabel: string;
-  onClick: () => void;
-}) {
-  return (
-    <article className={`dashboard-action-card ${tone || ""}`}>
-      <span className="dashboard-action-icon">{icon}</span>
-      <div>
-        <small>{eyebrow}</small>
-        <strong>{title}</strong>
-        <p>{description}</p>
-      </div>
-      <button type="button" onClick={onClick} aria-label={ariaLabel}>
-        <ArrowRight size={18} />
-      </button>
-    </article>
   );
 }
 

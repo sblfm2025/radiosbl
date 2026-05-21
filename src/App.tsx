@@ -130,6 +130,11 @@ function buildPageUrl(page: PageKey): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+function getPostLoginPageFromUrl(): PageKey {
+  const requestedPage = getInitialPageFromUrl();
+  return requestedPage && requestedPage !== "login" ? requestedPage : "dashboard";
+}
+
 function AnnouncersPage({
   data,
   onOpenAnnouncerProfile
@@ -456,7 +461,7 @@ export default function App() {
       const requestedPage = getInitialPageFromUrl();
       setSession(restoredSession);
       if (restoredSession) {
-        navigateToPage(requestedPage || "dashboard", { replace: true });
+        navigateToPage(getPostLoginPageFromUrl(), { replace: true });
       } else {
         setActivePage((prev) => {
           const nextPage = requestedPage ? "login" : prev === "splash" ? prev : "login";
@@ -499,7 +504,7 @@ export default function App() {
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              navigateToPage(getInitialPageFromUrl() || "dashboard", { replace: true });
+              navigateToPage(getPostLoginPageFromUrl(), { replace: true });
             }}
           />
         );
@@ -575,7 +580,7 @@ export default function App() {
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              navigateToPage(getInitialPageFromUrl() || "dashboard", { replace: true });
+              navigateToPage(getPostLoginPageFromUrl(), { replace: true });
             }}
           />
         );

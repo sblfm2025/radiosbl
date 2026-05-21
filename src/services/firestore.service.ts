@@ -37,7 +37,7 @@ export async function queryDocuments<T extends DocumentData>(
   collectionName: string,
   field: string,
   operator: WhereFilterOp,
-  value: any
+  value: unknown
 ): Promise<Array<T & { id: string }>> {
   const snapshot = await getDocs(
     query(collection(getFirebaseFirestore(), collectionName), where(field, operator, value))
@@ -126,4 +126,3 @@ export async function deleteDocument(
 ): Promise<void> {
   await deleteDoc(doc(getFirebaseFirestore(), collectionName, id));
 }
-

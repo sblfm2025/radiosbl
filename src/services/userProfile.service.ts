@@ -1,6 +1,35 @@
 import type { DocumentData } from "firebase/firestore";
 import type { AppUser, UserRole } from "../types/domain";
-import { getDocument } from "./firestore.service";
+
+type LocalAnnouncerProfile = {
+  id?: string;
+  fullName: string;
+  airName: string;
+  scheduleNames: string[];
+  photoUrl?: string;
+};
+
+type LocalEmployeeProfile = {
+  id: string;
+  name: string;
+  role: string;
+  wa: string;
+  photoUrl?: string;
+};
+
+type StaffSyncPayload = DocumentData & {
+  displayName: string;
+  airName?: string;
+  announcerNames?: string[];
+  scheduleNames?: string[];
+  email: string;
+  role: UserRole;
+  whatsapp: string;
+  photoUrl?: string;
+  active: boolean;
+  createdAt?: Date;
+  updatedAt: Date;
+};
 
 const validRoles: UserRole[] = [
   "super_admin",
@@ -203,7 +232,7 @@ export async function upsertUserProfile(uid: string, payload: Partial<AppUser>):
   await upsertDocument("users", uid, payload);
 }
 
-function buildLocalProfiles(announcers: any[], employees: any[]): AppUser[] {
+function buildLocalProfiles(announcers: LocalAnnouncerProfile[], employees: LocalEmployeeProfile[]): AppUser[] {
   const profiles: AppUser[] = [];
 
   for (const ann of announcers) {
@@ -299,7 +328,7 @@ export async function syncSblStaff(): Promise<{ success: boolean; count: number;
   try {
     const { announcers, employees } = await import("../data/radioData");
     const { upsertDocument, queryDocuments, deleteDocument } = await import("./firestore.service");
-    const usersToSync = new Map<string, any>();
+    const usersToSync = new Map<string, StaffSyncPayload>();
 
     // 1. Kumpulkan Data Penyiar
     for (const ann of announcers) {
@@ -380,11 +409,13 @@ export async function syncSblStaff(): Promise<{ success: boolean; count: number;
         if (targetId !== waId) {
             try {
                 await deleteDocument("users", waId);
-            } catch (e) {}
+            } catch {
+              return;
+            }
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error(`Gagal sinkron user ${waId}:`, err);
-        failed.push(`${data.displayName} (${err.message})`);
+        failed.push(`${data.displayName} (${err instanceof Error ? err.message : "error tidak dikenal"})`);
       }
     });
 
@@ -395,8 +426,8 @@ export async function syncSblStaff(): Promise<{ success: boolean; count: number;
       count: successCount,
       failed
     };
-  } catch (err: any) {
+  } catch (err) {
     console.error("Gagal total sinkron staf SBL:", err);
-    return { success: false, count: successCount, failed: [err.message] };
+    return { success: false, count: successCount, failed: [err instanceof Error ? err.message : "error tidak dikenal"] };
   }
 }
