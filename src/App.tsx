@@ -90,30 +90,44 @@ function getInitialPageFromUrl(): PageKey | null {
   if (typeof window === "undefined") return null;
 
   const page = new URLSearchParams(window.location.search).get("page");
-  const allowedPages: PageKey[] = [
-    "dashboard",
-    "announcers",
-    "announcerProfile",
-    "attendance",
-    "schedule",
-    "streaming",
-    "liveOb",
-    "coverage",
-    "pinrangBerkabar",
-    "podcast",
-    "requests",
-    "complaints",
-    "aiScript",
-    "users",
-    "scheduleSwap",
-    "attendanceReport",
-    "profile",
-    "menu",
-    "tutorial",
-    "pedoman"
-  ];
 
-  return allowedPages.includes(page as PageKey) ? (page as PageKey) : null;
+  return isNavigablePage(page) ? page : null;
+}
+
+const navigablePages: PageKey[] = [
+  "dashboard",
+  "announcers",
+  "announcerProfile",
+  "attendance",
+  "schedule",
+  "streaming",
+  "liveOb",
+  "coverage",
+  "pinrangBerkabar",
+  "podcast",
+  "requests",
+  "complaints",
+  "aiScript",
+  "users",
+  "scheduleSwap",
+  "attendanceReport",
+  "profile",
+  "menu",
+  "tutorial",
+  "pedoman",
+  "login"
+];
+
+function isNavigablePage(page: string | null): page is PageKey {
+  return navigablePages.includes(page as PageKey);
+}
+
+function buildPageUrl(page: PageKey): string {
+  if (typeof window === "undefined") return "";
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("page", page);
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function AnnouncersPage({
@@ -319,6 +333,7 @@ export default function App() {
   const [activePage, setActivePage] = useState<PageKey>("splash");
   const scrollMap = useRef<Record<string, number>>({});
   const prevPageRef = useRef<PageKey>("splash");
+  const isApplyingHistoryRef = useRef(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -369,6 +384,37 @@ export default function App() {
     station: stationInfo
   });
 
+  const navigateToPage = useCallback((page: PageKey, options?: { replace?: boolean }) => {
+    if (typeof window !== "undefined" && page !== "splash" && !isApplyingHistoryRef.current) {
+      const nextUrl = buildPageUrl(page);
+      const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+      if (nextUrl && nextUrl !== currentUrl) {
+        if (options?.replace) {
+          window.history.replaceState({ page }, "", nextUrl);
+        } else {
+          window.history.pushState({ page }, "", nextUrl);
+        }
+      }
+    }
+
+    setActivePage(page);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const requestedPage = getInitialPageFromUrl();
+      isApplyingHistoryRef.current = true;
+      setActivePage(requestedPage || (session ? "dashboard" : "login"));
+      window.setTimeout(() => {
+        isApplyingHistoryRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [session]);
+
   useEffect(() => {
     void getDashboardSnapshot().then(async (data) => {
       try {
@@ -410,18 +456,20 @@ export default function App() {
       const requestedPage = getInitialPageFromUrl();
       setSession(restoredSession);
       if (restoredSession) {
-        setActivePage(requestedPage || "dashboard");
+        navigateToPage(requestedPage || "dashboard", { replace: true });
       } else {
         setActivePage((prev) => {
-          if (requestedPage) return "login";
-          if (prev === "splash") return prev;
-          return "login";
+          const nextPage = requestedPage ? "login" : prev === "splash" ? prev : "login";
+          if (nextPage !== "splash") {
+            navigateToPage(nextPage, { replace: true });
+          }
+          return nextPage;
         });
       }
       setAuthInitialized(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [navigateToPage]);
 
   const handleLogout = useCallback(async () => {
     if (session) {
@@ -429,8 +477,8 @@ export default function App() {
     }
 
     setSession(null);
-    setActivePage("login");
-  }, [session]);
+    navigateToPage("login", { replace: true });
+  }, [navigateToPage, session]);
 
   const currentSlot = useCurrentBroadcastSlot();
   const currentAnnouncer = useMemo(
@@ -445,13 +493,13 @@ export default function App() {
   const page = useMemo(() => {
     switch (activePage) {
       case "splash":
-        return <SplashPage onNavigate={setActivePage} />;
+        return <SplashPage onNavigate={(targetPage) => navigateToPage(targetPage, { replace: true })} />;
       case "login":
         return (
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              setActivePage(getInitialPageFromUrl() || "dashboard");
+              navigateToPage(getInitialPageFromUrl() || "dashboard", { replace: true });
             }}
           />
         );
@@ -463,7 +511,7 @@ export default function App() {
             data={dashboardData}
             onOpenAnnouncerProfile={(airName) => {
               setSelectedAnnouncerAirName(airName);
-              setActivePage("announcerProfile");
+              navigateToPage("announcerProfile");
             }}
           />
         );
@@ -472,7 +520,7 @@ export default function App() {
           <AnnouncerProfilePage
             airName={selectedAnnouncerAirName}
             data={dashboardData}
-            onBack={() => setActivePage("announcers")}
+            onBack={() => navigateToPage("announcers")}
           />
         );
       case "schedule":
@@ -480,10 +528,10 @@ export default function App() {
           <BroadcastSchedulePage
             data={dashboardData}
             session={session}
-            onNavigate={setActivePage}
+            onNavigate={navigateToPage}
             onOpenAnnouncerProfile={(airName) => {
               setSelectedAnnouncerAirName(airName);
-              setActivePage("announcerProfile");
+              navigateToPage("announcerProfile");
             }}
           />
         );
@@ -493,7 +541,7 @@ export default function App() {
             data={dashboardData}
             onAirAnnouncer={currentAnnouncer}
             onAirAnnouncers={currentAnnouncers}
-            onExit={() => setActivePage("dashboard")}
+            onExit={() => navigateToPage("dashboard")}
           />
         );
       case "liveOb":
@@ -527,7 +575,7 @@ export default function App() {
           <LoginPage
             onEnter={(nextSession) => {
               setSession(nextSession);
-              setActivePage(getInitialPageFromUrl() || "dashboard");
+              navigateToPage(getInitialPageFromUrl() || "dashboard", { replace: true });
             }}
           />
         );
@@ -538,7 +586,7 @@ export default function App() {
         return session ? (
           <DashboardPage 
             session={session} 
-            onNavigate={setActivePage} 
+            onNavigate={navigateToPage}
             onLogout={handleLogout}
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
@@ -553,6 +601,7 @@ export default function App() {
     dashboardData,
     handleLogout,
     attendanceRecords,
+    navigateToPage,
     refreshAttendanceRecords,
     selectedAnnouncerAirName,
     session
@@ -578,7 +627,7 @@ export default function App() {
       <Shell 
         activePage={activePage} 
         session={session} 
-        onNavigate={setActivePage} 
+        onNavigate={navigateToPage}
         onLogout={handleLogout}
         hasMiniPlayer={!!showMiniPlayer}
       >
@@ -587,7 +636,7 @@ export default function App() {
       {showMiniPlayer && (
         <GlobalAudioPlayer
           hasBottomNav={true}
-          onOpenStreaming={() => setActivePage("streaming")}
+          onOpenStreaming={() => navigateToPage("streaming")}
         />
       )}
     </AudioProvider>
