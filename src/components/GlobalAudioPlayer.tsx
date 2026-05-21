@@ -22,10 +22,10 @@ export function GlobalAudioPlayer({
   return (
     <div className={`global-mini-player${hasBottomNav ? " with-bottom-nav" : ""}`}>
       <div className="global-mini-logo" aria-hidden="true">
-        <img src="/LogoSBL.svg" alt="" />
+        <img className="mini-player-logo" src="/LogoSBL.svg" alt="" />
       </div>
 
-      <div className="global-mini-copy">
+      <div className="global-mini-copy mini-player-title">
         <strong><span>LIVE</span> {metadata.title}</strong>
         <small>{metadata.artist}</small>
       </div>

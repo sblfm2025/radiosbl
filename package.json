@@ -21,6 +21,7 @@
     "functions:deploy": "firebase deploy --only functions:notificationProxy --project radiosbl",
     "drive:auth": "node scripts/google-drive-auth.mjs",
     "drive:server": "node scripts/google-drive-upload-server.mjs",
+    "drive:status": "node scripts/google-drive-public-status.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

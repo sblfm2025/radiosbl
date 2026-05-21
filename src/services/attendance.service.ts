@@ -6,7 +6,9 @@ import { moduleFileRules, validateFile, type UploadCandidate } from "../utils/fi
 import { uploadAttendanceSelfie } from "./googleDrive.service";
 
 const ATTENDANCE_CACHE_KEY = "radio-sbl-attendance-records";
+const ATTENDANCE_PENDING_SYNC_KEY = "radio-sbl-attendance-pending-sync";
 const MAX_LOCAL_ATTENDANCE = 50;
+const MAX_PENDING_ATTENDANCE = 20;
 const PENDING_SELFIE_UPLOAD_ID = "pending_upload";
 export const ATTENDANCE_SELFIE_UPLOAD_EVENT = "radio-sbl-attendance-selfie-upload";
 
@@ -33,6 +35,20 @@ export type AttendanceSelfieUploadEventDetail = {
   selfieDriveFileId: string;
   selfieUploadStatus: AttendanceSelfieUploadStatus;
   selfieUploadError?: string;
+};
+
+type PendingSelfiePayload = {
+  dataUrl: string;
+  name: string;
+  type: string;
+  size: number;
+};
+
+type PendingAttendanceSyncItem = {
+  localId: string;
+  record: AttendanceRecord;
+  selfie?: PendingSelfiePayload;
+  queuedAt: string;
 };
 
 function getSafeLocalStorage(): Storage | null {
@@ -74,6 +90,16 @@ function writeLocalAttendanceRecord(record: AttendanceRecord) {
   storage.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(nextRecords));
 }
 
+function removeLocalAttendanceRecord(recordId: string) {
+  const storage = getSafeLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  const nextRecords = readLocalAttendanceRecords().filter((record) => record.id !== recordId);
+  storage.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(nextRecords));
+}
+
 function updateLocalAttendanceRecord(recordId: string, patch: Partial<AttendanceRecord>) {
   const storage = getSafeLocalStorage();
   if (!storage) {
@@ -92,6 +118,97 @@ function dispatchSelfieUploadEvent(detail: AttendanceSelfieUploadEventDetail) {
   }
 
   window.dispatchEvent(new CustomEvent(ATTENDANCE_SELFIE_UPLOAD_EVENT, { detail }));
+}
+
+function isNetworkOrOfflineError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    error instanceof TypeError ||
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("offline") ||
+    message.includes("unavailable")
+  );
+}
+
+function isDemoDriveFileId(value: string): boolean {
+  return value.startsWith("demo-attendance-");
+}
+
+function isStorageSelfieUrl(value: string): boolean {
+  return /^https:\/\/firebasestorage\.googleapis\.com\//i.test(value);
+}
+
+function getSelfieArchiveLabel(value: string): string {
+  return isStorageSelfieUrl(value) ? "Firebase Storage" : "Google Drive";
+}
+
+function readPendingAttendanceSyncItems(): PendingAttendanceSyncItem[] {
+  const storage = getSafeLocalStorage();
+  if (!storage) {
+    return [];
+  }
+
+  try {
+    const raw = storage.getItem(ATTENDANCE_PENDING_SYNC_KEY);
+    return raw ? (JSON.parse(raw) as PendingAttendanceSyncItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingAttendanceSyncItems(items: PendingAttendanceSyncItem[]) {
+  const storage = getSafeLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  storage.setItem(ATTENDANCE_PENDING_SYNC_KEY, JSON.stringify(items.slice(0, MAX_PENDING_ATTENDANCE)));
+}
+
+function queuePendingAttendanceSync(item: PendingAttendanceSyncItem) {
+  const nextItems = [
+    item,
+    ...readPendingAttendanceSyncItems().filter((pending) => pending.localId !== item.localId)
+  ];
+  writePendingAttendanceSyncItems(nextItems);
+}
+
+function removePendingAttendanceSyncItem(localId: string) {
+  writePendingAttendanceSyncItems(
+    readPendingAttendanceSyncItems().filter((pending) => pending.localId !== localId)
+  );
+}
+
+function canAttemptOnlineSync(): boolean {
+  return (
+    !shouldUseLocalFallback() &&
+    (typeof navigator === "undefined" || navigator.onLine !== false)
+  );
+}
+
+function blobToDataUrl(file: UploadCandidate): Promise<string | undefined> {
+  if (!(file instanceof Blob) || typeof FileReader === "undefined") {
+    return Promise.resolve(undefined);
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
+    reader.onerror = () => resolve(undefined);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function pendingSelfieToFile(selfie: PendingSelfiePayload): Promise<UploadCandidate & Blob> {
+  const response = await fetch(selfie.dataUrl);
+  const blob = await response.blob();
+
+  if (typeof File !== "undefined") {
+    return new File([blob], selfie.name, { type: selfie.type });
+  }
+
+  return Object.assign(blob, { name: selfie.name });
 }
 
 export function listLocalAttendanceRecords(): AttendanceRecord[] {
@@ -208,7 +325,47 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     attendanceType: input.attendanceType
   };
   
-  const attendanceRecordId = await checkIn(checkInInput);
+  let attendanceRecordId: string;
+
+  try {
+    attendanceRecordId = await checkIn(checkInInput);
+  } catch (error) {
+    if (!isNetworkOrOfflineError(error)) {
+      throw error;
+    }
+
+    const localId = `offline-attendance-${input.userId}-${Date.now()}`;
+    const localRecord: AttendanceRecord = {
+      id: localId,
+      ...buildAttendanceRecordDraft({
+        ...checkInInput,
+        selfieUploadStatus: "pending",
+        selfieUploadError: "Menunggu sinkronisasi saat koneksi kembali."
+      })
+    };
+    const selfieDataUrl = await blobToDataUrl(input.selfieFile);
+
+    writeLocalAttendanceRecord(localRecord);
+    queuePendingAttendanceSync({
+      localId,
+      record: localRecord,
+      selfie: selfieDataUrl
+        ? {
+            dataUrl: selfieDataUrl,
+            name: input.selfieFile.name,
+            type: input.selfieFile.type,
+            size: input.selfieFile.size
+          }
+        : undefined,
+      queuedAt: new Date().toISOString()
+    });
+
+    return {
+      attendanceRecordId: localId,
+      selfieDriveFileId: PENDING_SELFIE_UPLOAD_ID,
+      selfieUploadStatus: "pending"
+    };
+  }
   
   writeLocalAttendanceRecord({
     id: attendanceRecordId,
@@ -217,16 +374,19 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
 
   void uploadAttendanceSelfie(input.selfieFile, input.userId)
     .then((driveFile) => {
+      const isDemoUpload = isDemoDriveFileId(driveFile.driveFileId);
+      const archiveLabel = getSelfieArchiveLabel(driveFile.driveFileId);
       const patch: Partial<AttendanceRecord> = {
         selfieDriveFileId: driveFile.driveFileId,
-        selfieUploadStatus: "uploaded",
-        selfieUploadError: ""
+        selfieUploadStatus: isDemoUpload ? "failed" : "uploaded",
+        selfieUploadError: isDemoUpload ? "Arsip bukti selfie belum dikonfigurasi, bukti masih berupa metadata sementara." : ""
       };
       updateLocalAttendanceRecord(attendanceRecordId, patch);
       dispatchSelfieUploadEvent({
         attendanceRecordId,
         selfieDriveFileId: driveFile.driveFileId,
-        selfieUploadStatus: "uploaded"
+        selfieUploadStatus: patch.selfieUploadStatus || "failed",
+        selfieUploadError: patch.selfieUploadError || `Bukti selfie tersimpan di ${archiveLabel}.`
       });
 
       if (!shouldUseLocalFallback()) {
@@ -259,6 +419,74 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     selfieDriveFileId: PENDING_SELFIE_UPLOAD_ID,
     selfieUploadStatus: "pending"
   };
+}
+
+export async function syncPendingAttendanceRecords(): Promise<number> {
+  if (!canAttemptOnlineSync()) {
+    return 0;
+  }
+
+  const pendingItems = readPendingAttendanceSyncItems();
+  let syncedCount = 0;
+
+  for (const item of pendingItems) {
+    try {
+      let selfieDriveFileId = item.record.selfieDriveFileId || PENDING_SELFIE_UPLOAD_ID;
+      let selfieUploadStatus: AttendanceSelfieUploadStatus = item.record.selfieUploadStatus || "pending";
+      let selfieUploadError = item.record.selfieUploadError || "";
+
+      if (item.selfie) {
+        const selfieFile = await pendingSelfieToFile(item.selfie);
+        const driveFile = await uploadAttendanceSelfie(selfieFile, item.record.userId);
+        selfieDriveFileId = driveFile.driveFileId;
+        selfieUploadStatus = isDemoDriveFileId(driveFile.driveFileId) ? "failed" : "uploaded";
+        selfieUploadError =
+          selfieUploadStatus === "failed"
+            ? "Arsip bukti selfie belum dikonfigurasi, bukti masih berupa metadata sementara."
+            : "";
+      }
+
+      const remotePayload: Omit<AttendanceRecord, "id"> = {
+        ...item.record,
+        selfieDriveFileId,
+        selfieUploadStatus,
+        selfieUploadError
+      };
+      delete (remotePayload as Partial<AttendanceRecord>).id;
+
+      const remoteId = await createDocument<Omit<AttendanceRecord, "id">>(
+        "attendanceRecords",
+        remotePayload
+      );
+
+      removePendingAttendanceSyncItem(item.localId);
+      removeLocalAttendanceRecord(item.localId);
+      writeLocalAttendanceRecord({
+        ...item.record,
+        id: remoteId,
+        selfieDriveFileId,
+        selfieUploadStatus,
+        selfieUploadError
+      });
+      dispatchSelfieUploadEvent({
+        attendanceRecordId: remoteId,
+        selfieDriveFileId,
+        selfieUploadStatus,
+        selfieUploadError
+      });
+      syncedCount += 1;
+    } catch (error) {
+      if (isNetworkOrOfflineError(error)) {
+        break;
+      }
+      updateLocalAttendanceRecord(item.localId, {
+        selfieUploadStatus: "failed",
+        selfieUploadError: error instanceof Error ? error.message : "Sinkronisasi absensi tertunda gagal."
+      });
+    }
+  }
+
+  return syncedCount;
 }
 
 export function listAttendanceRecords(): Promise<AttendanceRecord[]> {

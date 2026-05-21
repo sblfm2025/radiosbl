@@ -9,7 +9,8 @@ import {
   buildAttendanceRecordDraft,
   checkInWithSelfie,
   getTodayAttendance,
-  checkOut
+  checkOut,
+  syncPendingAttendanceRecords
 } from "../services/attendance.service";
 import type { AttendanceRecord } from "../types/domain";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
@@ -19,6 +20,18 @@ import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 const officeCenter: GeoPoint = { latitude: -3.8112091495447213, longitude: 119.65144231962896 };
 const officeRadiusMeters = 100;
 type AttendanceType = "present" | "sick" | "leave" | "out_of_office";
+type LocationPromptMode = "request" | "blocked";
+
+function isNetworkOrOfflineMessage(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  return (
+    lowerMessage.includes("failed to fetch") ||
+    lowerMessage.includes("network") ||
+    lowerMessage.includes("offline") ||
+    lowerMessage.includes("internet") ||
+    lowerMessage.includes("unavailable")
+  );
+}
 
 function getAttendanceTypeLabel(type: AttendanceType | AttendanceRecord["status"]): string {
   switch (type) {
@@ -72,6 +85,7 @@ export function AttendancePage({
   const [attendanceType, setAttendanceType] = useState<AttendanceType>("present");
   const [outOfOfficeReason, setOutOfOfficeReason] = useState("");
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locationPromptMode, setLocationPromptMode] = useState<LocationPromptMode>("request");
   
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -80,6 +94,29 @@ export function AttendancePage({
     if (session) {
       getTodayAttendance(session.user.id).then(setTodayRecord);
     }
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      return undefined;
+    }
+
+    const syncQueuedAttendance = () => {
+      void syncPendingAttendanceRecords()
+        .then((count) => {
+          if (count > 0) {
+            setUploadNotice(`${count} absensi offline berhasil disinkronkan.`);
+            return getTodayAttendance(session.user.id).then(setTodayRecord);
+          }
+          return undefined;
+        })
+        .catch(() => undefined);
+    };
+
+    syncQueuedAttendance();
+    window.addEventListener("online", syncQueuedAttendance);
+
+    return () => window.removeEventListener("online", syncQueuedAttendance);
   }, [session]);
   
   // Camera Modal State
@@ -196,14 +233,19 @@ export function AttendancePage({
         if (result.state === 'granted') {
           openCamera();
         } else if (result.state === 'denied') {
-          setFileError("Akses lokasi diblokir. Mohon izinkan akses lokasi dari pengaturan browser Anda.");
+          setLocationPromptMode("blocked");
+          setShowLocationPrompt(true);
+          setFileError("Akses lokasi masih diblokir. Ubah izin lokasi situs di pengaturan browser, lalu coba lagi.");
         } else {
+          setLocationPromptMode("request");
           setShowLocationPrompt(true);
         }
       } catch {
+        setLocationPromptMode("request");
         setShowLocationPrompt(true);
       }
     } else {
+      setLocationPromptMode("request");
       setShowLocationPrompt(true);
     }
   }
@@ -213,7 +255,11 @@ export function AttendancePage({
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         () => { openCamera(); },
-        () => { setFileError("Gagal mendapatkan lokasi. Pastikan GPS aktif dan diizinkan pada browser."); },
+        () => {
+          setLocationPromptMode("blocked");
+          setShowLocationPrompt(true);
+          setFileError("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin lokasi browser sudah diizinkan.");
+        },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
@@ -302,7 +348,19 @@ export function AttendancePage({
         session?.user.announcerNames?.[0] ||
         findAnnouncerProfile(displayName)?.airName;
       
-      const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType);
+      const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType)
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          if (navigator.onLine === false || isNetworkOrOfflineMessage(message)) {
+            return {
+              isValid: true,
+              reason: "",
+              description: "Analisis AI ditunda karena perangkat sedang offline.",
+              greeting: `Absensi tersimpan Kak ${displayName}. Sistem akan sinkron saat koneksi kembali.`
+            };
+          }
+          throw error;
+        });
       setAiAnalysis(aiResult);
 
       if (!aiResult.isValid && attendanceType === "present") {
@@ -353,12 +411,19 @@ export function AttendancePage({
       activeAttendanceRecordIdRef.current = result.attendanceRecordId;
       setSelfieDriveFileId(result.selfieDriveFileId);
       setSelfieUploadStatus(result.selfieUploadStatus);
-      setUploadNotice("Absensi tercatat. Bukti selfie sedang diunggah di latar belakang.");
+      const isOfflineRecord = result.attendanceRecordId.startsWith("offline-attendance-");
+      setUploadNotice(
+        isOfflineRecord
+          ? "Absensi tersimpan di perangkat. Sistem akan sinkron saat koneksi kembali."
+          : "Absensi tercatat. Bukti selfie sedang diunggah di latar belakang."
+      );
       const isRejected = draft.status === "rejected";
       const isOutside = draft.status === "outside_radius" || draft.status === "needs_review";
       
       setRecordStatus(
-        draft.status === "present"
+        isOfflineRecord
+          ? "Mode offline: absensi tersimpan sementara di perangkat."
+          : draft.status === "present"
           ? "Absensi valid berhasil dikonfirmasi. Bukti selfie sedang diunggah."
           : isRejected 
             ? "Foto Anda tidak valid, namun data telah diteruskan ke Admin."
@@ -434,23 +499,46 @@ export function AttendancePage({
       {showLocationPrompt && (
         <div className="attendance-location-modal">
           <div className="attendance-location-dialog">
-            <div className="attendance-location-icon">
-              <MapPin size={30} />
+            <div className={`attendance-location-icon ${locationPromptMode === "blocked" ? "warning" : ""}`}>
+              {locationPromptMode === "blocked" ? <AlertCircle size={30} /> : <MapPin size={30} />}
             </div>
-            <h3>Sistem Membutuhkan Akses Lokasi Anda</h3>
-            <p>
-              Demi keamanan dan validitas kehadiran Staf Radio SBL, izinkan akses lokasi ke sistem absensi cerdas ini.
-            </p>
+            <h3>
+              {locationPromptMode === "blocked"
+                ? "Akses Lokasi Masih Diblokir"
+                : "Sistem Membutuhkan Akses Lokasi Anda"}
+            </h3>
+            {locationPromptMode === "blocked" ? (
+              <>
+                <p>
+                  Browser tidak bisa dipaksa membuka GPS jika situs sudah diblokir. Ubah izin lokasi untuk situs ini, lalu cek lagi.
+                </p>
+                <ol className="attendance-location-steps">
+                  <li>Ketuk ikon gembok atau info di kolom alamat browser.</li>
+                  <li>Buka izin situs, lalu ubah Lokasi menjadi Izinkan.</li>
+                  <li>Aktifkan GPS perangkat dan kembali ke halaman ini.</li>
+                </ol>
+              </>
+            ) : (
+              <p>
+                Demi keamanan dan validitas kehadiran Staf Radio SBL, izinkan akses lokasi ke sistem absensi cerdas ini.
+              </p>
+            )}
             <div className="attendance-location-actions">
               <button type="button" onClick={() => setShowLocationPrompt(false)}>
-                Tolak
+                Nanti
               </button>
-              <button type="button" className="primary" onClick={handleAllowLocation}>
-                Izinkan
+              <button
+                type="button"
+                className="primary"
+                onClick={locationPromptMode === "blocked" ? handleStartCamera : handleAllowLocation}
+              >
+                {locationPromptMode === "blocked" ? "Cek Lagi" : "Izinkan"}
               </button>
             </div>
             <small>
-              *Setelah menekan 'Izinkan', mohon berikan izin ('Allow') pada popup bawaan browser.
+              {locationPromptMode === "blocked"
+                ? "Jika popup tidak muncul, izin harus diubah manual dari pengaturan browser."
+                : "Setelah menekan Izinkan, pilih Allow pada popup bawaan browser."}
             </small>
           </div>
         </div>

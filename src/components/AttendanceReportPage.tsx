@@ -66,6 +66,14 @@ function isPreviewableSelfieReference(value: string): boolean {
   return /^(https?:|data:image\/|blob:)/i.test(value);
 }
 
+function isDemoSelfieReference(value: string): boolean {
+  return value.startsWith("demo-attendance-");
+}
+
+function isPendingSelfieReference(value: string): boolean {
+  return value === "pending_upload" || value.startsWith("offline-attendance-");
+}
+
 function getSelfieViewUrl(value: string): string {
   if (isPreviewableSelfieReference(value)) {
     return value;
@@ -892,6 +900,15 @@ function SidePanelDetail({
   const isAdmin = session && ["super_admin", "admin"].includes(session.user.role);
   const selfieUrl = record.selfieDriveFileId ? getSelfieViewUrl(record.selfieDriveFileId) : "";
   const canPreviewSelfie = record.selfieDriveFileId ? isPreviewableSelfieReference(record.selfieDriveFileId) : false;
+  const isDemoSelfie = record.selfieDriveFileId ? isDemoSelfieReference(record.selfieDriveFileId) : false;
+  const isPendingSelfie = record.selfieDriveFileId ? isPendingSelfieReference(record.selfieDriveFileId) : false;
+  const selfieNotice = isPendingSelfie
+    ? "Bukti selfie masih menunggu sinkronisasi."
+    : isDemoSelfie
+      ? "Bukti selfie belum tersimpan ke arsip file asli."
+      : record.selfieUploadStatus === "failed"
+        ? "Upload bukti selfie gagal dan perlu ditinjau."
+        : "";
 
   return (
     <div className="attendance-report-detail">
@@ -915,10 +932,13 @@ function SidePanelDetail({
               <img src={record.selfieDriveFileId} alt="Selfie" />
             </div>
           ) : (
-            <div className="attendance-report-selfie-empty">
-              <Camera size={32} />
-              <p>{record.selfieDriveFileId}</p>
-              <a href={selfieUrl} target="_blank" rel="noreferrer">Buka bukti selfie</a>
+            <div className={`attendance-report-selfie-empty ${selfieNotice ? "warning" : ""}`}>
+              {selfieNotice ? <AlertTriangle size={32} /> : <Camera size={32} />}
+              <p>{selfieNotice || record.selfieDriveFileId}</p>
+              <small>{record.selfieDriveFileId}</small>
+              {!selfieNotice && (
+                <a href={selfieUrl} target="_blank" rel="noreferrer">Buka bukti selfie</a>
+              )}
             </div>
           )
         ) : (

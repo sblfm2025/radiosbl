@@ -65,15 +65,87 @@ Frontend akan memakai endpoint ini jika `VITE_GOOGLE_DRIVE_UPLOAD_ENDPOINT`
 terisi. Jika env tersebut kosong, aplikasi tetap memakai metadata demo agar mode
 offline/test tidak menyentuh Google Drive.
 
+## Endpoint Publik Sementara
+
+Untuk aplikasi live di `https://radiosbl.web.app`, endpoint `localhost` tidak
+bisa diakses dari HP staf. Selama belum ada VPS/domain tetap, jalankan tunnel
+HTTPS ke server lokal:
+
+```bash
+ngrok http 8787
+```
+
+Lalu set `.env.local`:
+
+```env
+VITE_GOOGLE_DRIVE_UPLOAD_ENDPOINT=https://DOMAIN-NGROK/upload
+GOOGLE_DRIVE_ALLOWED_ORIGIN=https://radiosbl.web.app
+```
+
+Restart `npm run drive:server`, jalankan `npm run drive:status`, lalu build dan
+deploy ulang hosting. Jika ngrok restart dan domain berubah, update env dan
+deploy ulang.
+
+## Endpoint 24 Jam Tanpa Komputer
+
+Jika tidak ingin memakai Firebase Storage, Firebase Functions Blaze, VPS, atau
+komputer lokal, gunakan Google Apps Script Web App.
+
+1. Buka `https://script.google.com`.
+2. Buat project baru.
+3. Salin isi `scripts/google-drive-apps-script.js` ke file `Code.gs`.
+4. Klik `Deploy` > `New deployment` > pilih `Web app`.
+5. `Execute as`: `Me`.
+6. `Who has access`: `Anyone`.
+7. Klik `Deploy`, izinkan akses Google Drive, lalu salin URL Web App.
+8. Isi `.env.local`:
+
+```env
+VITE_GOOGLE_DRIVE_APPS_SCRIPT_ENDPOINT=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
+VITE_GOOGLE_DRIVE_UPLOAD_ENDPOINT=
+```
+
+9. Jalankan pengecekan endpoint:
+
+```bash
+npm run drive:status
+```
+
+Jika muncul `BELUM REDEPLOY: doGet belum ada di deployment Apps Script`, buka
+project Apps Script yang sama, pilih `Deploy` > `Manage deployments`, klik ikon
+edit, pilih `New version`, lalu deploy ulang. URL Web App tetap sama jika
+deployment yang diedit adalah deployment lama.
+
+Redeploy dianggap selesai jika `npm run drive:status` menampilkan:
+
+```txt
+Health Apps Script: OK (2026-05-21-drive-validation-v1)
+```
+
+10. Jalankan build dan deploy hosting ulang:
+
+```bash
+npm run build
+firebase deploy --only hosting --project radiosbl
+```
+
+Mode ini menyimpan file langsung ke Google Drive akun pemilik Apps Script dan
+tidak membutuhkan komputer lokal menyala.
+
+File yang diizinkan pada endpoint Apps Script:
+
+- Maksimal 10 MB.
+- Modul upload: `attendance`, `liputan`, `uploads`, `attendance-healthcheck`.
+- Tipe file: gambar, PDF, TXT, DOC, dan DOCX.
+
 ## Struktur Folder
 
 ```txt
 LPPL-RADIO/
 +-- attendance/
-+-- coverage/
-+-- ob-events/
-+-- streaming/
-+-- archives/
++-- liputan/
++-- uploads/
++-- attendance-healthcheck/
 ```
 
 Server upload akan membuat folder root dan subfolder modul secara otomatis jika
