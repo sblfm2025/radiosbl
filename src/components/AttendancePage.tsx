@@ -19,6 +19,9 @@ import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 
 const officeCenter: GeoPoint = { latitude: -3.8112091495447213, longitude: 119.65144231962896 };
 const officeRadiusMeters = 100;
+const portraitSelfieWidth = 720;
+const portraitSelfieHeight = 960;
+const portraitSelfieAspectRatio = portraitSelfieWidth / portraitSelfieHeight;
 type AttendanceType = "present" | "sick" | "leave" | "out_of_office";
 type LocationPromptMode = "request" | "blocked";
 
@@ -272,9 +275,9 @@ export function AttendancePage({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "user" },
-          width: { ideal: 720 },
-          height: { ideal: 960 },
-          aspectRatio: { ideal: 0.75 }
+          width: { ideal: portraitSelfieWidth },
+          height: { ideal: portraitSelfieHeight },
+          aspectRatio: { ideal: portraitSelfieAspectRatio }
         },
         audio: false
       });
@@ -297,15 +300,39 @@ export function AttendancePage({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
-    // Set canvas dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const videoWidth = video.videoWidth || portraitSelfieWidth;
+    const videoHeight = video.videoHeight || portraitSelfieHeight;
+    const sourceAspectRatio = videoWidth / videoHeight;
+    let sourceWidth = videoWidth;
+    let sourceHeight = videoHeight;
+    let sourceX = 0;
+    let sourceY = 0;
+
+    if (sourceAspectRatio > portraitSelfieAspectRatio) {
+      sourceWidth = Math.round(videoHeight * portraitSelfieAspectRatio);
+      sourceX = Math.round((videoWidth - sourceWidth) / 2);
+    } else if (sourceAspectRatio < portraitSelfieAspectRatio) {
+      sourceHeight = Math.round(videoWidth / portraitSelfieAspectRatio);
+      sourceY = Math.round((videoHeight - sourceHeight) / 2);
+    }
+
+    canvas.width = portraitSelfieWidth;
+    canvas.height = portraitSelfieHeight;
     
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    // Draw current frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      video,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
     
     // Convert to Blob
     canvas.toBlob(async (blob) => {

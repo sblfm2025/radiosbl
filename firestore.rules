@@ -498,7 +498,7 @@ service cloud.firestore {
 
     match /attendanceRecords/{recordId} {
       allow read: if isLeader() || isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId) && validAttendancePayload();
+      allow create: if (isOwner(request.resource.data.userId) || isAdmin()) && validAttendancePayload();
       allow update: if (
         (isLeader() && validAttendancePayload())
         || (

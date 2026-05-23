@@ -1,4 +1,4 @@
-import type { AttendanceRecord, AttendanceSelfieUploadStatus } from "../types/domain";
+import type { AttendanceRecord, AttendanceSelfieUploadStatus, AttendanceStatus } from "../types/domain";
 import { createDocument, listDocuments, queryDocuments, subscribeDocuments, updateDocument } from "./firestore.service";
 import { isWithinRadius, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { shouldUseLocalFallback } from "../lib/env";
@@ -35,6 +35,18 @@ export type AttendanceSelfieUploadEventDetail = {
   selfieDriveFileId: string;
   selfieUploadStatus: AttendanceSelfieUploadStatus;
   selfieUploadError?: string;
+};
+
+export type ManualAttendanceInput = {
+  userId: string;
+  displayName?: string;
+  airName?: string;
+  checkInAt: string;
+  checkOutAt?: string;
+  status: AttendanceStatus;
+  outOfOfficeReason?: string;
+  recordedBy?: string;
+  recordedByName?: string;
 };
 
 type PendingSelfiePayload = {
@@ -213,6 +225,51 @@ async function pendingSelfieToFile(selfie: PendingSelfiePayload): Promise<Upload
 
 export function listLocalAttendanceRecords(): AttendanceRecord[] {
   return readLocalAttendanceRecords();
+}
+
+export async function createManualAttendanceRecord(input: ManualAttendanceInput): Promise<string> {
+  const record: Omit<AttendanceRecord, "id"> = {
+    userId: input.userId,
+    displayName: input.displayName || "",
+    airName: input.airName || "",
+    checkInAt: input.checkInAt,
+    clientTime: new Date().toISOString(),
+    latitude: -3.8112091495447213,
+    longitude: 119.65144231962896,
+    accuracyMeters: 0,
+    distanceToCenter: 0,
+    userAgent: `Manual attendance entry${input.recordedByName ? ` by ${input.recordedByName}` : ""}`,
+    confidenceScore: 100,
+    aiVerificationText: "Input manual oleh admin.",
+    outOfOfficeReason: input.outOfOfficeReason || "",
+    selfieDriveFileId: "manual_entry",
+    selfieUploadStatus: "uploaded",
+    selfieUploadError: "",
+    status: input.status
+  };
+  if (input.checkOutAt) {
+    record.checkOutAt = input.checkOutAt;
+  }
+
+  if (shouldUseLocalFallback()) {
+    const id = `manual-attendance-${input.userId}-${Date.now()}`;
+    writeLocalAttendanceRecord({ id, ...record });
+    return id;
+  }
+
+  return createDocument<Omit<AttendanceRecord, "id">>("attendanceRecords", record);
+}
+
+export async function updateAttendanceRecord(
+  recordId: string,
+  patch: Partial<AttendanceRecord>
+): Promise<void> {
+  if (shouldUseLocalFallback()) {
+    updateLocalAttendanceRecord(recordId, patch);
+    return;
+  }
+
+  return updateDocument("attendanceRecords", recordId, patch);
 }
 
 export type AttendanceSelfieCheckInInput = Omit<

@@ -12445,6 +12445,28 @@ textarea:focus {
   box-shadow: 0 10px 22px rgba(22, 119, 237, 0.18);
 }
 
+.attendance-report-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.attendance-report-manual-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid rgba(22, 119, 237, 0.18);
+  border-radius: 13px;
+  padding: 9px 14px;
+  color: var(--blue);
+  background: rgba(22, 119, 237, 0.08);
+  font-weight: 900;
+}
+
 .attendance-report-loading {
   display: grid;
   gap: 12px;
@@ -13079,6 +13101,98 @@ textarea:focus {
 
 .attendance-report-admin-actions .reject {
   background: #ef4444;
+}
+
+.attendance-report-correction-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.attendance-report-correction-form label,
+.attendance-report-manual-modal label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.attendance-report-correction-form input,
+.attendance-report-correction-form select,
+.attendance-report-correction-form textarea,
+.attendance-report-manual-modal input,
+.attendance-report-manual-modal select,
+.attendance-report-manual-modal textarea {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.attendance-report-correction-form textarea,
+.attendance-report-manual-modal textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.attendance-report-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.attendance-report-modal-layer .attendance-report-backdrop {
+  z-index: 1;
+}
+
+.attendance-report-manual-modal {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 520px);
+  max-height: min(760px, calc(100dvh - 36px));
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
+.attendance-report-manual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.attendance-report-manual-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border: none;
+  border-radius: 14px;
+  color: #ffffff;
+  background: var(--green);
+  font-weight: 950;
+}
+
+.attendance-report-manual-submit:disabled {
+  opacity: 0.68;
 }
 
 .podcast-page {
@@ -18333,10 +18447,13 @@ textarea:focus {
 }
 
 .attendance-camera-preview video {
-  width: 100%;
-  height: 100%;
+  width: min(100vw, calc((100vh - 220px) * 0.75));
+  height: min(calc(100vh - 220px), 133.333vw);
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 3 / 4;
   background: #000000;
-  object-fit: contain;
+  object-fit: cover;
   transform: scaleX(-1); /* Mirror effect for selfie camera */
 }
 

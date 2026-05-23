@@ -339,6 +339,8 @@ export default function App() {
   const scrollMap = useRef<Record<string, number>>({});
   const prevPageRef = useRef<PageKey>("splash");
   const isApplyingHistoryRef = useRef(false);
+  const sessionRef = useRef<AuthSession | null>(null);
+  const lastManualLoginAtRef = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -406,6 +408,17 @@ export default function App() {
     setActivePage(page);
   }, []);
 
+  const enterAuthenticatedArea = useCallback((nextSession: AuthSession) => {
+    lastManualLoginAtRef.current = Date.now();
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+    navigateToPage(getPostLoginPageFromUrl(), { replace: true });
+  }, [navigateToPage]);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
   useEffect(() => {
     const handlePopState = () => {
       const requestedPage = getInitialPageFromUrl();
@@ -459,10 +472,21 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = subscribeToSession((restoredSession) => {
       const requestedPage = getInitialPageFromUrl();
-      setSession(restoredSession);
       if (restoredSession) {
+        sessionRef.current = restoredSession;
+        setSession(restoredSession);
         navigateToPage(getPostLoginPageFromUrl(), { replace: true });
       } else {
+        const isLikelyStaleAuthCallback =
+          sessionRef.current !== null && Date.now() - lastManualLoginAtRef.current < 5000;
+
+        if (isLikelyStaleAuthCallback) {
+          setAuthInitialized(true);
+          return;
+        }
+
+        sessionRef.current = null;
+        setSession(null);
         setActivePage((prev) => {
           const nextPage = requestedPage ? "login" : prev === "splash" ? prev : "login";
           if (nextPage !== "splash") {
@@ -502,10 +526,7 @@ export default function App() {
       case "login":
         return (
           <LoginPage
-            onEnter={(nextSession) => {
-              setSession(nextSession);
-              navigateToPage(getPostLoginPageFromUrl(), { replace: true });
-            }}
+            onEnter={enterAuthenticatedArea}
           />
         );
       case "attendance":
@@ -578,10 +599,7 @@ export default function App() {
           <ProfilePage session={session} onLogout={handleLogout} />
         ) : (
           <LoginPage
-            onEnter={(nextSession) => {
-              setSession(nextSession);
-              navigateToPage(getPostLoginPageFromUrl(), { replace: true });
-            }}
+            onEnter={enterAuthenticatedArea}
           />
         );
       case "menu":
@@ -604,6 +622,7 @@ export default function App() {
     currentAnnouncer,
     currentAnnouncers,
     dashboardData,
+    enterAuthenticatedArea,
     handleLogout,
     attendanceRecords,
     navigateToPage,

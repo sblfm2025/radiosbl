@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   Calendar,
@@ -11,14 +11,21 @@ import {
   MapPin,
   MonitorSmartphone,
   Navigation,
+  Plus,
   RotateCcw,
+  Save,
   Search,
   ShieldAlert,
   Users,
   X,
   XCircle
 } from "lucide-react";
-import { listAttendanceRecords, updateAttendanceStatus } from "../services/attendance.service";
+import {
+  createManualAttendanceRecord,
+  listAttendanceRecords,
+  updateAttendanceRecord,
+  updateAttendanceStatus
+} from "../services/attendance.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import type { AuthSession } from "../services/auth.service";
 import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../types/domain";
@@ -26,6 +33,25 @@ import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../type
 type PeriodMode = "week" | "month" | "year";
 type ReportTab = "summary" | "daily" | "announcers" | "leaves";
 type NoticeState = { type: "success" | "danger"; text: string } | null;
+type ManualAttendanceForm = {
+  userId: string;
+  date: string;
+  checkInTime: string;
+  checkOutTime: string;
+  status: AttendanceRecord["status"];
+  note: string;
+};
+
+const manualStatusOptions: Array<{ value: AttendanceRecord["status"]; label: string }> = [
+  { value: "valid", label: "Diterima / Valid" },
+  { value: "present", label: "Hadir" },
+  { value: "late", label: "Terlambat" },
+  { value: "outside_radius", label: "Luar Radius" },
+  { value: "sick", label: "Sakit" },
+  { value: "leave", label: "Izin" },
+  { value: "needs_review", label: "Butuh Review" },
+  { value: "rejected", label: "Ditolak" }
+];
 
 const STATUS_CONFIG: Record<string, { label: string; tone: string }> = {
   present: { label: "Hadir (Radius)", tone: "green" },
@@ -97,6 +123,28 @@ function toWeekInputValue(date: Date): string {
 
 function toMonthInputValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function toDateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function toTimeInputValue(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function toDateTimeLocalInput(value: TimestampLike | undefined): string {
+  if (!value) return "";
+  const date = toDate(value);
+  return `${toDateInputValue(date)}T${toTimeInputValue(date)}`;
+}
+
+function fromDateAndTimeInput(dateValue: string, timeValue: string): string {
+  return new Date(`${dateValue}T${timeValue || "00:00"}:00`).toISOString();
+}
+
+function fromDateTimeLocalInput(value: string): string | undefined {
+  return value ? new Date(value).toISOString() : undefined;
 }
 
 function getWeekRange(value: string) {
@@ -229,6 +277,17 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   const [activeTab, setActiveTab] = useState<ReportTab>("summary");
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualForm, setManualForm] = useState<ManualAttendanceForm>({
+    userId: "",
+    date: toDateInputValue(today),
+    checkInTime: toTimeInputValue(today),
+    checkOutTime: "",
+    status: "valid",
+    note: ""
+  });
+  const [savingManual, setSavingManual] = useState(false);
+  const canManageAttendance = Boolean(session && ["super_admin", "admin"].includes(session.user.role));
 
   async function handleReviewStatus(recordId: string, newStatus: AttendanceRecord["status"]) {
     try {
@@ -242,6 +301,80 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
     } catch (err) {
       setNotice({ type: "danger", text: "Gagal memperbarui status. Coba ulangi beberapa saat lagi." });
       console.error(err);
+    }
+  }
+
+  async function handleRecordUpdate(recordId: string, patch: Partial<AttendanceRecord>) {
+    try {
+      await updateAttendanceRecord(recordId, patch);
+      setRecords((prev) => prev.map((record) => (record.id === recordId ? { ...record, ...patch } : record)));
+      setSelectedRecord((prev) => (prev?.id === recordId ? { ...prev, ...patch } : prev));
+      setNotice({ type: "success", text: "Koreksi absensi berhasil disimpan." });
+    } catch (err) {
+      setNotice({ type: "danger", text: "Gagal menyimpan koreksi absensi." });
+      console.error(err);
+    }
+  }
+
+  async function handleManualSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const user = users.find((item) => item.id === manualForm.userId);
+
+    if (!user) {
+      setNotice({ type: "danger", text: "Pilih staf terlebih dahulu." });
+      return;
+    }
+
+    try {
+      setSavingManual(true);
+      const checkInAt = fromDateAndTimeInput(manualForm.date, manualForm.checkInTime);
+      const checkOutAt = manualForm.checkOutTime
+        ? fromDateAndTimeInput(manualForm.date, manualForm.checkOutTime)
+        : undefined;
+      const notePrefix = `Input manual oleh ${session?.user.displayName || "Admin"}`;
+      const note = manualForm.note.trim() ? `${notePrefix}: ${manualForm.note.trim()}` : notePrefix;
+      const id = await createManualAttendanceRecord({
+        userId: user.id,
+        displayName: user.displayName,
+        airName: user.airName,
+        checkInAt,
+        checkOutAt,
+        status: manualForm.status,
+        outOfOfficeReason: note,
+        recordedBy: session?.user.id,
+        recordedByName: session?.user.displayName
+      });
+      const nextRecord: AttendanceRecord = {
+        id,
+        userId: user.id,
+        displayName: user.displayName,
+        airName: user.airName,
+        checkInAt,
+        checkOutAt,
+        clientTime: new Date().toISOString(),
+        latitude: -3.8112091495447213,
+        longitude: 119.65144231962896,
+        accuracyMeters: 0,
+        distanceToCenter: 0,
+        userAgent: `Manual attendance entry by ${session?.user.displayName || "Admin"}`,
+        confidenceScore: 100,
+        aiVerificationText: "Input manual oleh admin.",
+        outOfOfficeReason: note,
+        selfieDriveFileId: "manual_entry",
+        selfieUploadStatus: "uploaded",
+        selfieUploadError: "",
+        status: manualForm.status
+      };
+
+      setRecords((prev) => [nextRecord, ...prev]);
+      setShowManualForm(false);
+      setManualForm((current) => ({ ...current, userId: "", checkOutTime: "", note: "" }));
+      setNotice({ type: "success", text: "Absensi manual berhasil ditambahkan." });
+    } catch (err) {
+      setNotice({ type: "danger", text: "Gagal menambahkan absensi manual." });
+      console.error(err);
+    } finally {
+      setSavingManual(false);
     }
   }
 
@@ -625,7 +758,16 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
             <PanelHeader
               title="Daftar Kehadiran"
               description="Klik baris untuk melihat foto selfie dan detail absensi."
-              action={<ExportButton onClick={handleExportCsv} />}
+              action={(
+                <div className="attendance-report-head-actions">
+                  {canManageAttendance && (
+                    <button type="button" className="attendance-report-manual-button" onClick={() => setShowManualForm(true)}>
+                      <Plus size={18} /> Input Manual
+                    </button>
+                  )}
+                  <ExportButton onClick={handleExportCsv} />
+                </div>
+              )}
             />
 
             {loading ? (
@@ -801,6 +943,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                 user={userById.get(selectedRecord.userId)}
                 session={session}
                 onReview={handleReviewStatus}
+                onUpdate={handleRecordUpdate}
               />
             </div>
           </aside>
@@ -811,6 +954,94 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
             aria-label="Tutup detail absensi"
           />
         </>
+      )}
+
+      {showManualForm && (
+        <div className="attendance-report-modal-layer">
+          <button
+            type="button"
+            className="attendance-report-backdrop"
+            onClick={() => setShowManualForm(false)}
+            aria-label="Tutup input manual"
+          />
+          <form className="attendance-report-manual-modal" onSubmit={handleManualSubmit}>
+            <div className="attendance-report-drawer-head">
+              <h3>Input Absensi Manual</h3>
+              <button type="button" onClick={() => setShowManualForm(false)} aria-label="Tutup input manual">
+                <X size={20} />
+              </button>
+            </div>
+
+            <label>
+              Staf
+              <select
+                value={manualForm.userId}
+                onChange={(event) => setManualForm((current) => ({ ...current, userId: event.target.value }))}
+                required
+              >
+                <option value="">Pilih staf</option>
+                {users.filter((user) => user.role !== "public").map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName} {user.airName ? `- ${user.airName}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="attendance-report-manual-grid">
+              <label>
+                Tanggal
+                <input
+                  type="date"
+                  value={manualForm.date}
+                  onChange={(event) => setManualForm((current) => ({ ...current, date: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Jam Masuk
+                <input
+                  type="time"
+                  value={manualForm.checkInTime}
+                  onChange={(event) => setManualForm((current) => ({ ...current, checkInTime: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Jam Pulang
+                <input
+                  type="time"
+                  value={manualForm.checkOutTime}
+                  onChange={(event) => setManualForm((current) => ({ ...current, checkOutTime: event.target.value }))}
+                />
+              </label>
+              <label>
+                Status
+                <select
+                  value={manualForm.status}
+                  onChange={(event) => setManualForm((current) => ({ ...current, status: event.target.value as AttendanceRecord["status"] }))}
+                >
+                  {manualStatusOptions.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label>
+              Catatan Admin
+              <textarea
+                value={manualForm.note}
+                onChange={(event) => setManualForm((current) => ({ ...current, note: event.target.value }))}
+                placeholder="Contoh: Absensi ditambahkan karena kamera/GPS bermasalah."
+              />
+            </label>
+
+            <button type="submit" className="attendance-report-manual-submit" disabled={savingManual}>
+              <Save size={18} /> {savingManual ? "Menyimpan..." : "Simpan Absensi"}
+            </button>
+          </form>
+        </div>
       )}
     </div>
   );
@@ -888,12 +1119,14 @@ function SidePanelDetail({
   record,
   user,
   session,
-  onReview
+  onReview,
+  onUpdate
 }: {
   record: AttendanceRecord;
   user?: AppUser;
   session: AuthSession | null;
   onReview: (id: string, status: AttendanceRecord["status"]) => Promise<void> | void;
+  onUpdate: (id: string, patch: Partial<AttendanceRecord>) => Promise<void> | void;
 }) {
   const checkInAt = toDate(record.checkInAt);
   const mapUrl = `https://www.google.com/maps?q=${record.latitude},${record.longitude}`;
@@ -909,6 +1142,31 @@ function SidePanelDetail({
       : record.selfieUploadStatus === "failed"
         ? "Upload bukti selfie gagal dan perlu ditinjau."
         : "";
+  const [editStatus, setEditStatus] = useState<AttendanceRecord["status"]>(record.status);
+  const [editCheckInAt, setEditCheckInAt] = useState(toDateTimeLocalInput(record.checkInAt));
+  const [editCheckOutAt, setEditCheckOutAt] = useState(toDateTimeLocalInput(record.checkOutAt));
+  const [editNote, setEditNote] = useState(record.outOfOfficeReason || "");
+
+  useEffect(() => {
+    setEditStatus(record.status);
+    setEditCheckInAt(toDateTimeLocalInput(record.checkInAt));
+    setEditCheckOutAt(toDateTimeLocalInput(record.checkOutAt));
+    setEditNote(record.outOfOfficeReason || "");
+  }, [record]);
+
+  function handleCorrectionSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const patch: Partial<AttendanceRecord> = {
+      status: editStatus,
+      checkInAt: fromDateTimeLocalInput(editCheckInAt) || record.checkInAt,
+      outOfOfficeReason: editNote
+    };
+    const nextCheckOutAt = fromDateTimeLocalInput(editCheckOutAt);
+    if (nextCheckOutAt) {
+      patch.checkOutAt = nextCheckOutAt;
+    }
+    void onUpdate(record.id, patch);
+  }
 
   return (
     <div className="attendance-report-detail">
@@ -982,7 +1240,7 @@ function SidePanelDetail({
         <p className="attendance-report-device">{record.userAgent || "Tidak terdeteksi"}</p>
       </DetailSection>
 
-      {isAdmin && record.status === "needs_review" && (
+      {isAdmin && (
         <div className="attendance-report-admin-actions">
           <h5><ShieldAlert size={16} /> Aksi Validasi Admin</h5>
           <div>
@@ -993,6 +1251,31 @@ function SidePanelDetail({
               <XCircle size={18} /> Tolak Absen
             </button>
           </div>
+          <form className="attendance-report-correction-form" onSubmit={handleCorrectionSubmit}>
+            <label>
+              Status
+              <select value={editStatus} onChange={(event) => setEditStatus(event.target.value as AttendanceRecord["status"])}>
+                {manualStatusOptions.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Masuk
+              <input type="datetime-local" value={editCheckInAt} onChange={(event) => setEditCheckInAt(event.target.value)} />
+            </label>
+            <label>
+              Pulang
+              <input type="datetime-local" value={editCheckOutAt} onChange={(event) => setEditCheckOutAt(event.target.value)} />
+            </label>
+            <label>
+              Catatan
+              <textarea value={editNote} onChange={(event) => setEditNote(event.target.value)} />
+            </label>
+            <button type="submit" className="approve">
+              <Save size={18} /> Simpan Koreksi
+            </button>
+          </form>
         </div>
       )}
     </div>
