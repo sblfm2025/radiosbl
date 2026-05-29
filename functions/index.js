@@ -467,50 +467,49 @@ async function generateGeminiDraft(body) {
     };
   }
 
-  // Pilih satu kunci dan satu model secara acak untuk membagi beban
-  const apiKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
-  const model = models[0] || "gemini-2.0-flash"; // Selalu prioritaskan model utama
+  const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+  const model = models[0] || "gemini-2.5-flash";
 
-  const payload = {
-    contents: [
-      {
-        parts: [{ text: [context, prompt].filter(Boolean).join("\n\n") }]
-      }
-    ]
-  };
+  for (const [index, apiKey] of shuffledKeys.entries()) {
+    try {
+      const payload = {
+        contents: [
+          {
+            parts: [{ text: [context, prompt].filter(Boolean).join("\n\n") }]
+          }
+        ]
+      };
 
-  try {
-    const { response, data } = await fetchJsonWithTimeout(
-      `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }
-    );
+      const { response, data } = await fetchJsonWithTimeout(
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
 
-    if (!response.ok) {
-      // Jika terkena limit (429), jangan coba lagi, langsung beri tahu user
-      if (response.status === 429) {
-        throw new Error("Kuota API Gemini sedang penuh (Limit Harian). Silakan coba lagi nanti.");
+      if (!response.ok) {
+        console.error(`[Gemini Draft] Kunci ke-${index + 1} Gagal (${response.status}):`, data.error?.message || "Error");
+        continue; // Lanjut ke kunci berikutnya jika gagal (seperti 403 atau 429)
       }
-      throw new Error(data.error?.message || `Gemini Error: ${response.status}`);
+
+      const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n") || "";
+
+      return {
+        model,
+        text: text || "Gemini merespons, tetapi tidak mengembalikan teks."
+      };
+    } catch (error) {
+      console.error(`[Gemini Draft] Error pada kunci ke-${index + 1}:`, error instanceof Error ? error.message : "Request gagal");
     }
-
-    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n") || "";
-
-    return {
-      model,
-      text: text || "Gemini merespons, tetapi tidak mengembalikan teks."
-    };
-  } catch (error) {
-    // Jika gagal secara teknis, berikan fallback demo agar aplikasi tetap berjalan
-    return {
-      demo: true,
-      warning: error instanceof Error ? error.message : "Terjadi gangguan koneksi ke AI.",
-      text: `[Demo Mode] Hasil draf untuk: ${prompt.substring(0, 50)}...`
-    };
   }
+
+  return {
+    demo: true,
+    warning: "Semua kunci Gemini sedang tidak dapat digunakan (Limit, Block, atau 403).",
+    text: `[Demo Mode] Hasil draf untuk: ${prompt.substring(0, 50)}...`
+  };
 }
 
 async function generateOpenAiScript(body) {

@@ -77,6 +77,7 @@ export async function generateProgramScript(
   }
 
   const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
+  const proxyEndpoint = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || "https://asia-southeast1-radiosbl.cloudfunctions.net/notificationProxy/gemini/draft";
 
   if (!keysString) {
     console.warn("VITE_GEMINI_API_KEYS tidak ditemukan. Menggunakan naskah demo.");
@@ -87,11 +88,37 @@ export async function generateProgramScript(
     };
   }
 
+  const prompt = buildGeminiPrompt(request);
+
+  if (proxyEndpoint) {
+    try {
+      const response = await fetch(proxyEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal memanggil proxy.");
+      }
+
+      return {
+        provider: "gemini",
+        demo: !!data.demo,
+        warning: data.warning,
+        text: data.text || buildDemoScript(request)
+      };
+    } catch (error) {
+      console.error("Gagal menggunakan proxy, mencoba direct call:", error);
+    }
+  }
+
   try {
     const genAI = getGenAIClient();
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = buildGeminiPrompt(request);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -106,7 +133,7 @@ export async function generateProgramScript(
       text: text
     };
   } catch (error) {
-    console.error("Kesalahan saat memanggil Gemini API:", error);
+    console.error("Kesalahan saat memanggil Gemini API secara langsung:", error);
     return {
       demo: true,
       provider: "demo",
