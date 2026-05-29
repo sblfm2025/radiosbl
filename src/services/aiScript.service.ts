@@ -50,7 +50,7 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
     "",
     "===== ATURAN PENULISAN =====",
     "ATURAN MUTLAK: JANGAN gunakan kalimat basa-basi pengantar (seperti 'Tentu, ini naskahnya'). JANGAN mencetak ulang Header/Metadata (seperti Judul Program, Nama Penyiar, Hari, Jam, Durasi).",
-    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang berita palsu. Jika butuh data riil seperti nomor WhatsApp interaksi resmi Radio SBL, gunakan selalu nomor \"0851-2256-1992\" (jangan gunakan placeholder untuk nomor WA). Untuk data dinamis lainnya (seperti judul lagu), tulis placeholder dalam kurung siku yang mudah diisi penyiar.",
+    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang berita palsu. Jika butuh data riil seperti nomor WhatsApp interaksi resmi Radio SBL, gunakan selalu nomor \"0851-2256-1992\" (jangan gunakan placeholder untuk nomor WA). JANGAN gunakan placeholder generic untuk lagu (seperti \"[Judul Lagu]\"). Rekomendasikan lagu nyata yang populer dan relevan untuk diputar di bagian [CUE LAGU] atau sela siaran, yang disesuaikan secara cerdas dengan nama program, deskripsi program, tone, dan target audiens (misal: lagu pop/indie/Gen-Z yang sedang viral untuk segmen muda, lagu hits nostalgia 80an/90an untuk segmen retro/dewasa, atau lagu daerah yang selaras). Tuliskan rekomendasi ini dalam format yang rapi seperti [CUE LAGU: Judul Lagu - Penyanyi].",
     "",
     `[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:`,
     `Program: ${request.programTitle}`,
