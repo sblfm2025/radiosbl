@@ -55,7 +55,7 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
     `[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:`,
     `Program: ${request.programTitle}`,
     `Hari/Jam: ${request.day}, ${request.scheduleTime}`,
-    `Penyiar aktif: Kak ${request.announcerName || "Belum terdeteksi"}`,
+    `Penyiar aktif: **${request.announcerName || "Belum terdeteksi"}**`,
     `Durasi target: ${request.durationMinutes} menit`,
     `Gaya siaran: ${request.tone}`,
     `Deskripsi program: ${request.description || "-"}`,
