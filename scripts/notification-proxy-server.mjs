@@ -310,7 +310,8 @@ async function generateGeminiDraft(body) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
-        }
+        },
+        5000
       );
 
       if (!response.ok) {
@@ -482,7 +483,8 @@ ${text}
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
-        }
+        },
+        5000
       );
 
       if (!response.ok) {
