@@ -52,6 +52,31 @@ export type DriveFile = {
 
 export type AttendanceStatus = "present" | "late" | "outside_radius" | "valid" | "needs_review" | "rejected" | "sick" | "leave";
 export type AttendanceSelfieUploadStatus = "pending" | "uploaded" | "failed";
+export type FaceProfileStatus = "not_enrolled" | "pending_review" | "active" | "needs_update" | "disabled";
+export type FaceMatchStatus =
+  | "matched_candidate"
+  | "review_candidate"
+  | "mismatch_candidate"
+  | "not_enrolled"
+  | "disabled"
+  | "unavailable";
+export type FaceRecognitionMode = "observe_only" | "review";
+export type FaceSpoofCheckStatus = "passed" | "needs_review" | "unavailable";
+
+export type FaceProfile = {
+  id: string;
+  enrolled: boolean;
+  status: FaceProfileStatus;
+  model: "face-api.js" | string;
+  modelVersion: string;
+  descriptorCount: number;
+  descriptors: number[][];
+  referenceDriveFileIds?: string[];
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+  approvedBy?: string;
+  approvedAt?: TimestampLike;
+};
 
 export type AttendanceRecord = {
   id: string;
@@ -72,6 +97,19 @@ export type AttendanceRecord = {
   selfieDriveFileId: string;
   selfieUploadStatus?: AttendanceSelfieUploadStatus;
   selfieUploadError?: string;
+  faceRecognitionUsed?: boolean;
+  faceMatchDistance?: number;
+  faceMatchStatus?: FaceMatchStatus;
+  faceRecognitionMode?: FaceRecognitionMode;
+  faceRecognitionVersion?: string;
+  faceRecognitionError?: string;
+  faceEnrollmentStatus?: FaceProfileStatus;
+  faceReferenceCount?: number;
+  faceModelVersion?: string;
+  faceSpoofCheckUsed?: boolean;
+  faceSpoofCheckStatus?: FaceSpoofCheckStatus;
+  faceMovementScore?: number;
+  faceSpoofCheckError?: string;
   status: AttendanceStatus;
 };
 

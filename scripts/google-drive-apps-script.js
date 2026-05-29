@@ -17,11 +17,11 @@
  * 5. Deploy. Keep using the same Web app URL.
  */
 
-const SCRIPT_VERSION = "2026-05-21-drive-validation-v1";
+const SCRIPT_VERSION = "2026-05-29-face-profiles-v1";
 const ROOT_FOLDER_NAME = "LPPL-RADIO";
 const SHARE_WITH_LINK = false;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_MODULES = ["attendance", "liputan", "uploads", "attendance-healthcheck"];
+const ALLOWED_MODULES = ["attendance", "liputan", "uploads", "attendance-healthcheck", "face-profiles"];
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",

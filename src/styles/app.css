@@ -1703,6 +1703,117 @@ textarea:focus {
   color: #ff3b3b;
 }
 
+.users-face-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: #f8f9fc;
+}
+
+.users-face-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.users-face-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 0.98rem;
+  font-weight: 850;
+}
+
+.users-face-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.users-face-status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #eef2f7;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.users-face-status.active {
+  background: #e7f5ef;
+  color: #11a36a;
+}
+
+.users-face-status.pending_review,
+.users-face-status.needs_update {
+  background: #fff6db;
+  color: #a15c00;
+}
+
+.users-face-status.disabled {
+  background: #fff0f0;
+  color: #d92d20;
+}
+
+.users-face-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.users-face-meta span {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.users-face-meta strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.users-face-upload {
+  display: grid;
+  gap: 7px;
+}
+
+.users-face-upload span {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.users-face-upload input {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed rgba(22, 101, 216, 0.35);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.users-face-upload small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .users-edit-form {
   display: flex;
   flex-direction: column;
@@ -12271,6 +12382,10 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.attendance-report-stats.face {
+  margin-top: 12px;
 }
 
 .attendance-report-stat {

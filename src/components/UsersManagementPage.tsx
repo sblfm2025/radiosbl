@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
+  Camera,
   CheckCircle,
   ChevronRight,
   Eye,
@@ -19,8 +20,13 @@ import {
 import { sendPasswordResetEmail } from "firebase/auth";
 import { listUserProfiles, upsertUserProfile, syncSblStaff } from "../services/userProfile.service";
 import { subscribeAttendanceRecords } from "../services/attendance.service";
+import {
+  enrollFaceProfile,
+  readFaceProfile,
+  updateFaceProfileStatus
+} from "../services/faceRecognition.service";
 import { getRoleLabel } from "../utils/rbac";
-import type { AppUser, UserRole, AttendanceRecord } from "../types/domain";
+import type { AppUser, UserRole, AttendanceRecord, FaceProfile, FaceProfileStatus } from "../types/domain";
 import { getFirebaseAuth } from "../lib/firebase";
 
 const AVAILABLE_ROLES: UserRole[] = [
@@ -57,6 +63,11 @@ export function UsersManagementPage() {
   const [syncing, setSyncing] = useState(false);
   const [resettingPwd, setResettingPwd] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [faceProfile, setFaceProfile] = useState<FaceProfile | null>(null);
+  const [faceProfileLoading, setFaceProfileLoading] = useState(false);
+  const [faceEnrollmentFiles, setFaceEnrollmentFiles] = useState<File[]>([]);
+  const [faceEnrollmentSaving, setFaceEnrollmentSaving] = useState(false);
+  const [faceEnrollmentError, setFaceEnrollmentError] = useState("");
 
   const showNotice = useCallback((text: string, tone: Notice["tone"] = "success", timeout = 3200) => {
     setNotice({ text, tone });
@@ -120,6 +131,9 @@ export function UsersManagementPage() {
   function openUserDetail(user: AppUser) {
     setSelectedUser(user);
     setEditError("");
+    setFaceProfile(null);
+    setFaceEnrollmentFiles([]);
+    setFaceEnrollmentError("");
     setEditUserForm({
       displayName: user.displayName,
       email: user.email,
@@ -127,6 +141,11 @@ export function UsersManagementPage() {
       airName: user.airName,
       whatsapp: user.whatsapp
     });
+    setFaceProfileLoading(true);
+    readFaceProfile(user.id)
+      .then(setFaceProfile)
+      .catch(() => setFaceProfile(null))
+      .finally(() => setFaceProfileLoading(false));
   }
 
   function closeUserDetail() {
@@ -134,6 +153,9 @@ export function UsersManagementPage() {
     setEditUserForm({});
     setEditSaving(false);
     setEditError("");
+    setFaceProfile(null);
+    setFaceEnrollmentFiles([]);
+    setFaceEnrollmentError("");
   }
 
   function handleEditFormChange(field: keyof Partial<AppUser>, value: string) {
@@ -212,6 +234,49 @@ export function UsersManagementPage() {
       return;
     }
     await sendResetPassword(action.email);
+  }
+
+  function handleFaceEnrollmentFiles(event: ChangeEvent<HTMLInputElement>) {
+    setFaceEnrollmentError("");
+    const nextFiles = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
+    setFaceEnrollmentFiles(nextFiles.slice(0, 8));
+  }
+
+  async function handleEnrollFaceProfile() {
+    if (!selectedUser) return;
+
+    setFaceEnrollmentSaving(true);
+    setFaceEnrollmentError("");
+    try {
+      const profile = await enrollFaceProfile({
+        userId: selectedUser.id,
+        files: faceEnrollmentFiles,
+        approvedBy: getFirebaseAuth().currentUser?.uid || "admin"
+      });
+      setFaceProfile(profile);
+      setFaceEnrollmentFiles([]);
+      showNotice("Profil wajah berhasil dienroll dan aktif.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal membuat profil wajah.";
+      setFaceEnrollmentError(getFaceEnrollmentErrorLabel(message));
+    } finally {
+      setFaceEnrollmentSaving(false);
+    }
+  }
+
+  async function handleUpdateFaceStatus(status: FaceProfileStatus) {
+    if (!selectedUser) return;
+    setFaceEnrollmentSaving(true);
+    setFaceEnrollmentError("");
+    try {
+      await updateFaceProfileStatus(selectedUser.id, status, getFirebaseAuth().currentUser?.uid || "admin");
+      setFaceProfile((current) => current ? { ...current, status, enrolled: status !== "not_enrolled" } : current);
+      showNotice("Status profil wajah berhasil diperbarui.");
+    } catch (err) {
+      setFaceEnrollmentError(err instanceof Error ? err.message : "Gagal memperbarui status profil wajah.");
+    } finally {
+      setFaceEnrollmentSaving(false);
+    }
   }
 
   function handleExportCsv() {
@@ -511,6 +576,58 @@ export function UsersManagementPage() {
                 <Shield size={18} /> Profil & Keamanan
               </h3>
 
+              <div className="users-face-panel">
+                <div className="users-face-head">
+                  <div>
+                    <h3><Camera size={18} /> Profil Wajah</h3>
+                    <p>{getFaceProfileDescription(faceProfile, faceProfileLoading)}</p>
+                  </div>
+                  <span className={`users-face-status ${faceProfile?.status || "not_enrolled"}`}>
+                    {getFaceProfileStatusLabel(faceProfile?.status)}
+                  </span>
+                </div>
+
+                <div className="users-face-meta">
+                  <span><strong>{faceProfile?.descriptorCount || 0}</strong>Referensi</span>
+                  <span><strong>{faceProfile?.referenceDriveFileIds?.length || 0}</strong>Arsip Drive</span>
+                  <span><strong>{faceProfile?.modelVersion || "-"}</strong>Model</span>
+                  <span><strong>{formatFaceProfileDate(faceProfile?.approvedAt)}</strong>Disetujui</span>
+                </div>
+
+                <label className="users-face-upload">
+                  <span>Pilih minimal 5 foto referensi</span>
+                  <input type="file" accept="image/*" multiple onChange={handleFaceEnrollmentFiles} />
+                  <small>{faceEnrollmentFiles.length > 0 ? `${faceEnrollmentFiles.length} foto siap diproses.` : "Gunakan variasi depan, kiri, kanan, cahaya terang, dan ekspresi natural."}</small>
+                </label>
+
+                {faceEnrollmentError && <div className="users-form-error">{faceEnrollmentError}</div>}
+
+                <div className="users-inline-actions">
+                  <button
+                    type="button"
+                    onClick={handleEnrollFaceProfile}
+                    disabled={faceEnrollmentSaving || faceEnrollmentFiles.length < 5}
+                  >
+                    <Camera size={16} /> {faceEnrollmentSaving ? "Memproses..." : "Enroll / Update"}
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => handleUpdateFaceStatus("disabled")}
+                    disabled={faceEnrollmentSaving || !faceProfile}
+                  >
+                    <XCircle size={16} /> Nonaktifkan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateFaceStatus("needs_update")}
+                    disabled={faceEnrollmentSaving || !faceProfile}
+                  >
+                    <RefreshCcw size={16} /> Minta Foto Ulang
+                  </button>
+                </div>
+              </div>
+
               <form onSubmit={handleSaveUserProfile} className="users-edit-form">
                 <label>
                   <span>Nama Lengkap</span>
@@ -659,4 +776,65 @@ function getConfirmationCopy(pendingConfirmation: PendingConfirmation | null) {
     description: `Tautan reset kata sandi akan dikirim ke ${pendingConfirmation.email}.`,
     confirmLabel: "Kirim Email"
   };
+}
+
+function getFaceProfileStatusLabel(status?: FaceProfileStatus): string {
+  switch (status) {
+    case "active":
+      return "Aktif";
+    case "pending_review":
+      return "Review";
+    case "needs_update":
+      return "Perlu Update";
+    case "disabled":
+      return "Nonaktif";
+    default:
+      return "Belum Enroll";
+  }
+}
+
+function getFaceProfileDescription(profile: FaceProfile | null, loading: boolean): string {
+  if (loading) {
+    return "Memuat status profil wajah...";
+  }
+  if (!profile) {
+    return "Belum ada descriptor wajah resmi untuk user ini.";
+  }
+  if (profile.status === "active") {
+    return "Profil wajah aktif untuk observasi face recognition absensi.";
+  }
+  if (profile.status === "needs_update") {
+    return "User perlu mengambil ulang foto referensi.";
+  }
+  if (profile.status === "disabled") {
+    return "Face recognition user ini sedang dinonaktifkan.";
+  }
+  return "Profil wajah menunggu validasi admin.";
+}
+
+function getFaceEnrollmentErrorLabel(message: string): string {
+  if (message.includes("NO_FACE_DETECTED")) {
+    return "Salah satu foto tidak memiliki wajah yang terdeteksi jelas.";
+  }
+  if (message.includes("MULTIPLE_FACES_DETECTED")) {
+    return "Salah satu foto memiliki lebih dari satu wajah.";
+  }
+  if (message.includes("BROWSER_NOT_SUPPORTED")) {
+    return "Browser ini belum mendukung pemrosesan face recognition.";
+  }
+  return message;
+}
+
+function formatFaceProfileDate(value: FaceProfile["approvedAt"]): string {
+  if (!value) {
+    return "-";
+  }
+  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate().toLocaleDateString("id-ID");
+  }
+  if (typeof value === "object" && "seconds" in value && typeof value.seconds === "number") {
+    return new Date(value.seconds * 1000).toLocaleDateString("id-ID");
+  }
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("id-ID");
 }

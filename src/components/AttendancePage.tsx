@@ -15,6 +15,12 @@ import {
 import type { AttendanceRecord } from "../types/domain";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import { analyzeAttendancePhoto } from "../services/gemini.service";
+import {
+  analyzeAttendanceFace,
+  analyzeFaceSpoofMovement,
+  type FaceRecognitionResult,
+  type FaceSpoofCheckResult
+} from "../services/faceRecognition.service";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 
 const officeCenter: GeoPoint = { latitude: -3.8112091495447213, longitude: 119.65144231962896 };
@@ -68,6 +74,40 @@ function getSelfieStatusLabel(status: "idle" | "pending" | "uploaded" | "failed"
   }
 }
 
+function getFaceRecognitionLabel(result?: FaceRecognitionResult | null): string {
+  if (!result) {
+    return "Pencocokan wajah siap observasi.";
+  }
+
+  switch (result.faceMatchStatus) {
+    case "matched_candidate":
+      return `Kandidat cocok${typeof result.faceMatchDistance === "number" ? `, distance ${result.faceMatchDistance}` : ""}.`;
+    case "review_candidate":
+      return `Perlu review${typeof result.faceMatchDistance === "number" ? `, distance ${result.faceMatchDistance}` : ""}.`;
+    case "mismatch_candidate":
+      return `Tidak cocok kandidat${typeof result.faceMatchDistance === "number" ? `, distance ${result.faceMatchDistance}` : ""}.`;
+    case "not_enrolled":
+      return "Profil wajah belum aktif.";
+    case "disabled":
+      return "Profil wajah dinonaktifkan.";
+    default:
+      return result.faceRecognitionError || "Pencocokan wajah belum tersedia.";
+  }
+}
+
+function getSpoofCheckLabel(result?: FaceSpoofCheckResult | null): string {
+  if (!result) {
+    return "Gerakan wajah akan dicek dari kamera langsung.";
+  }
+  if (result.faceSpoofCheckStatus === "passed") {
+    return `Gerakan wajah terdeteksi${typeof result.faceMovementScore === "number" ? `, skor ${result.faceMovementScore}` : ""}.`;
+  }
+  if (result.faceSpoofCheckStatus === "needs_review") {
+    return `Gerakan minim, perlu review${typeof result.faceMovementScore === "number" ? `, skor ${result.faceMovementScore}` : ""}.`;
+  }
+  return result.faceSpoofCheckError || "Cek gerakan wajah belum tersedia.";
+}
+
 export function AttendancePage({
   session,
   onAttendanceRecorded
@@ -84,6 +124,8 @@ export function AttendancePage({
   const [selfieUploadStatus, setSelfieUploadStatus] = useState<"idle" | "pending" | "uploaded" | "failed">("idle");
   const [uploadNotice, setUploadNotice] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<{ isValid: boolean; description: string; greeting?: string } | null>(null);
+  const [faceRecognition, setFaceRecognition] = useState<FaceRecognitionResult | null>(null);
+  const [faceSpoofCheck, setFaceSpoofCheck] = useState<FaceSpoofCheckResult | null>(null);
   
   const [attendanceType, setAttendanceType] = useState<AttendanceType>("present");
   const [outOfOfficeReason, setOutOfOfficeReason] = useState("");
@@ -294,12 +336,13 @@ export function AttendancePage({
     }
   }
 
-  async function captureAndSubmit() {
-    if (!videoRef.current || !canvasRef.current) return;
-    
+  function captureVideoFrameBlob(): Promise<Blob | null> {
+    if (!videoRef.current || !canvasRef.current) {
+      return Promise.resolve(null);
+    }
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    
     const videoWidth = video.videoWidth || portraitSelfieWidth;
     const videoHeight = video.videoHeight || portraitSelfieHeight;
     const sourceAspectRatio = videoWidth / videoHeight;
@@ -318,10 +361,12 @@ export function AttendancePage({
 
     canvas.width = portraitSelfieWidth;
     canvas.height = portraitSelfieHeight;
-    
+
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
+    if (!ctx) {
+      return Promise.resolve(null);
+    }
+
     ctx.drawImage(
       video,
       sourceX,
@@ -333,24 +378,35 @@ export function AttendancePage({
       canvas.width,
       canvas.height
     );
-    
-    // Convert to Blob
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        setFileError("Gagal mengambil gambar dari kamera.");
-        return;
-      }
-      
-      const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: "image/jpeg" });
-      stopCamera();
-      setIsCameraOpen(false);
-      
-      // Proceed with submit
-      await processCheckIn(file);
-    }, "image/jpeg", 0.85);
+
+    return new Promise((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.85);
+    });
   }
 
-  async function processCheckIn(selfieFile: File) {
+  async function captureAndSubmit() {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const firstBlob = await captureVideoFrameBlob();
+    await new Promise((resolve) => window.setTimeout(resolve, 650));
+    const finalBlob = await captureVideoFrameBlob();
+
+    if (!finalBlob) {
+      setFileError("Gagal mengambil gambar dari kamera.");
+      return;
+    }
+
+    const file = new File([finalBlob], `selfie-${Date.now()}.jpg`, { type: "image/jpeg" });
+    const firstFrameFile = firstBlob
+      ? new File([firstBlob], `selfie-frame-awal-${Date.now()}.jpg`, { type: "image/jpeg" })
+      : undefined;
+    stopCamera();
+    setIsCameraOpen(false);
+
+    await processCheckIn(file, firstFrameFile);
+  }
+
+  async function processCheckIn(selfieFile: File, firstFrameFile?: File) {
     setRecordStatus("");
 
     const validation = validateFile(selfieFile, moduleFileRules.attendance);
@@ -362,7 +418,16 @@ export function AttendancePage({
     try {
       setChecking(true);
       setFileError("");
-      
+
+      const spoofResult = firstFrameFile
+        ? await analyzeFaceSpoofMovement(firstFrameFile, selfieFile)
+        : {
+            faceSpoofCheckUsed: false,
+            faceSpoofCheckStatus: "unavailable" as const,
+            faceSpoofCheckError: "FIRST_FRAME_NOT_CAPTURED"
+          };
+      setFaceSpoofCheck(spoofResult);
+
       // Step 1: Geolocation & Info Inisialisasi
       const currentPosition = await getCurrentPosition();
       setPosition(currentPosition);
@@ -374,7 +439,7 @@ export function AttendancePage({
         session?.user.airName ||
         session?.user.announcerNames?.[0] ||
         findAnnouncerProfile(displayName)?.airName;
-      
+
       const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType)
         .catch((error) => {
           const message = error instanceof Error ? error.message : String(error);
@@ -398,11 +463,14 @@ export function AttendancePage({
       }
 
       // Step 3: Schedule Sync & Delay Logic
+      const faceResult = await analyzeAttendanceFace(selfieFile, userId);
+      setFaceRecognition(faceResult);
+
       const dist = distanceInMeters(currentPosition, officeCenter);
       if (dist <= officeRadiusMeters) {
         const isCurrentProgramActive = currentSlot.title !== "Playlist" && currentSlot.title !== "Offline";
         if (isCurrentProgramActive) {
-          const isMyTurn = currentSlot.announcer.toLowerCase().includes(displayName.toLowerCase()) || 
+          const isMyTurn = currentSlot.announcer.toLowerCase().includes(displayName.toLowerCase()) ||
                            (airName && currentSlot.announcer.toLowerCase().includes(airName.toLowerCase()));
           if (isMyTurn) {
             console.log(`Penyiar ${displayName} absen untuk program ${currentSlot.title}`);
@@ -422,7 +490,9 @@ export function AttendancePage({
         clientTime: new Date().toISOString(),
         userAgent: navigator.userAgent,
         outOfOfficeReason: outOfOfficeReason.trim() || undefined,
-        attendanceType
+        attendanceType,
+        faceRecognition: faceResult,
+        faceSpoofCheck: spoofResult
       };
 
       const result = await checkInWithSelfie({
@@ -446,13 +516,13 @@ export function AttendancePage({
       );
       const isRejected = draft.status === "rejected";
       const isOutside = draft.status === "outside_radius" || draft.status === "needs_review";
-      
+
       setRecordStatus(
         isOfflineRecord
           ? "Mode offline: absensi tersimpan sementara di perangkat."
           : draft.status === "present"
           ? "Absensi valid berhasil dikonfirmasi. Bukti selfie sedang diunggah."
-          : isRejected 
+          : isRejected
             ? "Foto Anda tidak valid, namun data telah diteruskan ke Admin."
             : isOutside
               ? "Absen di luar radius studio, mohon tunggu validasi Admin."
@@ -464,9 +534,9 @@ export function AttendancePage({
       setRecordStatus("");
       const errorMsg = currentError instanceof Error ? currentError.message : String(currentError);
       const lowerError = errorMsg.toLowerCase();
-      
+
       let userFriendlyError = "Sistem mengalami kendala. Silakan muat ulang dan coba lagi.";
-      
+
       if (lowerError.includes("failed to fetch") || lowerError.includes("network") || lowerError.includes("offline")) {
         userFriendlyError = "Koneksi internet terputus. Mohon periksa jaringan seluler atau WiFi Anda.";
       } else if (lowerError.includes("permission denied") || lowerError.includes("insufficient")) {
@@ -828,6 +898,24 @@ export function AttendancePage({
               </span>
             </div>
             <Cloud size={20} color="var(--muted)" />
+          </article>
+
+          <article className={`attendance-info-card ${faceRecognition?.faceMatchStatus === "matched_candidate" ? "success" : faceRecognition?.faceMatchStatus === "review_candidate" || faceRecognition?.faceMatchStatus === "mismatch_candidate" ? "warning" : ""}`}>
+            <BadgeCheck size={24} color={faceRecognition?.faceMatchStatus === "matched_candidate" ? "#11a36a" : "var(--blue)"} />
+            <div>
+              <strong>Face Recognition</strong>
+              <span>{getFaceRecognitionLabel(faceRecognition)}</span>
+            </div>
+            {faceRecognition?.faceRecognitionUsed && <CheckCircle2 size={20} color="#11a36a" />}
+          </article>
+
+          <article className={`attendance-info-card ${faceSpoofCheck?.faceSpoofCheckStatus === "passed" ? "success" : faceSpoofCheck?.faceSpoofCheckStatus === "needs_review" ? "warning" : ""}`}>
+            <Camera size={24} color={faceSpoofCheck?.faceSpoofCheckStatus === "passed" ? "#11a36a" : "var(--blue)"} />
+            <div>
+              <strong>Cek Kamera Langsung</strong>
+              <span>{getSpoofCheckLabel(faceSpoofCheck)}</span>
+            </div>
+            {faceSpoofCheck?.faceSpoofCheckStatus === "passed" && <CheckCircle2 size={20} color="#11a36a" />}
           </article>
         </div>
       </div>

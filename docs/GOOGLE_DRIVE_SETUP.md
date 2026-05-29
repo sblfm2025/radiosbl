@@ -135,7 +135,7 @@ tidak membutuhkan komputer lokal menyala.
 File yang diizinkan pada endpoint Apps Script:
 
 - Maksimal 10 MB.
-- Modul upload: `attendance`, `liputan`, `uploads`, `attendance-healthcheck`.
+- Modul upload: `attendance`, `liputan`, `uploads`, `attendance-healthcheck`, `face-profiles`.
 - Tipe file: gambar, PDF, TXT, DOC, dan DOCX.
 
 ## Struktur Folder

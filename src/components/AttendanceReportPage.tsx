@@ -28,11 +28,12 @@ import {
 } from "../services/attendance.service";
 import { listUserProfiles } from "../services/userProfile.service";
 import type { AuthSession } from "../services/auth.service";
-import type { AppUser, AttendanceRecord, TimestampLike, UserRole } from "../types/domain";
+import type { AppUser, AttendanceRecord, FaceMatchStatus, TimestampLike, UserRole } from "../types/domain";
 
 type PeriodMode = "week" | "month" | "year";
 type ReportTab = "summary" | "daily" | "announcers" | "leaves";
 type NoticeState = { type: "success" | "danger"; text: string } | null;
+type FaceMatchFilter = "all" | FaceMatchStatus | "face_attention";
 type ManualAttendanceForm = {
   userId: string;
   date: string;
@@ -63,6 +64,15 @@ const STATUS_CONFIG: Record<string, { label: string; tone: string }> = {
   sick: { label: "Sakit", tone: "blue" },
   leave: { label: "Izin", tone: "purple" },
   out_of_office: { label: "Tugas Luar", tone: "amber" }
+};
+
+const FACE_MATCH_CONFIG: Record<string, { label: string; tone: string }> = {
+  matched_candidate: { label: "Cocok", tone: "green" },
+  review_candidate: { label: "Perlu Review", tone: "amber" },
+  mismatch_candidate: { label: "Tidak Cocok", tone: "red" },
+  not_enrolled: { label: "Belum Enroll", tone: "muted" },
+  disabled: { label: "Nonaktif", tone: "muted" },
+  unavailable: { label: "Tidak Tersedia", tone: "muted" }
 };
 
 function toDate(value: TimestampLike | { toDate?: () => Date; seconds?: number }): Date {
@@ -210,12 +220,57 @@ function roleMatchesRecord(record: AttendanceRecord, selectedRole: string, userB
   return userById.get(record.userId)?.role === selectedRole;
 }
 
+function faceMatchFilterMatchesRecord(record: AttendanceRecord, selectedFaceMatch: FaceMatchFilter): boolean {
+  if (selectedFaceMatch === "all") {
+    return true;
+  }
+  if (selectedFaceMatch === "face_attention") {
+    return (
+      record.faceMatchStatus === "review_candidate" ||
+      record.faceMatchStatus === "mismatch_candidate" ||
+      record.faceSpoofCheckStatus === "needs_review"
+    );
+  }
+  return record.faceMatchStatus === selectedFaceMatch;
+}
+
 function isLeaveRecord(record: AttendanceRecord): boolean {
   return record.status === "sick" || record.status === "leave" || Boolean(record.outOfOfficeReason);
 }
 
 function getStatusLabel(status: string): string {
   return STATUS_CONFIG[status]?.label || status;
+}
+
+function getFaceMatchLabel(status?: string): string {
+  return status ? FACE_MATCH_CONFIG[status]?.label || status : "Belum dicek";
+}
+
+function getFaceMatchTone(status?: string): string {
+  return status ? FACE_MATCH_CONFIG[status]?.tone || "muted" : "muted";
+}
+
+function getSpoofCheckLabel(status?: string): string {
+  if (status === "passed") {
+    return "Gerakan Valid";
+  }
+  if (status === "needs_review") {
+    return "Perlu Review";
+  }
+  if (status === "unavailable") {
+    return "Tidak Tersedia";
+  }
+  return "Belum dicek";
+}
+
+function getFaceFilterLabel(value: FaceMatchFilter): string {
+  if (value === "face_attention") {
+    return "Butuh Atensi";
+  }
+  if (value === "all") {
+    return "Semua Face Match";
+  }
+  return getFaceMatchLabel(value);
 }
 
 function recordMatchesSearch(record: AttendanceRecord, searchQuery: string, userById: Map<string, AppUser>): boolean {
@@ -269,6 +324,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<UserRole | "all">("all");
+  const [filterFaceMatch, setFilterFaceMatch] = useState<FaceMatchFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [weekValue, setWeekValue] = useState(toWeekInputValue(today));
@@ -379,7 +435,25 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   }
 
   function handleExportCsv() {
-    const headers = ["ID", "Nama Staf", "Nama Udara", "Role", "Tanggal", "Jam Masuk", "Jam Pulang", "Durasi", "Status", "Catatan Tambahan"];
+    const headers = [
+      "ID",
+      "Nama Staf",
+      "Nama Udara",
+      "Role",
+      "Tanggal",
+      "Jam Masuk",
+      "Jam Pulang",
+      "Durasi",
+      "Status",
+      "Face Match",
+      "Face Distance",
+      "Face Mode",
+      "Enrollment",
+      "Reference Count",
+      "Cek Kamera",
+      "Movement Score",
+      "Catatan Tambahan"
+    ];
     const rows = filteredRecords.map((record) => {
       const user = userById.get(record.userId);
       const checkIn = toDate(record.checkInAt);
@@ -399,6 +473,13 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
         checkOut ? checkOut.toLocaleTimeString("id-ID") : "",
         durLabel,
         record.status,
+        getFaceMatchLabel(record.faceMatchStatus),
+        typeof record.faceMatchDistance === "number" ? record.faceMatchDistance.toFixed(4) : "",
+        record.faceRecognitionMode || "",
+        record.faceEnrollmentStatus || "",
+        record.faceReferenceCount ?? "",
+        getSpoofCheckLabel(record.faceSpoofCheckStatus),
+        typeof record.faceMovementScore === "number" ? record.faceMovementScore.toFixed(4) : "",
         escapedNote
       ].join(",");
     });
@@ -450,9 +531,10 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
           return date >= periodRange.start && date < periodRange.end;
         })
         .filter((record) => roleMatchesRecord(record, filterRole, userById))
+        .filter((record) => faceMatchFilterMatchesRecord(record, filterFaceMatch))
         .filter((record) => recordMatchesSearch(record, searchQuery, userById))
         .sort((a, b) => toDate(b.checkInAt).getTime() - toDate(a.checkInAt).getTime()),
-    [filterRole, periodRange.end, periodRange.start, records, searchQuery, userById]
+    [filterFaceMatch, filterRole, periodRange.end, periodRange.start, records, searchQuery, userById]
   );
 
   const periodRecords = useMemo(
@@ -494,7 +576,11 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
     total: filteredRecords.length,
     present: filteredRecords.filter((record) => record.status === "present").length,
     outside: filteredRecords.filter((record) => record.status === "outside_radius").length,
-    late: filteredRecords.filter((record) => record.status === "late").length
+    late: filteredRecords.filter((record) => record.status === "late").length,
+    faceMatched: filteredRecords.filter((record) => record.faceMatchStatus === "matched_candidate").length,
+    faceReview: filteredRecords.filter((record) => record.faceMatchStatus === "review_candidate").length,
+    faceMismatch: filteredRecords.filter((record) => record.faceMatchStatus === "mismatch_candidate").length,
+    spoofReview: filteredRecords.filter((record) => record.faceSpoofCheckStatus === "needs_review").length
   };
 
   const periodLabel = formatPeriodLabel(periodRange.start, periodRange.end, periodMode);
@@ -506,6 +592,9 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
         || record.status === "outside_radius"
         || record.status === "late"
         || record.status === "rejected"
+        || record.faceMatchStatus === "review_candidate"
+        || record.faceMatchStatus === "mismatch_candidate"
+        || record.faceSpoofCheckStatus === "needs_review"
         || isLeaveRecord(record)
       ),
     [filteredRecords]
@@ -516,6 +605,7 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
   function handleResetFilters() {
     setSearchQuery("");
     setFilterRole("all");
+    setFilterFaceMatch("all");
   }
 
   return (
@@ -616,6 +706,19 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
               </select>
             </label>
 
+            <label>
+              Face Match
+              <select value={filterFaceMatch} onChange={(event) => setFilterFaceMatch(event.target.value as FaceMatchFilter)}>
+                <option value="all">Semua Face Match</option>
+                <option value="face_attention">Butuh Atensi</option>
+                <option value="matched_candidate">Cocok</option>
+                <option value="review_candidate">Perlu Review</option>
+                <option value="mismatch_candidate">Tidak Cocok</option>
+                <option value="not_enrolled">Belum Enroll</option>
+                <option value="unavailable">Tidak Tersedia</option>
+              </select>
+            </label>
+
             <div className="attendance-report-period-chip">
               <Calendar size={17} />
               <span>{periodLabel}</span>
@@ -630,6 +733,12 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
               <StatCard tone="green" icon={<CheckCircle2 size={20} />} label="Tepat Lokasi" value={stats.present} />
               <StatCard tone="amber" icon={<MapPin size={20} />} label="Luar Radius" value={stats.outside} />
               <StatCard tone="red" icon={<AlertTriangle size={20} />} label="Terlambat" value={stats.late} />
+            </div>
+            <div className="attendance-report-stats face">
+              <StatCard tone="green" icon={<CheckCircle2 size={20} />} label="Face Cocok" value={stats.faceMatched} />
+              <StatCard tone="amber" icon={<ShieldAlert size={20} />} label="Face Review" value={stats.faceReview} />
+              <StatCard tone="red" icon={<XCircle size={20} />} label="Face Tidak Cocok" value={stats.faceMismatch} />
+              <StatCard tone="amber" icon={<Camera size={20} />} label="Gerakan Review" value={stats.spoofReview} />
             </div>
 
             <section className="attendance-report-focus">
@@ -659,9 +768,9 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                 <div>
                   <span>Filter aktif</span>
                   <strong>{filteredRecords.length}</strong>
-                  <p>{searchQuery.trim() ? `Hasil untuk "${searchQuery.trim()}".` : filterRole === "all" ? "Semua role ditampilkan." : `Role ${filterRole} ditampilkan.`}</p>
+                  <p>{searchQuery.trim() ? `Hasil untuk "${searchQuery.trim()}".` : filterFaceMatch !== "all" ? `Face filter ${getFaceFilterLabel(filterFaceMatch)}.` : filterRole === "all" ? "Semua role ditampilkan." : `Role ${filterRole} ditampilkan.`}</p>
                 </div>
-                {(searchQuery.trim() || filterRole !== "all") && (
+                {(searchQuery.trim() || filterRole !== "all" || filterFaceMatch !== "all") && (
                   <button type="button" onClick={handleResetFilters}>
                     <RotateCcw size={15} /> Reset
                   </button>
@@ -784,6 +893,8 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                         <th>ROLE</th>
                         <th>WAKTU</th>
                         <th>STATUS</th>
+                        <th>FACE MATCH</th>
+                        <th>CEK KAMERA</th>
                         <th>LOKASI</th>
                         <th>AKSI</th>
                       </tr>
@@ -811,6 +922,16 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                               <span>{checkInAt.toLocaleDateString("id-ID")} - Durasi: {record.checkOutAt ? getDurationLabel(checkInAt, toDate(record.checkOutAt)) : "-"}</span>
                             </td>
                             <td><StatusBadge status={record.status} /></td>
+                            <td>
+                              <span className={`attendance-report-status ${getFaceMatchTone(record.faceMatchStatus)}`}>
+                                {getFaceMatchLabel(record.faceMatchStatus)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`attendance-report-status ${record.faceSpoofCheckStatus === "passed" ? "green" : record.faceSpoofCheckStatus === "needs_review" ? "amber" : "muted"}`}>
+                                {getSpoofCheckLabel(record.faceSpoofCheckStatus)}
+                              </span>
+                            </td>
                             <td className="muted">
                               <MapPin size={14} /> {record.accuracyMeters ? `+/-${record.accuracyMeters}m` : "-"}
                             </td>
@@ -842,6 +963,12 @@ export function AttendanceReportPage({ session }: { session: AuthSession | null 
                           <span>{record.accuracyMeters ? `+/-${record.accuracyMeters}m` : "Lokasi tidak tersedia"}</span>
                         </div>
                         <StatusBadge status={record.status} />
+                        <span className={`attendance-report-status ${getFaceMatchTone(record.faceMatchStatus)}`}>
+                          Face: {getFaceMatchLabel(record.faceMatchStatus)}
+                        </span>
+                        <span className={`attendance-report-status ${record.faceSpoofCheckStatus === "passed" ? "green" : record.faceSpoofCheckStatus === "needs_review" ? "amber" : "muted"}`}>
+                          Kamera: {getSpoofCheckLabel(record.faceSpoofCheckStatus)}
+                        </span>
                       </button>
                     );
                   })}
@@ -1180,6 +1307,9 @@ function SidePanelDetail({
 
       <div className="attendance-report-badges">
         <StatusBadge status={record.status} />
+        <span className={`attendance-report-status ${getFaceMatchTone(record.faceMatchStatus)}`}>
+          Face: {getFaceMatchLabel(record.faceMatchStatus)}
+        </span>
         {record.outOfOfficeReason && <span>Tugas: {record.outOfOfficeReason}</span>}
       </div>
 
@@ -1210,6 +1340,35 @@ function SidePanelDetail({
           <strong className={record.confidenceScore && record.confidenceScore >= 80 ? "good" : "bad"}>{record.confidenceScore || 0}%</strong>
         </div>
         <p className="attendance-report-ai-note">{record.aiVerificationText || "-"}</p>
+      </DetailSection>
+
+      <DetailSection icon={<ShieldAlert size={16} />} title="Face Recognition">
+        <div className="attendance-report-detail-grid">
+          <div>
+            <small>Face Match</small>
+            <strong>{getFaceMatchLabel(record.faceMatchStatus)}</strong>
+            <small>Mode: {record.faceRecognitionMode || "-"}</small>
+          </div>
+          <div>
+            <small>Distance</small>
+            <strong>{typeof record.faceMatchDistance === "number" ? record.faceMatchDistance.toFixed(4) : "-"}</strong>
+            <small>Referensi: {record.faceReferenceCount ?? 0} foto</small>
+          </div>
+        </div>
+        <p className="attendance-report-ai-note">
+          Model {record.faceModelVersion || record.faceRecognitionVersion || "-"} - Enrollment {record.faceEnrollmentStatus || "not_enrolled"}
+          {record.faceRecognitionError ? ` - ${record.faceRecognitionError}` : ""}
+        </p>
+        <div className="attendance-report-ai-row">
+          <span>Cek Kamera Langsung:</span>
+          <strong className={record.faceSpoofCheckStatus === "passed" ? "good" : "bad"}>
+            {getSpoofCheckLabel(record.faceSpoofCheckStatus)}
+          </strong>
+        </div>
+        <p className="attendance-report-ai-note">
+          Movement score {typeof record.faceMovementScore === "number" ? record.faceMovementScore.toFixed(4) : "-"}
+          {record.faceSpoofCheckError ? ` - ${record.faceSpoofCheckError}` : ""}
+        </p>
       </DetailSection>
 
       <DetailSection icon={<MapPin size={16} />} title="Data Waktu & Lokasi">

@@ -1,4 +1,9 @@
-import type { AttendanceRecord, AttendanceSelfieUploadStatus, AttendanceStatus } from "../types/domain";
+import type {
+  AttendanceRecord,
+  AttendanceSelfieUploadStatus,
+  AttendanceStatus
+} from "../types/domain";
+import type { FaceRecognitionResult, FaceSpoofCheckResult } from "./faceRecognition.service";
 import { createDocument, listDocuments, queryDocuments, subscribeDocuments, updateDocument } from "./firestore.service";
 import { isWithinRadius, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { shouldUseLocalFallback } from "../lib/env";
@@ -28,6 +33,8 @@ export type AttendanceCheckInInput = {
   attendanceType?: "present" | "sick" | "leave" | "out_of_office";
   selfieUploadStatus?: AttendanceSelfieUploadStatus;
   selfieUploadError?: string;
+  faceRecognition?: FaceRecognitionResult;
+  faceSpoofCheck?: FaceSpoofCheckResult;
 };
 
 export type AttendanceSelfieUploadEventDetail = {
@@ -322,6 +329,33 @@ export function buildAttendanceRecordDraft(
     status = "needs_review";
   }
 
+  const faceRecognitionFields: Partial<AttendanceRecord> = {};
+  if (input.faceRecognition) {
+    faceRecognitionFields.faceRecognitionUsed = input.faceRecognition.faceRecognitionUsed;
+    faceRecognitionFields.faceMatchStatus = input.faceRecognition.faceMatchStatus;
+    faceRecognitionFields.faceRecognitionMode = input.faceRecognition.faceRecognitionMode;
+    faceRecognitionFields.faceRecognitionVersion = input.faceRecognition.faceRecognitionVersion;
+    faceRecognitionFields.faceEnrollmentStatus = input.faceRecognition.faceEnrollmentStatus;
+    faceRecognitionFields.faceReferenceCount = input.faceRecognition.faceReferenceCount;
+    faceRecognitionFields.faceModelVersion = input.faceRecognition.faceModelVersion;
+    if (typeof input.faceRecognition.faceMatchDistance === "number") {
+      faceRecognitionFields.faceMatchDistance = input.faceRecognition.faceMatchDistance;
+    }
+    if (input.faceRecognition.faceRecognitionError) {
+      faceRecognitionFields.faceRecognitionError = input.faceRecognition.faceRecognitionError;
+    }
+  }
+  if (input.faceSpoofCheck) {
+    faceRecognitionFields.faceSpoofCheckUsed = input.faceSpoofCheck.faceSpoofCheckUsed;
+    faceRecognitionFields.faceSpoofCheckStatus = input.faceSpoofCheck.faceSpoofCheckStatus;
+    if (typeof input.faceSpoofCheck.faceMovementScore === "number") {
+      faceRecognitionFields.faceMovementScore = input.faceSpoofCheck.faceMovementScore;
+    }
+    if (input.faceSpoofCheck.faceSpoofCheckError) {
+      faceRecognitionFields.faceSpoofCheckError = input.faceSpoofCheck.faceSpoofCheckError;
+    }
+  }
+
   return {
     userId: input.userId,
     displayName: input.displayName || "",
@@ -339,6 +373,7 @@ export function buildAttendanceRecordDraft(
     selfieDriveFileId: input.selfieDriveFileId || "",
     selfieUploadStatus: input.selfieUploadStatus,
     selfieUploadError: input.selfieUploadError || "",
+    ...faceRecognitionFields,
     status
   };
 }
@@ -379,7 +414,9 @@ export async function checkInWithSelfie(input: AttendanceSelfieCheckInInput): Pr
     clientTime: input.clientTime,
     userAgent: input.userAgent,
     outOfOfficeReason: input.outOfOfficeReason,
-    attendanceType: input.attendanceType
+    attendanceType: input.attendanceType,
+    faceRecognition: input.faceRecognition,
+    faceSpoofCheck: input.faceSpoofCheck
   };
   
   let attendanceRecordId: string;

@@ -173,3 +173,11 @@ export function uploadAttendanceSelfie(file: UploadCandidate, ownerId: string) {
     module: "attendance"
   });
 }
+
+export function uploadFaceProfileReference(file: UploadCandidate, ownerId: string) {
+  return uploadToGoogleDrive({
+    file,
+    ownerId,
+    module: "face-profiles"
+  });
+}

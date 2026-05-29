@@ -279,6 +279,19 @@ service cloud.firestore {
         'selfieDriveFileId',
         'selfieUploadStatus',
         'selfieUploadError',
+        'faceRecognitionUsed',
+        'faceMatchDistance',
+        'faceMatchStatus',
+        'faceRecognitionMode',
+        'faceRecognitionVersion',
+        'faceRecognitionError',
+        'faceEnrollmentStatus',
+        'faceReferenceCount',
+        'faceModelVersion',
+        'faceSpoofCheckUsed',
+        'faceSpoofCheckStatus',
+        'faceMovementScore',
+        'faceSpoofCheckError',
         'status',
         'createdAt',
         'updatedAt'
@@ -286,7 +299,52 @@ service cloud.firestore {
       && hasAll(['userId', 'checkInAt', 'latitude', 'longitude', 'selfieDriveFileId', 'status'])
       && (!('selfieUploadStatus' in request.resource.data)
         || validStatus(request.resource.data.selfieUploadStatus, ['pending', 'uploaded', 'failed']))
+      && (!('faceMatchStatus' in request.resource.data)
+        || validStatus(request.resource.data.faceMatchStatus, [
+          'matched_candidate',
+          'review_candidate',
+          'mismatch_candidate',
+          'not_enrolled',
+          'disabled',
+          'unavailable'
+        ]))
+      && (!('faceRecognitionMode' in request.resource.data)
+        || validStatus(request.resource.data.faceRecognitionMode, ['observe_only', 'review']))
+      && (!('faceEnrollmentStatus' in request.resource.data)
+        || validStatus(request.resource.data.faceEnrollmentStatus, [
+          'not_enrolled',
+          'pending_review',
+          'active',
+          'needs_update',
+          'disabled'
+        ]))
+      && (!('faceSpoofCheckStatus' in request.resource.data)
+        || validStatus(request.resource.data.faceSpoofCheckStatus, ['passed', 'needs_review', 'unavailable']))
       && validStatus(request.resource.data.status, ['present', 'late', 'outside_radius', 'sick', 'leave', 'needs_review', 'rejected', 'valid']);
+    }
+
+    function validFaceProfilePayload() {
+      return hasOnly([
+        'enrolled',
+        'status',
+        'model',
+        'modelVersion',
+        'descriptorCount',
+        'descriptors',
+        'referenceDriveFileIds',
+        'createdAt',
+        'updatedAt',
+        'approvedBy',
+        'approvedAt'
+      ])
+      && hasAll(['enrolled', 'status', 'model', 'modelVersion', 'descriptorCount', 'descriptors'])
+      && validStatus(request.resource.data.status, [
+        'not_enrolled',
+        'pending_review',
+        'active',
+        'needs_update',
+        'disabled'
+      ]);
     }
 
     function validSwapPayload() {
@@ -482,6 +540,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update: if isOwner(userId) || isAdmin();
       allow delete: if (isSuperAdmin() && !isOwner(userId)) || (signedIn() && userId.matches('^wa-.*'));
+
+      match /faceProfiles/{profileId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAdmin() && validFaceProfilePayload();
+        allow delete: if isSuperAdmin();
+      }
     }
 
     match /employees/{employeeId} {
