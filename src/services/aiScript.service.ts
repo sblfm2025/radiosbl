@@ -120,49 +120,46 @@ export async function rewriteProgramScript(
   currentText: string,
   mode: "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional"
 ): Promise<string> {
-  const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
-  
-  if (!keysString || import.meta.env.MODE === "test") {
-    throw new Error("Kunci API Gemini tidak ditemukan atau berjalan di mode lokal.");
+  if (import.meta.env.MODE === "test") {
+    return `[Gaya ${mode}]:\n${currentText}`;
   }
 
-  const genAI = getGenAIClient();
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const rewriteEndpoint =
+    import.meta.env.VITE_AI_SCRIPT_REWRITE_ENDPOINT ||
+    "https://asia-southeast1-radiosbl.cloudfunctions.net/notificationProxy/ai/script-rewrite";
 
-  let modeInstruction = "";
-  switch (mode) {
-    case "formal": modeInstruction = "Ubah menjadi sangat formal, baku, dan sopan."; break;
-    case "santai": modeInstruction = "Ubah menjadi santai, hangat, dan kasual ala ngobrol."; break;
-    case "singkat": modeInstruction = "Ringkas naskah ini agar jauh lebih pendek tanpa menghilangkan inti pesannya."; break;
-    case "energik": modeInstruction = "Ubah menjadi sangat bersemangat, menggebu-gebu, dan penuh energi positif."; break;
-    case "anak-muda": modeInstruction = "Ubah menggunakan gaya bahasa gaul anak muda Gen-Z kekinian namun tetap sopan."; break;
-    case "profesional": modeInstruction = "Ubah menjadi berkelas, elegan, dan profesional untuk target pendengar kelas atas."; break;
+  const programTitle = "Naskah Editor";
+
+  try {
+    const response = await fetch(rewriteEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: currentText,
+        mode,
+        programTitle
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || "Gagal memproses permintaan rewrite.");
+    }
+
+    if (!data.text) {
+      throw new Error("AI mengembalikan respon kosong.");
+    }
+
+    return data.text.trim();
+  } catch (error) {
+    console.error("Kesalahan saat memanggil AI Rewrite Proxy:", error);
+    throw new Error(
+      "AI Rewrite sementara tidak tersedia.\n\n" +
+      "Silakan coba kembali beberapa saat lagi.\n" +
+      "Naskah asli Anda tetap aman."
+    );
   }
-
-  const prompt = `
-    Tugas Anda adalah menulis ulang (rewrite) naskah siaran radio berikut ini.
-    
-    Instruksi Spesifik: ${modeInstruction}
-    
-    ATURAN MUTLAK:
-    - JANGAN menambah kata pengantar (seperti "Ini hasil revisinya").
-    - JANGAN mengubah atau menghilangkan "Sobat Bumi Lasinrang" dan "Suara Pinrang, Suara Kita" jika ada.
-    - Pertahankan marka segmen (seperti === OPENING === atau [CUE LAGU]).
-    - LANGSUNG cetak teks hasil revisi.
-    
-    NASKAH ASLI:
-    """
-    ${currentText}
-    """
-  `;
-
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
-
-  if (!text) {
-    throw new Error("AI mengembalikan respon kosong.");
-  }
-
-  return text.trim();
 }

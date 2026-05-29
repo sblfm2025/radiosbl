@@ -395,6 +395,122 @@ async function generateAiScriptDraft(body) {
   return { ...result, provider: "gemini" };
 }
 
+async function generateGeminiRewrite(body) {
+  const startTime = Date.now();
+  const apiKeys = getGeminiApiKeys();
+  const models = getGeminiModels();
+  const text = String(body.text || "").trim();
+  const mode = String(body.mode || "").trim();
+  const programTitle = String(body.programTitle || "Unknown Program");
+
+  if (!text) {
+    throw new Error("Naskah asli wajib diisi.");
+  }
+  if (!mode) {
+    throw new Error("Mode rewrite wajib ditentukan.");
+  }
+
+  console.log(`[rewrite_request] Program: ${programTitle}, Mode: ${mode}`);
+
+  if (apiKeys.length === 0) {
+    const errorMsg = "Gemini API key belum tersedia di proxy.";
+    console.error(`[rewrite_failed] Program: ${programTitle}, Mode: ${mode}, Duration: ${Date.now() - startTime}ms, Provider: demo, Error: ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  let modeInstruction = "";
+  switch (mode) {
+    case "formal":
+      modeInstruction = "Ubah menjadi lebih resmi, lebih rapi, dan lebih profesional.";
+      break;
+    case "singkat":
+      modeInstruction = "Ringkas naskah agar jauh lebih pendek (target: 20-30% lebih ringkas) tanpa menghilangkan inti pesannya.";
+      break;
+    case "energik":
+      modeInstruction = "Ubah menjadi lebih bersemangat, lebih hidup, dan lebih radio-friendly (penuh energi positif).";
+      break;
+    case "anak-muda":
+      modeInstruction = "Ubah menjadi lebih santai dan kekinian ala anak muda (Gen Z), namun tetap sopan, layak siar, dan tidak menggunakan kata kasar.";
+      break;
+    case "santai":
+      modeInstruction = "Ubah menjadi santai, hangat, dan kasual ala ngobrol.";
+      break;
+    case "profesional":
+      modeInstruction = "Ubah menjadi berkelas, elegan, dan profesional untuk target pendengar kelas atas.";
+      break;
+    default:
+      modeInstruction = "Sesuaikan gaya bahasa naskah dengan gaya yang natural untuk siaran radio.";
+  }
+
+  const prompt = `
+Tugas Anda adalah menulis ulang (rewrite) naskah siaran radio berikut ini.
+
+Instruksi Spesifik: ${modeInstruction}
+
+ATURAN MUTLAK (WAJIB DIPATUHI):
+1. JANGAN mengubah struktur segmen naskah asli.
+2. JANGAN menghapus atau mengubah frasa/tagline khas berikut jika ada di naskah asli:
+   - "Sobat Bumi Lasinrang"
+   - "Suara Pinrang, Suara Kita"
+3. JANGAN menambah berita baru, fakta baru, atau narasumber baru yang tidak ada pada naskah asli.
+4. Pertahankan semua penanda/marker segmentasi naskah (seperti === OPENING ===, === ISI ===, === CLOSING ===, dan [CUE] atau [CUE LAGU/IKLAN]).
+5. Proses Rewrite HANYA mengubah gaya bahasa sesuai gaya yang diminta di atas.
+6. JANGAN memberikan kalimat pengantar atau penutup tambahan (seperti "Ini hasil revisinya:" atau sejenisnya). LANGSUNG cetak teks hasil revisi naskah secara utuh.
+
+NASKAH ASLI:
+"""
+${text}
+"""
+  `.trim();
+
+  const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+  const model = models[0] || "gemini-2.5-flash";
+
+  for (const [index, apiKey] of shuffledKeys.entries()) {
+    try {
+      const payload = {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      };
+
+      const { response, data } = await fetchJsonWithTimeout(
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`[AI Rewrite] Key ke-${index + 1} Gagal (${response.status}): ${data.error?.message || "Unknown error"}`);
+        continue;
+      }
+
+      const rewrittenText = data.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n") || "";
+      const duration = Date.now() - startTime;
+
+      console.log(`[rewrite_success] Program: ${programTitle}, Mode: ${mode}, Duration: ${duration}ms, Provider: gemini`);
+
+      return {
+        text: rewrittenText.trim(),
+        provider: "gemini"
+      };
+    } catch (error) {
+      console.error(`[AI Rewrite] Key ke-${index + 1} error:`, error instanceof Error ? error.message : error);
+    }
+  }
+
+  const durationFailed = Date.now() - startTime;
+  const failureMsg = "Semua kunci Gemini sedang tidak dapat digunakan (Limit, Block, atau 403).";
+  console.error(`[rewrite_failed] Program: ${programTitle}, Mode: ${mode}, Duration: ${durationFailed}ms, Provider: demo, Error: ${failureMsg}`);
+  throw new Error(failureMsg);
+}
+
+
 await loadLocalEnv();
 
 const port = Number(process.env.NOTIFICATION_PROXY_PORT || DEFAULT_PORT);
@@ -428,6 +544,11 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (request.url === "/ai/script-rewrite") {
+      sendJson(request, response, 200, await generateGeminiRewrite(body));
+      return;
+    }
+
     if (request.url === "/spotify/show-episodes") {
       sendJson(request, response, 200, await getSpotifyShowEpisodes(body));
       return;
@@ -446,5 +567,6 @@ server.listen(port, () => {
   console.log(`WhatsApp endpoint: http://localhost:${port}/whatsapp/send`);
   console.log(`Gemini endpoint: http://localhost:${port}/gemini/draft`);
   console.log(`AI script endpoint: http://localhost:${port}/ai/script-draft`);
+  console.log(`AI rewrite endpoint: http://localhost:${port}/ai/script-rewrite`);
   console.log(`Spotify podcast endpoint: http://localhost:${port}/spotify/show-episodes`);
 });
