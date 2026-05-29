@@ -12,6 +12,15 @@ export type ProgramScriptRequest = {
   tone: string;
   durationMinutes: number;
   intervention?: string;
+
+  audienceSegment?: "umum" | "remaja" | "dewasa" | "keluarga" | "komunitas";
+  broadcastMoment?: "pagi" | "siang" | "sore" | "malam";
+  localContext?: string;
+  weatherContext?: string;
+  currentSituation?: string;
+  interactionGoal?: string;
+  musicPreference?: string;
+  contentFocus?: string;
 };
 
 export type ProgramScriptResponse = {
@@ -21,38 +30,216 @@ export type ProgramScriptResponse = {
   warning?: string;
 };
 
+function inferBroadcastMoment(scheduleTime: string): ProgramScriptRequest["broadcastMoment"] {
+  const hourMatch = scheduleTime.match(/\d{1,2}/);
+  const hour = hourMatch ? Number(hourMatch[0]) : NaN;
+
+  if (Number.isNaN(hour)) return undefined;
+  if (hour >= 4 && hour < 11) return "pagi";
+  if (hour >= 11 && hour < 15) return "siang";
+  if (hour >= 15 && hour < 18) return "sore";
+  return "malam";
+}
+
+function inferAudienceSegment(programTitle: string, description: string): ProgramScriptRequest["audienceSegment"] {
+  const text = `${programTitle} ${description}`.toLowerCase();
+
+  if (text.includes("anak muda") || text.includes("remaja") || text.includes("gen z")) {
+    return "remaja";
+  }
+  if (text.includes("keluarga")) {
+    return "keluarga";
+  }
+  if (text.includes("komunitas")) {
+    return "komunitas";
+  }
+  if (text.includes("nostalgia") || text.includes("dewasa")) {
+    return "dewasa";
+  }
+  return "umum";
+}
+
+function cleanPromptInput(value: unknown, fallback = "-"): string {
+  const text = String(value || "").trim();
+  if (!text) return fallback;
+
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .slice(0, 1200);
+}
+
 function buildDemoScript(request: ProgramScriptRequest): string {
+  const announcer = request.announcerName || "penyiar Radio SBL";
+  const moment = request.broadcastMoment || inferBroadcastMoment(request.scheduleTime) || "hari ini";
+
   return [
-    `FALLBACK SEMENTARA - ${request.programTitle}`,
-    `Selamat datang di Radio SBL 92,4 FM, Suara Pinrang, Suara Kita.`,
-    `Bersama ${request.announcerName || "penyiar Radio SBL"} dalam program ${request.programTitle}, ${request.day} pukul ${request.scheduleTime}.`,
-    "",
-    "BRIDGE",
+    `=== OPENING ===`,
+    `Aga kareba, Sobat Bumi Lasinrang?`,
+    ``,
+    `Senang sekali bisa menyapa Anda di ${moment} ini bersama saya, ${announcer}, di Radio SBL 92,4 FM, Suara Pinrang, Suara Kita.`,
+    ``,
+    `=== SEGMENT/ISI ===`,
     request.description
-      ? `Hari ini kita akan mengangkat tema: ${request.description}.`
-      : "Hari ini kita hadir dengan informasi, musik, dan sapaan hangat untuk pendengar Pinrang.",
-    request.intervention ? `Catatan penyiar: ${request.intervention}` : "",
-    "",
-    "CLOSING",
-    "Tetap di Radio SBL. Yang jauh terasa dekat, yang dekat terasa akrab."
+      ? `Pada kesempatan ini, kita akan berbincang ringan tentang ${request.description}.`
+      : `Hari ini kita hadir menemani aktivitas Anda dengan informasi ringan, musik pilihan, dan sapaan hangat untuk pendengar setia Radio SBL.`,
+    ``,
+    request.intervention
+      ? `Catatan khusus untuk siaran kali ini: ${request.intervention}.`
+      : `Jangan lupa, Sobat Bumi Lasinrang juga bisa ikut menyapa dan berbagi cerita melalui WhatsApp resmi Radio SBL di 0851-2256-1992.`,
+    ``,
+    `[CUE LAGU: Lagu pilihan yang sesuai dengan suasana program]`,
+    ``,
+    `=== CLOSING ===`,
+    `Terima kasih sudah bersama Radio SBL. Tetap jaga semangat, jaga silaturahmi, dan sampai jumpa di program berikutnya.`,
+    ``,
+    `Radio SBL 92,4 FM, Suara Pinrang, Suara Kita.`
   ].filter(Boolean).join("\n");
+}
+
+function buildIdentityRules(): string[] {
+  return [
+    "===== IDENTITAS RADIO =====",
+    "- Ini adalah naskah untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
+    "- Wajib gunakan sapaan pendengar: \"Sobat Bumi Lasinrang\".",
+    "- Wajib selipkan tagline: \"Suara Pinrang, Suara Kita\".",
+    "- Nuansa lokal Kabupaten Pinrang dan budaya Bugis boleh digunakan secara halus.",
+    "- Gunakan unsur lokal maksimal 1 kali dalam satu naskah kecuali diminta khusus oleh penyiar.",
+    "- Jangan memaksakan semua ungkapan lokal dalam satu naskah."
+  ];
+}
+
+function buildSpokenStyleRules(): string[] {
+  return [
+    "===== GAYA BAHASA SIARAN =====",
+    "- Tulis seperti penyiar benar-benar berbicara, bukan seperti artikel.",
+    "- Gunakan kalimat pendek dan mudah dibaca.",
+    "- Hindari paragraf terlalu panjang.",
+    "- Buat transisi antarbagian terasa natural.",
+    "- Gunakan jeda napas alami melalui pemenggalan paragraf.",
+    "- Jangan terlalu formal kecuali tone meminta formal.",
+    "- Jangan terlalu banyak slogan.",
+    "- Jangan membuat kalimat yang terdengar seperti iklan berlebihan.",
+    "- Buat variasi diksi dan opening agar tidak terasa berulang antar-generate."
+  ];
+}
+
+function buildAntiTemplateRules(): string[] {
+  return [
+    "===== ATURAN ANTI TEMPLATE =====",
+    "- Jangan selalu membuka dengan pola yang sama.",
+    "- Hindari opening generik seperti: \"Kembali lagi bersama saya\" jika tidak diperlukan.",
+    "- Variasikan opening berdasarkan waktu siaran, nama program, tone, dan arahan penyiar.",
+    "- Jangan mengulang frasa yang sama terlalu sering.",
+    "- Jangan membuat naskah terasa seperti hasil copy-paste dari template."
+  ];
+}
+
+function buildDurationRules(durationMinutes: number): string[] {
+  if (durationMinutes <= 5) {
+    return [
+      "===== ATURAN DURASI =====",
+      "- Durasi pendek.",
+      "- Buat opening singkat.",
+      "- Gunakan 1 segmen utama.",
+      "- Maksimal 1 cue lagu.",
+      "- Closing singkat dan kuat."
+    ];
+  }
+
+  if (durationMinutes <= 15) {
+    return [
+      "===== ATURAN DURASI =====",
+      "- Durasi sedang.",
+      "- Buat opening, 2 segmen isi, 1 cue lagu, dan closing.",
+      "- Tambahkan 1 hook interaksi pendengar.",
+      "- Jaga agar tiap segmen tidak terlalu panjang."
+    ];
+  }
+
+  return [
+    "===== ATURAN DURASI =====",
+    "- Durasi panjang.",
+    "- Buat opening, beberapa segmen isi, transisi antarsegmen, cue lagu, interaksi pendengar, dan closing.",
+    "- Sisipkan variasi ritme agar penyiar tidak terdengar monoton.",
+    "- Gunakan beberapa hook ringan untuk mempertahankan perhatian pendengar."
+  ];
+}
+
+function buildSituationalRules(request: ProgramScriptRequest): string[] {
+  const moment = request.broadcastMoment || inferBroadcastMoment(request.scheduleTime);
+  const audience = request.audienceSegment || inferAudienceSegment(request.programTitle, request.description);
+
+  return [
+    "===== KONTEKS SITUASI =====",
+    `- Momen siaran: ${moment || "umum"}`,
+    `- Target pendengar: ${audience || "umum"}`,
+    `- Konteks lokal: ${request.localContext || "-"}`,
+    `- Cuaca/suasana: ${request.weatherContext || "-"}`,
+    `- Situasi saat ini: ${request.currentSituation || "-"}`,
+    `- Tujuan interaksi: ${request.interactionGoal || "ajak pendengar tetap terhubung secara natural"}`,
+    `- Preferensi musik: ${request.musicPreference || "sesuaikan dengan program dan tone"}`,
+    `- Fokus konten: ${request.contentFocus || "sesuaikan dengan deskripsi program"}`
+  ];
+}
+
+function buildMusicCueRules(): string[] {
+  return [
+    "===== ATURAN CUE LAGU =====",
+    "- Jika yakin dengan judul dan penyanyi, gunakan format: [CUE LAGU: Judul Lagu - Penyanyi].",
+    "- Jika tidak yakin, jangan mengarang judul lagu.",
+    "- Jika tidak yakin, gunakan format kategori: [CUE LAGU: Pop Indonesia bertema semangat pagi].",
+    "- Sebelum cue lagu, buat pengantar singkat yang relevan.",
+    "- Akhiri pengantar lagu dengan pertanyaan ringan untuk interaksi pendengar.",
+    "- Gunakan nomor WhatsApp resmi Radio SBL: 0851-2256-1992."
+  ];
+}
+
+function buildSafetyRules(): string[] {
+  return [
+    "===== ATURAN KEAMANAN ISI =====",
+    "- Jangan mengarang berita, data, nama pejabat, lokasi kejadian, jadwal acara, atau informasi publik yang tidak diberikan.",
+    "- Jika informasi tidak tersedia, gunakan kalimat umum yang aman.",
+    "- Jangan menyebut fakta terbaru kecuali diberikan dalam deskripsi atau arahan penyiar.",
+    "- Jangan menciptakan kutipan narasumber.",
+    "- Jangan membuat klaim kesehatan, hukum, politik, atau keuangan yang tidak berdasar.",
+    "- Jangan mencetak ulang metadata seperti judul program, nama penyiar, hari, jam, dan durasi."
+  ];
+}
+
+function buildOutputFormatRules(): string[] {
+  return [
+    "===== FORMAT OUTPUT =====",
+    "Langsung hasilkan naskah saja.",
+    "Jangan gunakan kalimat pengantar seperti: \"Berikut naskahnya\".",
+    "",
+    "Gunakan struktur:",
+    "=== OPENING ===",
+    "=== SEGMENT/ISI ===",
+    "[CUE LAGU/IKLAN]",
+    "=== CLOSING ==="
+  ];
 }
 
 function buildGeminiPrompt(request: ProgramScriptRequest): string {
   return [
-    "Susun naskah siaran radio profesional, kekinian, dan adaptif untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
-    "Gunakan bahasa Indonesia yang hangat, natural, dan siap dibaca penyiar (spoken style).",
+    "Susun naskah siaran radio profesional, natural, cerdas, dan siap dibaca penyiar untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
     "",
-    "===== KEARIFAN LOKAL & IDENTITAS RADIO =====",
-    "- WAJIB gunakan sapaan khas pendengar: \"Sobat Bumi Lasinrang\".",
-    "- WAJIB selipkan tagline radio: \"Suara Pinrang, Suara Kita\".",
-    "- Selipkan pendekatan kearifan lokal Kabupaten Pinrang dan suku Bugis secara halus. Gunakan sapaan/salam khas Bugis secara natural terutama di bagian Opening atau Closing, seperti: \"Aga Kareba?\" (untuk menanyakan kabar), \"Kurru' Sumange'\" (sebagai ungkapan syukur/terima kasih/semangat), atau \"Salama'ki na topada salama'\" (salam keselamatan bagi kita semua). Jangan terlalu kaku, buat terasa akrab dan merakyat.",
+    ...buildIdentityRules(),
     "",
-    "===== ATURAN PENULISAN =====",
-    "ATURAN MUTLAK: JANGAN gunakan kalimat basa-basi pengantar (seperti 'Tentu, ini naskahnya'). JANGAN mencetak ulang Header/Metadata (seperti Judul Program, Nama Penyiar, Hari, Jam, Durasi).",
-    "LANGSUNG hasilkan teks naskahnya saja. Jangan mengarang berita palsu. Jika butuh data riil seperti nomor WhatsApp interaksi resmi Radio SBL, gunakan selalu nomor \"0851-2256-1992\" (jangan gunakan placeholder untuk nomor WA). JANGAN gunakan placeholder generic untuk lagu (seperti \"[Judul Lagu]\"). Rekomendasikan lagu nyata yang populer dan relevan untuk diputar di bagian [CUE LAGU] atau sela siaran, yang disesuaikan secara cerdas dengan nama program, deskripsi program, tone, dan target audiens (misal: lagu pop/indie/Gen-Z yang sedang viral untuk segmen muda, lagu hits nostalgia 80an/90an untuk segmen retro/dewasa, atau lagu daerah yang selaras). Tuliskan rekomendasi ini dalam format yang rapi seperti [CUE LAGU: Judul Lagu - Penyanyi]. Sebelum bagian [CUE LAGU] tersebut, penyiar wajib membacakan kalimat pengantar yang relevan dengan makna atau tema lagu tersebut, lalu akhiri pengantar tersebut dengan sebuah kalimat tanya (hook interaktif) untuk memancing pendengar saling berinteraksi atau berbagi cerita mereka melalui nomor WhatsApp resmi.",
+    ...buildSpokenStyleRules(),
     "",
-    `[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:`,
+    ...buildAntiTemplateRules(),
+    "",
+    ...buildDurationRules(request.durationMinutes),
+    "",
+    ...buildSituationalRules(request),
+    "",
+    ...buildMusicCueRules(),
+    "",
+    ...buildSafetyRules(),
+    "",
+    "[Konteks berikut HANYA sebagai acuan penyusunan isi naskah, JANGAN DITULIS ULANG]:",
     `Program: ${request.programTitle}`,
     `Hari/Jam: ${request.day}, ${request.scheduleTime}`,
     `Penyiar aktif: **${request.announcerName || "Belum terdeteksi"}**`,
@@ -60,19 +247,61 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
     `Gaya siaran: ${request.tone}`,
     `Deskripsi program: ${request.description || "-"}`,
     request.intervention ? `Arahan penyiar: ${request.intervention}` : "",
+    request.localContext ? `Konteks lokal tambahan: ${request.localContext}` : "",
+    request.currentSituation ? `Situasi tambahan: ${request.currentSituation}` : "",
     "",
-    "Format struktur teks dibagi menjadi: === OPENING ===, === SEGMENT/ISI ===, [CUE LAGU/IKLAN], === CLOSING ==="
+    ...buildOutputFormatRules()
   ].filter(Boolean).join("\n");
+}
+
+export function normalizeGeneratedScript(text: string): string {
+  return text
+    .replace(/^```[a-z]*\n?/i, "")
+    .replace(/```$/i, "")
+    .replace(/^(Tentu|Berikut|Baik),?.*naskah.*?:/i, "")
+    .trim();
+}
+
+export function ensureRadioIdentity(text: string): string {
+  let output = text.trim();
+
+  if (!output.includes("Sobat Bumi Lasinrang")) {
+    output = output.replace(
+      "=== OPENING ===",
+      "=== OPENING ===\nSobat Bumi Lasinrang,"
+    );
+  }
+
+  if (!output.includes("Suara Pinrang, Suara Kita")) {
+    output += "\n\nRadio SBL 92,4 FM, Suara Pinrang, Suara Kita.";
+  }
+
+  return output;
 }
 
 export async function generateProgramScript(
   request: ProgramScriptRequest
 ): Promise<ProgramScriptResponse> {
+  const sanitizedRequest: ProgramScriptRequest = {
+    ...request,
+    programTitle: cleanPromptInput(request.programTitle),
+    announcerName: cleanPromptInput(request.announcerName),
+    description: cleanPromptInput(request.description),
+    tone: cleanPromptInput(request.tone),
+    intervention: request.intervention ? cleanPromptInput(request.intervention) : undefined,
+    localContext: request.localContext ? cleanPromptInput(request.localContext) : undefined,
+    currentSituation: request.currentSituation ? cleanPromptInput(request.currentSituation) : undefined,
+    weatherContext: request.weatherContext ? cleanPromptInput(request.weatherContext) : undefined,
+    interactionGoal: request.interactionGoal ? cleanPromptInput(request.interactionGoal) : undefined,
+    musicPreference: request.musicPreference ? cleanPromptInput(request.musicPreference) : undefined,
+    contentFocus: request.contentFocus ? cleanPromptInput(request.contentFocus) : undefined,
+  };
+
   if (import.meta.env.MODE === "test") {
     return {
       demo: true,
       provider: "demo",
-      text: buildDemoScript(request)
+      text: buildDemoScript(sanitizedRequest)
     };
   }
 
@@ -84,11 +313,11 @@ export async function generateProgramScript(
     return {
       demo: true,
       provider: "demo",
-      text: buildDemoScript(request)
+      text: buildDemoScript(sanitizedRequest)
     };
   }
 
-  const prompt = buildGeminiPrompt(request);
+  const prompt = buildGeminiPrompt(sanitizedRequest);
 
   if (proxyEndpoint) {
     try {
@@ -104,11 +333,13 @@ export async function generateProgramScript(
         throw new Error(data.error || "Gagal memanggil proxy.");
       }
 
+      const cleanText = ensureRadioIdentity(normalizeGeneratedScript(data.text || ""));
+
       return {
         provider: "gemini",
         demo: !!data.demo,
         warning: data.warning,
-        text: data.text || buildDemoScript(request)
+        text: cleanText || buildDemoScript(sanitizedRequest)
       };
     } catch (error) {
       console.error("Gagal menggunakan proxy, mencoba direct call:", error);
@@ -127,18 +358,20 @@ export async function generateProgramScript(
       throw new Error("AI mengembalikan respon kosong.");
     }
 
+    const cleanText = ensureRadioIdentity(normalizeGeneratedScript(text));
+
     return {
       provider: "gemini",
       demo: false,
-      text: text
+      text: cleanText
     };
   } catch (error) {
     console.error("Kesalahan saat memanggil Gemini API secara langsung:", error);
     return {
       demo: true,
       provider: "demo",
-      warning: "Gagal terhubung ke AI. Menampilkan naskah cadangan.",
-      text: buildDemoScript(request)
+      warning: "AI utama sementara tidak tersedia. Sistem menampilkan naskah cadangan yang tetap bisa diedit manual.",
+      text: buildDemoScript(sanitizedRequest)
     };
   }
 }
