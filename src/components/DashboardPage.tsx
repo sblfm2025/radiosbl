@@ -30,6 +30,7 @@ import { canUser, getRoleLabel } from "../utils/rbac";
 import { mergeScheduleSlotsRemote } from "../services/scheduleSlot.service";
 import { getIndonesianDay, parseTimeRangeMinutes } from "../utils/scheduleClock";
 import { subscribeSongRequests } from "../services/songRequest.service";
+import { formatAirNameOnly } from "../utils/announcerResolver";
 
 const featuredPodcastEpisodes = [
   {
@@ -224,7 +225,7 @@ function getOperationalFocus({
       mode: "Mode On-Air",
       title: `Sedang siaran: ${currentProgram}`,
       description: "Fokus ke request pendengar, cue naskah, dan kontrol siaran. Menu lain tetap tersedia saat diperlukan.",
-      detail: `${activeUserSlot.time.replace(/ WITA/g, "")} WITA - ${activeUserSlot.announcer}`,
+      detail: `${activeUserSlot.time.replace(/ WITA/g, "")} WITA - ${formatAirNameOnly(activeUserSlot.announcer)}`,
       actionLabel: "Buka request",
       actionPage: "requests",
       tone: "live"
@@ -333,10 +334,10 @@ export function DashboardPage({
   }, [currentSlot.time, scheduleSlots]);
 
   const playerAnnouncers = useMemo(() => {
-    const names = onAirAnnouncers && onAirAnnouncers.length > 0
-      ? onAirAnnouncers
-      : onAirAnnouncer.split(/\s+\/\s+/).filter(Boolean);
-    return names;
+    const rawNames = onAirAnnouncers && onAirAnnouncers.length > 0
+      ? onAirAnnouncers.join(" / ")
+      : onAirAnnouncer;
+    return formatAirNameOnly(rawNames).split(/\s+\/\s+/).map((n) => n.trim()).filter(Boolean);
   }, [onAirAnnouncer, onAirAnnouncers]);
   const playerAnnouncerKey = playerAnnouncers.join("|");
 
@@ -600,7 +601,7 @@ export function DashboardPage({
         label: "Ringkasan shift",
         title: dashboardUserSlot ? `${dashboardUserSlot.program} perlu disiapkan` : "Pantau jadwal utama",
         detail: dashboardUserSlot
-          ? `${dashboardUserSlot.time.replace(/ WITA/g, "")} WITA bersama ${dashboardUserSlot.announcer}.`
+          ? `${dashboardUserSlot.time.replace(/ WITA/g, "")} WITA bersama ${formatAirNameOnly(dashboardUserSlot.announcer)}.`
           : "Tidak ada jadwal pribadi terdeteksi hari ini. Cek susunan siaran sebelum mulai kerja.",
         actionLabel: "Buka jadwal",
         page: "schedule",
@@ -978,7 +979,7 @@ export function DashboardPage({
                   <h3>{nextSlot.program}</h3>
                   <span className="dashboard-next-meta">
                     <Mic2 size={14} color="#64748B" />
-                    <span>{nextSlot.announcer}</span>
+                    <span>{formatAirNameOnly(nextSlot.announcer)}</span>
                   </span>
                   <span className="dashboard-next-time">
                     <CalendarClock size={16} /> {nextSlot.day}, {nextSlot.time.replace(/ WITA/g, "")} WITA

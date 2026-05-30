@@ -66,14 +66,20 @@ export function resolveAnnouncerText(value: string): ResolvedAnnouncerPart[] {
 }
 
 export function formatAnnouncerDisplay(value: string): string {
+  return formatAirNameOnly(value);
+}
+
+export function formatAirNameOnly(value: string): string {
   return resolveAnnouncerText(value)
     .map((part) => {
       if (part.kind !== "announcer") return part.label;
 
-      const airName = toTitleCase(part.profile.airName);
-      const fullName = toTitleCase(part.profile.fullName);
+      const rawAirName = part.profile.airName.toLowerCase();
+      if (rawAirName === "miah") return "Miah Jufri";
+      if (rawAirName === "wiwik" || rawAirName === "rena") return "Rena Thabitha";
+      if (rawAirName === "ria") return "Ria Finky";
 
-      return `${airName} (${fullName})`;
+      return toTitleCase(part.profile.airName);
     })
     .join(" / ");
 }

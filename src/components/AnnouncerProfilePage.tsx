@@ -8,7 +8,7 @@ import {
   Radio
 } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
-import { findAnnouncerProfile, getAnnouncerWorkload } from "../utils/announcerResolver";
+import { findAnnouncerProfile, getAnnouncerWorkload, formatAirNameOnly } from "../utils/announcerResolver";
 
 type AnnouncerProfilePageProps = {
   airName: string;
@@ -76,15 +76,14 @@ export function AnnouncerProfilePage({
         <article className="announcer-profile-card">
           <div className="announcer-profile-hero">
             <div className="announcer-profile-photo-wrap">
-              <img src={profile.photoUrl} alt={`Foto ${profile.airName}`} />
+              <img src={profile.photoUrl} alt={`Foto ${formatAirNameOnly(profile.airName)}`} />
             </div>
             <div className="announcer-profile-hero-copy">
               <p>
                 <Radio size={15} />
                 {data.station.frequency}
               </p>
-              <h2>{profile.airName}</h2>
-              <strong>{profile.fullName}</strong>
+              <h2>{formatAirNameOnly(profile.airName)}</h2>
               <span>
                 <BadgeCheck size={15} />
                 {profile.active ? "Penyiar aktif" : "Tidak aktif"}
@@ -129,7 +128,7 @@ export function AnnouncerProfilePage({
             </div>
           </section>
 
-          <section className="announcer-profile-slots" aria-label={`Jadwal siaran ${profile.airName}`}>
+          <section className="announcer-profile-slots" aria-label={`Jadwal siaran ${formatAirNameOnly(profile.airName)}`}>
             <h3>Jadwal Siaran</h3>
             {dayGroups.length > 0 ? (
               dayGroups.map((group) => (

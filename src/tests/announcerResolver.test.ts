@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findAnnouncerProfile,
   formatAnnouncerDisplay,
+  formatAirNameOnly,
   getAnnouncerWorkload,
   resolveAnnouncerText
 } from "../utils/announcerResolver";
@@ -22,10 +23,18 @@ describe("announcer resolver", () => {
     expect(resolved[3]).toMatchObject({ kind: "external", label: "Komunitas" });
   });
 
-  it("formats display text with full names for official announcers", () => {
+  it("formats display text with air names for official announcers without full names", () => {
     expect(formatAnnouncerDisplay("Miah / Dikbud, Dispusip, Sahabat KITA")).toBe(
-      "Miah (Salmiah) / Dikbud / Dispusip / Sahabat KITA"
+      "Miah Jufri / Dikbud / Dispusip / Sahabat KITA"
     );
+  });
+
+  it("formats air name only for official announcers while keeping external labels", () => {
+    expect(formatAirNameOnly("Miah / Dikbud, Dispusip, Sahabat KITA")).toBe(
+      "Miah Jufri / Dikbud / Dispusip / Sahabat KITA"
+    );
+    expect(formatAirNameOnly("Amar & Riska")).toBe("Amar / Riska");
+    expect(formatAirNameOnly("St. Rukiah")).toBe("Ria Finky");
   });
 
   it("calculates announcer workload from weekly slots", () => {

@@ -15,7 +15,7 @@ import {
 } from "../services/scheduleSlot.service";
 import { getScheduleSwapAliasesForUser, submitSwapRequest } from "../services/scheduleSwap.service";
 import { listUserProfiles } from "../services/userProfile.service";
-import { resolveAnnouncerText, type ResolvedAnnouncerPart } from "../utils/announcerResolver";
+import { resolveAnnouncerText, type ResolvedAnnouncerPart, formatAirNameOnly } from "../utils/announcerResolver";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import type { AppUser, BroadcastProgramSlot } from "../types/domain";
 import { parseTimeRangeMinutes } from "../utils/scheduleClock";
@@ -216,7 +216,7 @@ export function BroadcastSchedulePage({
               onOpenAnnouncerProfile(part.profile.airName);
             }}
           >
-            {part.profile.airName}
+            {formatAirNameOnly(part.profile.airName)}
           </button>
         ) : (
           <span>{part.label}</span>
@@ -492,7 +492,7 @@ export function BroadcastSchedulePage({
             <article className="schedule-focus-card live">
               <span>Prioritas</span>
               <strong>{nextPrioritySlot ? nextPrioritySlot.program : "Belum ada slot"}</strong>
-              <p>{nextPrioritySlot ? `${nextPrioritySlot.time} WITA - ${nextPrioritySlot.announcer}` : "Pilih hari lain untuk melihat rundown."}</p>
+              <p>{nextPrioritySlot ? `${nextPrioritySlot.time} WITA - ${formatAirNameOnly(nextPrioritySlot.announcer)}` : "Pilih hari lain untuk melihat rundown."}</p>
             </article>
             <article className="schedule-focus-card">
               <span>Slot saya</span>
@@ -636,7 +636,7 @@ export function BroadcastSchedulePage({
             <div className="schedule-modal-context">
               <strong>{swapTarget.program}</strong>
               <span>{selectedDate}, {swapTarget.time}</span>
-              <span>Penyiar Asli: {swapTarget.announcer}</span>
+              <span>Penyiar Asli: {formatAirNameOnly(swapTarget.announcer)}</span>
             </div>
             <form onSubmit={handleRequestSwap} className="schedule-modal-form">
               <label>
@@ -686,7 +686,7 @@ export function BroadcastSchedulePage({
             />
             <div className="program-detail-meta">
               <span><CalendarClock size={16} /> {selectedProgram.slot.day}, {selectedProgram.slot.time} WITA</span>
-              <span><Mic2 size={16} /> {selectedProgram.slot.announcer}</span>
+              <span><Mic2 size={16} /> {formatAirNameOnly(selectedProgram.slot.announcer)}</span>
             </div>
             <p className="program-detail-description">{selectedProgram.info.description}</p>
             {selectedProgramStats && (

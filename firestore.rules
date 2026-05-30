@@ -560,14 +560,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function isStaff() {
+      return (isActiveUser() && currentRole() != 'public') || request.auth.token.email == 'sblfm2025@gmail.com' || request.auth.token.email == 'sablfm2025@gmail.com';
+    }
+
     match /attendanceRecords/{recordId} {
       allow read: if isLeader() || isOwner(resource.data.userId);
-      allow create: if (isOwner(request.resource.data.userId) || isAdmin()) && validAttendancePayload();
+      allow create: if (isOwner(request.resource.data.userId) && isStaff() || isAdmin()) && validAttendancePayload();
       allow update: if (
         (isLeader() && validAttendancePayload())
         || (
           isOwner(resource.data.userId)
           && request.resource.data.userId == resource.data.userId
+          && isStaff()
           && validAttendancePayload()
           && changedOnly([
             'checkOutAt',

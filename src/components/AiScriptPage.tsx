@@ -5,7 +5,7 @@ import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript, rewriteProgramScript } from "../services/aiScript.service";
 import { saveProgramScript, listProgramScripts, updateProgramScriptStatus } from "../services/programScript.service";
 import type { BroadcastProgramSlot, ProgramScriptDraft } from "../types/domain";
-import { resolveAnnouncerText } from "../utils/announcerResolver";
+import { formatAirNameOnly } from "../utils/announcerResolver";
 import { mergeScheduleSlots } from "../services/scheduleSlot.service";
 import { InlineHelp } from "./InlineHelp";
 
@@ -64,12 +64,33 @@ export function AiScriptPage({
   // --- Editor State ---
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [autoSaveTime, setAutoSaveTime] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (activeTab === "drafts" || activeTab === "review" || activeTab === "ready") {
       loadSavedScripts();
     }
   }, [activeTab]);
+
+  // Cleanup auto-save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Define selectedScriptSlot BEFORE it's used
+  const selectedScriptSlot = useMemo(() => {
+    const fallback = scheduleSlots[0];
+    if (!scriptSlotKey) return fallback;
+    return (
+      scheduleSlots.find(
+        (slot: BroadcastProgramSlot) => `${slot.day}-${slot.time}-${slot.program}` === scriptSlotKey
+      ) || fallback
+    );
+  }, [scheduleSlots, scriptSlotKey]);
 
   async function loadSavedScripts() {
     setLoadingScripts(true);
@@ -86,16 +107,43 @@ export function AiScriptPage({
 
   useEffect(() => {
     if (!scriptDraft.trim() || activeTab !== "generator") return;
-    const timer = setTimeout(() => {
+
+    // Clear existing timer if any
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    // Set new timer for auto-save
+    autoSaveTimerRef.current = window.setTimeout(() => {
       try {
-        localStorage.setItem(`radiosbl.draftBackup`, scriptDraft);
+        const timestamp = new Date().toISOString();
+        const slotInfo = selectedScriptSlot ? {
+          program: selectedScriptSlot.program,
+          announcer: selectedScriptSlot.announcer,
+          time: selectedScriptSlot.time,
+          day: selectedScriptSlot.day
+        } : null;
+
+        // Save with metadata
+        localStorage.setItem(`radiosbl.draftBackup`, JSON.stringify({
+          content: scriptDraft,
+          timestamp,
+          slot: slotInfo
+        }));
         setAutoSaveTime(new Date());
-      } catch {
-        return;
+      } catch (error) {
+        console.warn("Gagal melakukan auto-save:", error);
+      } finally {
+        autoSaveTimerRef.current = null;
       }
     }, 3000);
-    return () => clearTimeout(timer);
-  }, [scriptDraft, activeTab]);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [scriptDraft, activeTab, selectedScriptSlot]);
 
   function insertFormatting(prefix: string, suffix: string = "") {
     if (!editorRef.current) return;
@@ -142,28 +190,47 @@ export function AiScriptPage({
 
   const scriptStats = useMemo(() => {
     if (!scriptDraft) return null;
-    const words = scriptDraft.trim().split(/\s+/).filter(w => w.length > 0).length;
-    const chars = scriptDraft.length;
-    const readingSpeedWPM = 130; // 130 kata per menit untuk siaran santai
+
+    const text = scriptDraft.trim();
+
+    // Count words (Indonesian text - handle multiple spaces and punctuation)
+    const words = text.split(/\s+/).filter(w => w.length > 0).length;
+
+    // Count characters (excluding spaces for more accurate reading estimate)
+    const chars = text.replace(/\s/g, "").length;
+
+    // Count sentences (periods, question marks, exclamation marks)
+    const sentences = (text.match(/[.!?]+/g) || []).length;
+
+    // Count paragraphs (double newlines or single newlines)
+    const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 0).length;
+
+    // Calculate estimated reading time
+    // Radio speaking is typically 130-150 words per minute
+    const readingSpeedWPM = 140;
     const durationMinutes = Math.floor(words / readingSpeedWPM);
-    const durationSeconds = Math.round((words % readingSpeedWPM) / (readingSpeedWPM / 60));
-    
+    const durationSeconds = Math.round(((words % readingSpeedWPM) / readingSpeedWPM) * 60);
+
+    // Format duration text
+    let durationText = "";
+    if (durationMinutes > 0) {
+      durationText = `${durationMinutes}m ${durationSeconds}d`;
+    } else if (durationSeconds > 0) {
+      durationText = `${durationSeconds}d`;
+    } else {
+      durationText = "< 1d";
+    }
+
     return {
       words,
-      chars,
-      durationText: `${durationMinutes}m ${durationSeconds}d`
+      chars: text.length, // Include spaces in total chars for display
+      charsNoSpaces: chars,
+      sentences,
+      paragraphs,
+      durationText,
+      durationMinutes: durationMinutes + (durationSeconds / 60)
     };
   }, [scriptDraft]);
-
-  const selectedScriptSlot = useMemo(() => {
-    const fallback = scheduleSlots[0];
-    if (!scriptSlotKey) return fallback;
-    return (
-      scheduleSlots.find(
-        (slot: BroadcastProgramSlot) => `${slot.day}-${slot.time}-${slot.program}` === scriptSlotKey
-      ) || fallback
-    );
-  }, [scheduleSlots, scriptSlotKey]);
 
   const groupedSlots = useMemo(() => {
     return scheduleSlots.reduce((acc: Record<string, BroadcastProgramSlot[]>, slot: BroadcastProgramSlot) => {
@@ -172,12 +239,6 @@ export function AiScriptPage({
       return acc;
     }, {});
   }, [scheduleSlots]);
-
-  function formatAirNames(value: string): string {
-    return resolveAnnouncerText(value)
-      .map((part) => (part.kind === "announcer" ? part.profile.airName : part.label))
-      .join(" / ");
-  }
 
   async function handleGenerateScript(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -196,7 +257,7 @@ export function AiScriptPage({
         programTitle: selectedScriptSlot.program,
         scheduleTime: selectedScriptSlot.time,
         day: selectedScriptSlot.day,
-        announcerName: formatAirNames(selectedScriptSlot.announcer),
+        announcerName: formatAirNameOnly(selectedScriptSlot.announcer),
         description: selectedScriptSlot.description,
         tone: scriptTone,
         durationMinutes: scriptDuration,
@@ -236,7 +297,7 @@ export function AiScriptPage({
         programTitle: selectedScriptSlot.program,
         scheduleTime: selectedScriptSlot.time,
         day: selectedScriptSlot.day,
-        announcerName: formatAirNames(selectedScriptSlot.announcer),
+        announcerName: formatAirNameOnly(selectedScriptSlot.announcer),
         description: selectedScriptSlot.description,
         provider: "gemini",
         tone: scriptTone,
@@ -341,7 +402,7 @@ export function AiScriptPage({
           <p>{selectedScriptSlot.description || "Pilih program untuk menyesuaikan konteks naskah."}</p>
           <em>
             <Radio size={16} />
-            {formatAirNames(selectedScriptSlot.announcer) || "Penyiar Radio SBL"}
+            {formatAirNameOnly(selectedScriptSlot.announcer) || "Penyiar Radio SBL"}
           </em>
         </div>
       </section>

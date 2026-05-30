@@ -1,6 +1,20 @@
-import { getGenAIClient } from "./gemini.service";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+// import { getGenAIClient } from "./gemini.service";
 
 export type AiScriptProvider = "openai" | "gemini";
+
+// Cache configuration
+// const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// const GEMINI_TIMEOUT_MS = 5000; // 5 seconds for fail-fast
+// const MAX_CACHE_SIZE = 50;
+
+// interface CacheEntry {
+//   data: ProgramScriptResponse;
+//   timestamp: number;
+// }
+
+// const scriptCache = new Map<string, CacheEntry>();
+// const pendingRequests = new Map<string, Promise<ProgramScriptResponse>>();
 
 export type ProgramScriptRequest = {
   provider: AiScriptProvider;
@@ -12,6 +26,7 @@ export type ProgramScriptRequest = {
   tone: string;
   durationMinutes: number;
   intervention?: string;
+  skipCache?: boolean; // Override caching for this request
 
   audienceSegment?: "umum" | "remaja" | "dewasa" | "keluarga" | "komunitas";
   broadcastMoment?: "pagi" | "siang" | "sore" | "malam";
@@ -30,7 +45,8 @@ export type ProgramScriptResponse = {
   warning?: string;
 };
 
-function inferBroadcastMoment(scheduleTime: string): ProgramScriptRequest["broadcastMoment"] {
+function inferBroadcastMoment(scheduleTime: string | undefined | null): ProgramScriptRequest["broadcastMoment"] {
+  if (!scheduleTime || typeof scheduleTime !== "string") return undefined;
   const hourMatch = scheduleTime.match(/\d{1,2}/);
   const hour = hourMatch ? Number(hourMatch[0]) : NaN;
 
@@ -41,8 +57,10 @@ function inferBroadcastMoment(scheduleTime: string): ProgramScriptRequest["broad
   return "malam";
 }
 
-function inferAudienceSegment(programTitle: string, description: string): ProgramScriptRequest["audienceSegment"] {
-  const text = `${programTitle} ${description}`.toLowerCase();
+function inferAudienceSegment(programTitle: string | undefined | null, description: string | undefined | null): ProgramScriptRequest["audienceSegment"] {
+  const titleText = String(programTitle || "");
+  const descText = String(description || "");
+  const text = `${titleText} ${descText}`.toLowerCase();
 
   if (text.includes("anak muda") || text.includes("remaja") || text.includes("gen z")) {
     return "remaja";
@@ -99,70 +117,43 @@ function buildDemoScript(request: ProgramScriptRequest): string {
 
 function buildIdentityRules(): string[] {
   return [
-    "===== IDENTITAS RADIO =====",
-    "- Ini adalah naskah untuk LPPL Radio Suara Bumi Lasinrang 92,4 FM.",
-    "- Wajib gunakan sapaan pendengar: \"Sobat Bumi Lasinrang\".",
-    "- Wajib selipkan tagline: \"Suara Pinrang, Suara Kita\".",
-    "- Nuansa lokal Kabupaten Pinrang dan budaya Bugis boleh digunakan secara halus.",
-    "- Gunakan unsur lokal maksimal 1 kali dalam satu naskah kecuali diminta khusus oleh penyiar.",
-    "- Jangan memaksakan semua ungkapan lokal dalam satu naskah."
+    "===== IDENTITAS =====",
+    "LPPL Radio SBL 92,4 FM. Wajib: Sobat Bumi Lasinrang, Suara Pinrang, Suara Kita. Unsur lokal maks 1× kecuali diminta."
   ];
 }
 
 function buildSpokenStyleRules(): string[] {
   return [
-    "===== GAYA BAHASA SIARAN =====",
-    "- Tulis seperti penyiar benar-benar berbicara, bukan seperti artikel.",
-    "- Gunakan kalimat pendek dan mudah dibaca.",
-    "- Hindari paragraf terlalu panjang.",
-    "- Buat transisi antarbagian terasa natural.",
-    "- Gunakan jeda napas alami melalui pemenggalan paragraf.",
-    "- Jangan terlalu formal kecuali tone meminta formal.",
-    "- Jangan terlalu banyak slogan.",
-    "- Jangan membuat kalimat yang terdengar seperti iklan berlebihan.",
-    "- Buat variasi diksi dan opening agar tidak terasa berulang antar-generate."
+    "===== GAYA =====",
+    "Seperti bicara: kalimat pendek, transisi natural, variasi diksi. Hindari: formal berlebih, slogan/iklan berulang."
   ];
 }
 
 function buildAntiTemplateRules(): string[] {
   return [
-    "===== ATURAN ANTI TEMPLATE =====",
-    "- Jangan selalu membuka dengan pola yang sama.",
-    "- Hindari opening generik seperti: \"Kembali lagi bersama saya\" jika tidak diperlukan.",
-    "- Variasikan opening berdasarkan waktu siaran, nama program, tone, dan arahan penyiar.",
-    "- Jangan mengulang frasa yang sama terlalu sering.",
-    "- Jangan membuat naskah terasa seperti hasil copy-paste dari template."
+    "===== VARIASI =====",
+    "Opening berbasis waktu/program/tone. Hindari pola berulang dan generik."
   ];
 }
 
 function buildDurationRules(durationMinutes: number): string[] {
   if (durationMinutes <= 5) {
     return [
-      "===== ATURAN DURASI =====",
-      "- Durasi pendek.",
-      "- Buat opening singkat.",
-      "- Gunakan 1 segmen utama.",
-      "- Maksimal 1 cue lagu.",
-      "- Closing singkat dan kuat."
+      "===== DURASI =====",
+      "Pendek: opening singkat, 1 segmen, max 1 cue, closing kuat."
     ];
   }
 
   if (durationMinutes <= 15) {
     return [
-      "===== ATURAN DURASI =====",
-      "- Durasi sedang.",
-      "- Buat opening, 2 segmen isi, 1 cue lagu, dan closing.",
-      "- Tambahkan 1 hook interaksi pendengar.",
-      "- Jaga agar tiap segmen tidak terlalu panjang."
+      "===== DURASI =====",
+      "Sedang: opening, 2 segmen, 1 cue, closing, 1 hook."
     ];
   }
 
   return [
-    "===== ATURAN DURASI =====",
-    "- Durasi panjang.",
-    "- Buat opening, beberapa segmen isi, transisi antarsegmen, cue lagu, interaksi pendengar, dan closing.",
-    "- Sisipkan variasi ritme agar penyiar tidak terdengar monoton.",
-    "- Gunakan beberapa hook ringan untuk mempertahankan perhatian pendengar."
+    "===== DURASI =====",
+    "Panjang: opening, beberapa segmen, transisi, cue, interaksi, closing, variasi ritme."
   ];
 }
 
@@ -171,27 +162,15 @@ function buildSituationalRules(request: ProgramScriptRequest): string[] {
   const audience = request.audienceSegment || inferAudienceSegment(request.programTitle, request.description);
 
   return [
-    "===== KONTEKS SITUASI =====",
-    `- Momen siaran: ${moment || "umum"}`,
-    `- Target pendengar: ${audience || "umum"}`,
-    `- Konteks lokal: ${request.localContext || "-"}`,
-    `- Cuaca/suasana: ${request.weatherContext || "-"}`,
-    `- Situasi saat ini: ${request.currentSituation || "-"}`,
-    `- Tujuan interaksi: ${request.interactionGoal || "ajak pendengar tetap terhubung secara natural"}`,
-    `- Preferensi musik: ${request.musicPreference || "sesuaikan dengan program dan tone"}`,
-    `- Fokus konten: ${request.contentFocus || "sesuaikan dengan deskripsi program"}`
+    "===== KONTEKS =====",
+    `Momen: ${moment || "umum"} | Pendengar: ${audience || "umum"} | Lokal: ${request.localContext || "-"} | Cuaca: ${request.weatherContext || "-"} | Situasi: ${request.currentSituation || "-"} | Interaksi: ${request.interactionGoal || "tetap terhubung"} | Musik: ${request.musicPreference || "sesuai program"} | Fokus: ${request.contentFocus || "sesuai deskripsi"}`
   ];
 }
 
 function buildMusicCueRules(): string[] {
   return [
-    "===== ATURAN CUE LAGU =====",
-    "- Jika yakin dengan judul dan penyanyi, gunakan format: [CUE LAGU: Judul Lagu - Penyanyi].",
-    "- Jika tidak yakin, jangan mengarang judul lagu.",
-    "- Jika tidak yakin, gunakan format kategori: [CUE LAGU: Pop Indonesia bertema semangat pagi].",
-    "- Sebelum cue lagu, buat pengantar singkat yang relevan.",
-    "- Akhiri pengantar lagu dengan pertanyaan ringan untuk interaksi pendengar.",
-    "- Gunakan nomor WhatsApp resmi Radio SBL: 0851-2256-1992."
+    "===== LAGU =====",
+    "Rekomendasi nyata: judul+penyanyi benar-benar ada, bukan fiktif/kolaborasi. Prioritas: lagu Indonesia populer aman. Sesuaikan jam/tone/pendengar. Max 1-3 lagu. Format: [CUE LAGU: Judul - Penyanyi]. Opsi kategori: [CUE LAGU: Pop Indonesia bertema semangat]. Sebelum cue: pengantar singkat. Setelah cue: boleh hook interaksi. WhatsApp 0851-2256-1992 hanya untuk request/salam."
   ];
 }
 
@@ -209,15 +188,8 @@ function buildSafetyRules(): string[] {
 
 function buildOutputFormatRules(): string[] {
   return [
-    "===== FORMAT OUTPUT =====",
-    "Langsung hasilkan naskah saja.",
-    "Jangan gunakan kalimat pengantar seperti: \"Berikut naskahnya\".",
-    "",
-    "Gunakan struktur:",
-    "=== OPENING ===",
-    "=== SEGMENT/ISI ===",
-    "[CUE LAGU/IKLAN]",
-    "=== CLOSING ==="
+    "===== FORMAT =====",
+    "Langsung naskah tanpa pengantar. Struktur: === OPENING ===, === SEGMENT/ISI ===, [CUE LAGU/IKLAN], === CLOSING ===."
   ];
 }
 
@@ -236,6 +208,8 @@ function buildGeminiPrompt(request: ProgramScriptRequest): string {
     ...buildSituationalRules(request),
     "",
     ...buildMusicCueRules(),
+    "",
+    "Catatan penting: untuk rekomendasi lagu, lebih baik menyebut lagu nyata yang populer dan terverifikasi secara umum daripada hanya memberi kategori. Gunakan kategori hanya sebagai opsi terakhir jika tidak yakin.",
     "",
     ...buildSafetyRules(),
     "",
@@ -288,6 +262,7 @@ export async function generateProgramScript(
     announcerName: cleanPromptInput(request.announcerName),
     description: cleanPromptInput(request.description),
     tone: cleanPromptInput(request.tone),
+    durationMinutes: Number(request.durationMinutes) || 5,
     intervention: request.intervention ? cleanPromptInput(request.intervention) : undefined,
     localContext: request.localContext ? cleanPromptInput(request.localContext) : undefined,
     currentSituation: request.currentSituation ? cleanPromptInput(request.currentSituation) : undefined,
@@ -346,34 +321,41 @@ export async function generateProgramScript(
     }
   }
 
-  try {
-    const genAI = getGenAIClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const apiKeys = keysString.split(",").map((k: string) => k.trim()).filter(Boolean);
+  const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+  for (const [index, apiKey] of shuffledKeys.entries()) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    if (!text) {
-      throw new Error("AI mengembalikan respon kosong.");
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      if (!text) {
+        throw new Error("AI mengembalikan respon kosong.");
+      }
+
+      const cleanText = ensureRadioIdentity(normalizeGeneratedScript(text));
+
+      return {
+        provider: "gemini",
+        demo: false,
+        text: cleanText
+      };
+    } catch (error) {
+      console.warn(`Kesalahan saat memanggil Gemini API secara langsung dengan kunci ke-${index + 1}:`, error);
     }
-
-    const cleanText = ensureRadioIdentity(normalizeGeneratedScript(text));
-
-    return {
-      provider: "gemini",
-      demo: false,
-      text: cleanText
-    };
-  } catch (error) {
-    console.error("Kesalahan saat memanggil Gemini API secara langsung:", error);
-    return {
-      demo: true,
-      provider: "demo",
-      warning: "AI utama sementara tidak tersedia. Sistem menampilkan naskah cadangan yang tetap bisa diedit manual.",
-      text: buildDemoScript(sanitizedRequest)
-    };
   }
+
+  console.error("Semua kunci Gemini API gagal digunakan saat direct call.");
+  return {
+    demo: true,
+    provider: "demo",
+    warning: "AI utama sementara tidak tersedia. Sistem menampilkan naskah cadangan yang tetap bisa diedit manual.",
+    text: buildDemoScript(sanitizedRequest)
+  };
 }
 
 export async function rewriteProgramScript(
@@ -415,11 +397,86 @@ export async function rewriteProgramScript(
 
     return data.text.trim();
   } catch (error) {
-    console.error("Kesalahan saat memanggil AI Rewrite Proxy:", error);
+    console.warn("Gagal menggunakan proxy AI Rewrite, mencoba direct call:", error);
+  }
+
+  const keysString = import.meta.env.VITE_GEMINI_API_KEYS || import.meta.env.VITE_GEMINI_API_KEY || "";
+  if (!keysString) {
     throw new Error(
-      "AI Rewrite sementara tidak tersedia.\n\n" +
-      "Silakan coba kembali beberapa saat lagi.\n" +
+      "AI Rewrite tidak tersedia.\n\n" +
+      "Kunci API tidak terkonfigurasi di sistem.\n" +
       "Naskah asli Anda tetap aman."
     );
   }
+
+  let modeInstruction = "";
+  switch (mode) {
+    case "formal":
+      modeInstruction = "Ubah menjadi lebih resmi, lebih rapi, dan lebih profesional.";
+      break;
+    case "singkat":
+      modeInstruction = "Ringkas naskah agar jauh lebih pendek (target: 20-30% lebih ringkas) tanpa menghilangkan inti pesannya.";
+      break;
+    case "energik":
+      modeInstruction = "Ubah menjadi lebih bersemangat, lebih hidup, dan lebih radio-friendly (penuh energi positif).";
+      break;
+    case "anak-muda":
+      modeInstruction = "Ubah menjadi lebih santai dan kekinian ala anak muda (Gen Z), namun tetap sopan, layak siar, dan tidak menggunakan kata kasar.";
+      break;
+    case "santai":
+      modeInstruction = "Ubah menjadi santai, hangat, dan kasual ala ngobrol.";
+      break;
+    case "profesional":
+      modeInstruction = "Ubah menjadi berkelas, elegan, dan profesional untuk target pendengar kelas atas.";
+      break;
+    default:
+      modeInstruction = "Sesuaikan gaya bahasa naskah dengan gaya yang natural untuk siaran radio.";
+  }
+
+  const prompt = `
+Tugas Anda adalah menulis ulang (rewrite) naskah siaran radio berikut ini.
+
+Instruksi Spesifik: ${modeInstruction}
+
+ATURAN MUTLAK (WAJIB DIPATUHI):
+1. JANGAN mengubah struktur segmen naskah asli.
+2. JANGAN menghapus atau mengubah frasa/tagline khas berikut jika ada di naskah asli:
+   - "Sobat Bumi Lasinrang"
+   - "Suara Pinrang, Suara Kita"
+3. JANGAN menambah berita baru, fakta baru, atau narasumber baru yang tidak ada pada naskah asli.
+4. Pertahankan semua penanda/marker segmentasi naskah (seperti === OPENING ===, === ISI ===, === CLOSING ===, dan [CUE] atau [CUE LAGU/IKLAN]).
+5. Proses Rewrite HANYA mengubah gaya bahasa sesuai gaya yang diminta di atas.
+6. JANGAN memberikan kalimat pengantar atau penutup tambahan (seperti "Ini hasil revisinya:" atau sejenisnya). LANGSUNG cetak teks hasil revisi naskah secara utuh.
+
+NASKAH ASLI:
+"""
+${currentText}
+"""
+  `.trim();
+
+  const apiKeys = keysString.split(",").map((k: string) => k.trim()).filter(Boolean);
+  const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+
+  for (const [index, apiKey] of shuffledKeys.entries()) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      if (text && text.trim()) {
+        return text.trim();
+      }
+    } catch (directError) {
+      console.warn(`Kesalahan saat memanggil Gemini API secara langsung untuk Rewrite dengan kunci ke-${index + 1}:`, directError);
+    }
+  }
+
+  throw new Error(
+    "AI Rewrite sementara tidak tersedia.\n\n" +
+    "Semua kunci API Gemini mengalami gangguan atau limitasi.\n" +
+    "Silakan coba kembali beberapa saat lagi."
+  );
 }

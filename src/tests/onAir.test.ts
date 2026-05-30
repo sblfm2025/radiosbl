@@ -38,7 +38,7 @@ describe("on air announcer resolver", () => {
         records,
         new Date("2026-05-15T02:00:00.000Z")
       )
-    ).toBe("Miah (Salmiah)");
+    ).toBe("Miah Jufri");
   });
 
   it("hides announcer when the scheduled person has not checked in", () => {
@@ -76,11 +76,11 @@ describe("on air announcer resolver", () => {
     ];
 
     expect(resolveOnAirAnnouncersFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
-      "Miah (Salmiah)",
-      "Amar (Akhmad Amiruddin)"
+      "Miah Jufri",
+      "Amar"
     ]);
     expect(resolveOnAirAnnouncerFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toBe(
-      "Miah (Salmiah) / Amar (Akhmad Amiruddin)"
+      "Miah Jufri / Amar"
     );
   });
 
@@ -99,7 +99,7 @@ describe("on air announcer resolver", () => {
     ];
 
     expect(resolveOnAirAnnouncerFromAttendance(slot, records, new Date("2026-05-15T02:00:00.000Z"))).toBe(
-      "Miah (Salmiah)"
+      "Miah Jufri"
     );
   });
 
@@ -134,7 +134,7 @@ describe("on air announcer resolver", () => {
     };
 
     expect(resolveOnAirAnnouncerFromAttendance(amarSlot, records, new Date("2026-05-15T02:00:00.000Z"), users)).toBe(
-      "Amar (Akhmad Amiruddin)"
+      "Amar"
     );
   });
 
@@ -167,8 +167,8 @@ describe("on air announcer resolver", () => {
     ];
 
     expect(resolveOnAirAnnouncersFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
-      "Amar (Akhmad Amiruddin)",
-      "Riska (Riska Dwiayanti)"
+      "Amar",
+      "Riska"
     ]);
   });
 });

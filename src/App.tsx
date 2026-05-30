@@ -79,7 +79,7 @@ import {
 import { listUserProfiles } from "./services/userProfile.service";
 
 // Utils & Hooks
-import { getAnnouncerWorkload } from "./utils/announcerResolver";
+import { getAnnouncerWorkload, formatAirNameOnly } from "./utils/announcerResolver";
 import type { AppUser, AttendanceRecord } from "./types/domain";
 import { useCurrentBroadcastSlot } from "./hooks/useCurrentBroadcastSlot";
 
@@ -241,7 +241,7 @@ function AnnouncersPage({
           <article>
             <Clock3 size={18} />
             <small>Slot terpadat</small>
-            <strong>{spotlightAnnouncer?.announcer.airName ?? "Belum ada"}</strong>
+            <strong>{spotlightAnnouncer ? formatAirNameOnly(spotlightAnnouncer.announcer.airName) : "Belum ada"}</strong>
             <span>{spotlightText}</span>
           </article>
         </div>
@@ -260,7 +260,7 @@ function AnnouncersPage({
               className="announcer-card"
               key={announcer.fullName}
               onClick={() => onOpenAnnouncerProfile(announcer.airName)}
-              aria-label={`Buka profil ${announcer.airName}`}
+              aria-label={`Buka profil ${formatAirNameOnly(announcer.airName)}`}
             >
               <span className={`announcer-status-pill${announcer.active ? "" : " is-muted"}`}>
                 {announcer.active ? "Aktif" : "Tidak aktif"}
@@ -268,15 +268,15 @@ function AnnouncersPage({
               <div className="announcer-photo-wrap">
                 <img
                   src={announcer.photoUrl}
-                  alt={`Foto ${announcer.airName}`}
+                  alt={`Foto ${formatAirNameOnly(announcer.airName)}`}
                   className="announcer-photo"
                 />
               </div>
               <div className="announcer-card-head">
-                <span aria-hidden="true">{announcer.airName.slice(0, 1)}</span>
+                <span aria-hidden="true">{formatAirNameOnly(announcer.airName).slice(0, 1)}</span>
                 <div>
-                  <strong>{announcer.airName}</strong>
-                  <small>{announcer.fullName}</small>
+                  <strong>{formatAirNameOnly(announcer.airName)}</strong>
+                  <small>Penyiar Radio SBL</small>
                 </div>
                 <em>#{announcer.decreeOrder}</em>
               </div>
