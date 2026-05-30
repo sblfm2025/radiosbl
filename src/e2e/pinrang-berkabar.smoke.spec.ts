@@ -21,7 +21,7 @@ test("Pinrang Berkabar page is searchable and responsive", async ({ page }) => {
   await setDemoSession(page);
   await page.goto("/?page=pinrangBerkabar");
 
-  await expect(page.getByRole("heading", { name: "Pinrang Berkabar" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pinrang Berkabar", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Buka playlist/i })).toBeVisible();
   await expect(page.getByPlaceholder(/Cari judul/i)).toBeVisible();
   await expect(page.locator(".pinrang-video-identity img")).toBeVisible();
@@ -32,7 +32,7 @@ test("Pinrang Berkabar page is searchable and responsive", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Semua fitur Radio SBL" })).toBeVisible();
     await expect(page.locator(".menu-recent-panel").getByRole("button", { name: /Pinrang Berkabar/i })).toBeVisible();
     await page.goto("/?page=pinrangBerkabar");
-    await expect(page.getByRole("heading", { name: "Pinrang Berkabar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pinrang Berkabar", exact: true })).toBeVisible();
   }
 
   await expect.poll(async () => page.locator(".pinrang-video-card:not(.loading)").count()).toBeGreaterThan(0);

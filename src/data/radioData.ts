@@ -17,7 +17,8 @@ import {
   ArrowLeftRight,
   BarChart3,
   BookOpen,
-  FileText
+  FileText,
+  Inbox
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -43,7 +44,8 @@ export type PageKey =
   | "profile"
   | "menu"
   | "tutorial"
-  | "pedoman";
+  | "pedoman"
+  | "studioInbox";
 
 import type { Permission } from "../types/domain";
 
@@ -61,6 +63,7 @@ export const primaryNav: NavItem[] = [
   { key: "aiScript", label: "Buat Naskah", icon: Sparkles, requiredPermission: "ai:use" },
   { key: "streaming", label: "Streaming", icon: Radio, requiredPermission: "dashboard:read" },
   { key: "requests", label: "Request", icon: Headphones, requiredPermission: "complaints:submit" },
+  { key: "studioInbox", label: "Studio Inbox", icon: Inbox, requiredPermission: "complaints:manage" },
   { key: "liveOb", label: "Live OB", icon: Video, requiredPermission: "live_ob:manage" },
   { key: "podcast", label: "Podcast", icon: Podcast, requiredPermission: "dashboard:read" },
   { key: "pinrangBerkabar", label: "Pinrang Berkabar", icon: Video, requiredPermission: "dashboard:read" },

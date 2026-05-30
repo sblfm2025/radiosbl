@@ -9,6 +9,9 @@ import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import { subscribeSongRequests, submitSongRequest } from "../services/songRequest.service";
+import { RequestSongFormV2 } from "../features/engagement/components/RequestSongFormV2";
+import { DedicationForm } from "../features/engagement/components/DedicationForm";
+import { PollWidget } from "../features/engagement/components/PollWidget";
 
 export function StreamingPage({
   data,
@@ -256,39 +259,77 @@ export function StreamingPage({
             </div>
           </div>
 
-          <button
-            type="button"
-            className={`streaming-request-toggle ${requestFormOpen ? "open" : ""}`}
-            onClick={() => {
-              const nextState = !requestFormOpen;
-              setRequestFormOpen(nextState);
-              if (nextState) {
-                setTimeout(() => {
-                  scrollTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 150);
-              }
-            }}
-          >
-            REQUEST
-            <ChevronRight size={24} />
-          </button>
+          {featureFlags.listenerEngagement ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <PollWidget userId={session?.id} />
+              
+              <button
+                type="button"
+                className={`streaming-request-toggle ${requestFormOpen ? "open" : ""}`}
+                onClick={() => {
+                  const nextState = !requestFormOpen;
+                  setRequestFormOpen(nextState);
+                  if (nextState) {
+                    setTimeout(() => {
+                      scrollTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 150);
+                  }
+                }}
+              >
+                REQUEST LAGU & SALAM
+                <ChevronRight size={24} />
+              </button>
 
-          {requestFormOpen && (
-            <form onSubmit={handleSongRequestSubmit} className="streaming-request-form">
-              <div className="streaming-request-grid">
-                <input value={requesterName} onChange={(e) => setRequesterName(e.target.value)} placeholder="Nama" />
-                <input value={requesterWhatsapp} onChange={(e) => setRequesterWhatsapp(e.target.value)} placeholder="WA opsional" />
-                <input className="wide" value={requesterCity} onChange={(e) => setRequesterCity(e.target.value)} placeholder="Alamat/Kota" />
-                <input value={songArtist} onChange={(e) => setSongArtist(e.target.value)} placeholder="Penyanyi" />
-                <input value={songTitle} onChange={(e) => setSongTitle(e.target.value)} placeholder="Judul lagu" required />
-              </div>
-              <textarea value={songMessage} onChange={(e) => setSongMessage(e.target.value)} placeholder="Pesan singkat opsional" rows={2} />
-              
-              {songRequestError && <p className="streaming-request-alert error">{songRequestError}</p>}
-              {songRequestNotice && <p className="streaming-request-alert success">{songRequestNotice}</p>}
-              
-              <button type="submit" className="streaming-request-submit">Kirim request</button>
-            </form>
+              {requestFormOpen && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <RequestSongFormV2
+                    activeProgramTitle={currentSlot.title}
+                    activeProgramId={currentSlot.title.replace(/\s+/g, '-').toLowerCase()}
+                  />
+                  <DedicationForm
+                    activeProgramTitle={currentSlot.title}
+                    activeProgramId={currentSlot.title.replace(/\s+/g, '-').toLowerCase()}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={`streaming-request-toggle ${requestFormOpen ? "open" : ""}`}
+                onClick={() => {
+                  const nextState = !requestFormOpen;
+                  setRequestFormOpen(nextState);
+                  if (nextState) {
+                    setTimeout(() => {
+                      scrollTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 150);
+                  }
+                }}
+              >
+                REQUEST
+                <ChevronRight size={24} />
+              </button>
+
+              {requestFormOpen && (
+                <form onSubmit={handleSongRequestSubmit} className="streaming-request-form">
+                  <div className="streaming-request-grid">
+                    <input value={requesterName} onChange={(e) => setRequesterName(e.target.value)} placeholder="Nama" />
+                    <input value={requesterWhatsapp} onChange={(e) => setRequesterWhatsapp(e.target.value)} placeholder="WA opsional" />
+                    <input className="wide" value={requesterCity} onChange={(e) => setRequesterCity(e.target.value)} placeholder="Alamat/Kota" />
+                    <input value={songArtist} onChange={(e) => setSongArtist(e.target.value)} placeholder="Penyanyi" />
+                    <input value={songTitle} onChange={(e) => setSongTitle(e.target.value)} placeholder="Judul lagu" required />
+                  </div>
+                  <textarea value={songMessage} onChange={(e) => setSongMessage(e.target.value)} placeholder="Pesan singkat opsional" rows={2} />
+                  
+                  {songRequestError && <p className="streaming-request-alert error">{songRequestError}</p>}
+                  {songRequestNotice && <p className="streaming-request-alert success">{songRequestNotice}</p>}
+                  
+                  <button type="submit" className="streaming-request-submit">Kirim request</button>
+                </form>
+              )}
+            </>
           )}
         </div>
       </div>

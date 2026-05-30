@@ -40,6 +40,7 @@ import { ScheduleSwapPage } from "./components/ScheduleSwapPage";
 import { AttendanceReportPage } from "./components/AttendanceReportPage";
 import { TutorialPage } from "./components/TutorialPage";
 import { PedomanMediaPage } from "./components/PedomanMediaPage";
+import StudioInboxPage from "./features/engagement/pages/StudioInboxPage";
 
 // Data & Repository
 import {
@@ -106,6 +107,7 @@ const navigablePages: PageKey[] = [
   "pinrangBerkabar",
   "podcast",
   "requests",
+  "studioInbox",
   "complaints",
   "aiScript",
   "users",
@@ -577,6 +579,8 @@ export default function App() {
         return <CoveragePage />;
       case "requests":
         return <SongRequestsPage />;
+      case "studioInbox":
+        return <StudioInboxPage session={session} />;
       case "podcast":
         return <PodcastPage />;
       case "pinrangBerkabar":

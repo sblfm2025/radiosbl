@@ -22,7 +22,7 @@ type ShellProps = {
 const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   {
     label: "Operasional",
-    items: ["dashboard", "attendance", "schedule", "requests", "scheduleSwap"]
+    items: ["dashboard", "attendance", "schedule", "requests", "scheduleSwap", "studioInbox"]
   },
   {
     label: "Siaran",
