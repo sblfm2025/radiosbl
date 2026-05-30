@@ -761,6 +761,23 @@ service cloud.firestore {
       allow create, update, delete: if isSuperAdmin();
     }
 
+    match /listener_analytics_sessions/{sessionId} {
+      allow create, update: if true;
+      allow read: if isLeader() || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /listener_analytics_events/{eventId} {
+      allow create: if true;
+      allow read: if isLeader() || isSuperAdmin();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /listener_analytics_daily/{summaryId} {
+      allow read: if isLeader() || isSuperAdmin();
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

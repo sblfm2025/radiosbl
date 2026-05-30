@@ -40,6 +40,7 @@ import { ScheduleSwapPage } from "./components/ScheduleSwapPage";
 import { AttendanceReportPage } from "./components/AttendanceReportPage";
 import { TutorialPage } from "./components/TutorialPage";
 import { PedomanMediaPage } from "./components/PedomanMediaPage";
+import { ListenerAnalyticsPage } from "./components/ListenerAnalyticsPage";
 
 // Data & Repository
 import {
@@ -82,6 +83,7 @@ import { listUserProfiles } from "./services/userProfile.service";
 import { getAnnouncerWorkload, formatAirNameOnly } from "./utils/announcerResolver";
 import type { AppUser, AttendanceRecord } from "./types/domain";
 import { useCurrentBroadcastSlot } from "./hooks/useCurrentBroadcastSlot";
+import { ListenerAnalyticsProvider } from "./features/analytics/context/ListenerAnalyticsContext";
 
 // Styles
 import "./styles/app.css";
@@ -111,6 +113,7 @@ const navigablePages: PageKey[] = [
   "users",
   "scheduleSwap",
   "attendanceReport",
+  "analytics",
   "profile",
   "menu",
   "tutorial",
@@ -594,6 +597,8 @@ export default function App() {
         return <TutorialPage />;
       case "pedoman":
         return <PedomanMediaPage />;
+      case "analytics":
+        return <ListenerAnalyticsPage />;
       case "profile":
         return session ? (
           <ProfilePage session={session} onLogout={handleLogout} />
@@ -642,12 +647,13 @@ export default function App() {
   const showMiniPlayer = session && !["splash", "login", "dashboard", "streaming", "podcast", "menu"].includes(activePage);
 
   return (
-    <AudioProvider
-      streamUrl={stationInfo.streamUrl}
-      frequency={stationInfo.frequency}
-      programTitle={currentSlot.title}
-      announcer={currentAnnouncer}
-    >
+    <ListenerAnalyticsProvider>
+      <AudioProvider
+        streamUrl={stationInfo.streamUrl}
+        frequency={stationInfo.frequency}
+        programTitle={currentSlot.title}
+        announcer={currentAnnouncer}
+      >
       <Shell 
         activePage={activePage} 
         session={session} 
@@ -663,6 +669,7 @@ export default function App() {
           onOpenStreaming={() => navigateToPage("streaming")}
         />
       )}
-    </AudioProvider>
+      </AudioProvider>
+    </ListenerAnalyticsProvider>
   );
 }

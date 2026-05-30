@@ -11,8 +11,10 @@ import {
   type RadioMetadata
 } from "../services/radioMetadata.service";
 import { AudioContext } from "./audioContextState";
+import { useListenerAnalytics } from "../features/analytics/context/ListenerAnalyticsContext";
 
 export function AudioProvider({ children, streamUrl, frequency, programTitle, announcer }: { children: ReactNode, streamUrl: string, frequency: string, programTitle: string, announcer: string }) {
+  const { trackPlay, trackPause, trackStop } = useListenerAnalytics();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const volumeRef = useRef(0.82);
   const [playing, setPlaying] = useState(false);
@@ -23,15 +25,24 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
   const sweeperRef = useRef<HTMLAudioElement | null>(null);
   const hasPlayedSweeperRef = useRef(false);
 
+  const programTitleRef = useRef(programTitle);
+  useEffect(() => {
+    programTitleRef.current = programTitle;
+  }, [programTitle]);
+
   const buildAudio = useCallback(() => {
     const audio = new Audio();
     audio.preload = "none";
     audio.volume = volumeRef.current;
     audio.src = streamUrl;
-    audio.onpause = () => setPlaying(false);
+    audio.onpause = () => {
+      setPlaying(false);
+      void trackPause();
+    };
     audio.onplaying = () => {
       setError("");
       setPlaying(true);
+      void trackPlay(undefined, programTitleRef.current);
     };
     audio.onerror = () => {
       const code = audio.error?.code;
@@ -49,20 +60,21 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
     };
 
     return audio;
-  }, [streamUrl]);
+  }, [streamUrl, trackPlay, trackPause]);
 
   useEffect(() => {
     audioRef.current = buildAudio();
 
     return () => {
       audioRef.current?.pause();
+      void trackStop();
       if (audioRef.current) {
         audioRef.current.src = "";
         audioRef.current.load();
         audioRef.current = null;
       }
     };
-  }, [buildAudio]);
+  }, [buildAudio, trackStop]);
 
   const refreshMetadata = useCallback(async () => {
     try {
@@ -114,6 +126,10 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       setPlaying(false);
       return;
     }
+
+    // Panggil trackPlay segera saat user klik play — tidak menunggu audio.onplaying
+    // agar sesi pendengar tercatat meskipun siaran sedang OFF AIR
+    void trackPlay(undefined, programTitleRef.current);
 
     if (!hasPlayedSweeperRef.current) {
       hasPlayedSweeperRef.current = true;

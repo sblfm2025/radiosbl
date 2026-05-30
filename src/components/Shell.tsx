@@ -38,7 +38,7 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Administrasi",
-    items: ["attendanceReport", "users"]
+    items: ["attendanceReport", "users", "analytics"]
   },
   {
     label: "Sistem",
