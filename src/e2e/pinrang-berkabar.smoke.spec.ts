@@ -26,7 +26,7 @@ test("Pinrang Berkabar page is searchable and responsive", async ({ page }) => {
   await expect(page.getByPlaceholder(/Cari judul/i)).toBeVisible();
   await expect(page.locator(".pinrang-video-identity img")).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) < 900) {
-    const menuButton = page.getByRole("button", { name: "Menu" });
+    const menuButton = page.getByRole("button", { name: "Menu", exact: true });
     await expect(menuButton).toHaveClass(/active/);
     await menuButton.click();
     await expect(page.getByRole("heading", { name: "Semua fitur Radio SBL" })).toBeVisible();

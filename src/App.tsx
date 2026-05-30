@@ -568,6 +568,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer}
             onAirAnnouncers={currentAnnouncers}
             onExit={() => navigateToPage("dashboard")}
+            session={session?.user || null}
           />
         );
       case "liveOb":

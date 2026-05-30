@@ -10,7 +10,7 @@ import {
   radioMetadataFallback,
   type RadioMetadata
 } from "../services/radioMetadata.service";
-import { AudioContext } from "./audioContextState";
+import { AudioContext, type PlayerStatusType } from "./audioContextState";
 
 export function AudioProvider({ children, streamUrl, frequency, programTitle, announcer }: { children: ReactNode, streamUrl: string, frequency: string, programTitle: string, announcer: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -22,16 +22,30 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
   const [isExpanded, setIsExpanded] = useState(false);
   const sweeperRef = useRef<HTMLAudioElement | null>(null);
   const hasPlayedSweeperRef = useRef(false);
+  const [playerStatus, setPlayerStatus] = useState<PlayerStatusType>("paused");
 
   const buildAudio = useCallback(() => {
     const audio = new Audio();
     audio.preload = "none";
     audio.volume = volumeRef.current;
     audio.src = streamUrl;
-    audio.onpause = () => setPlaying(false);
+    audio.onpause = () => {
+      setPlaying(false);
+      setPlayerStatus("paused");
+    };
     audio.onplaying = () => {
       setError("");
       setPlaying(true);
+      setPlayerStatus("live");
+    };
+    audio.onwaiting = () => {
+      setPlayerStatus("buffering");
+    };
+    audio.onstalled = () => {
+      setPlayerStatus("reconnecting");
+    };
+    audio.onemptied = () => {
+      setPlayerStatus("reconnecting");
     };
     audio.onerror = () => {
       const code = audio.error?.code;
@@ -46,6 +60,7 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
 
       setError(`${reason} Coba tekan play sekali lagi.`);
       setPlaying(false);
+      setPlayerStatus("error");
     };
 
     return audio;
@@ -122,10 +137,12 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       try {
         await sweeper.play();
         setPlaying(true);
+        setPlayerStatus("live"); // Sweeper is playing
         sweeper.onended = async () => {
           sweeperRef.current = null;
           if (audioRef.current) {
             audioRef.current.load();
+            setPlayerStatus("buffering"); // Loading radio stream
             await audioRef.current.play();
           }
         };
@@ -142,6 +159,7 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
         audio.src = streamUrl;
       }
 
+      setPlayerStatus("buffering");
       audio.load();
       await audio.play();
       setPlaying(true);
@@ -151,6 +169,7 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       audioRef.current = retryAudio;
 
       try {
+        setPlayerStatus("buffering");
         retryAudio.load();
         await retryAudio.play();
         setPlaying(true);
@@ -161,6 +180,7 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
             : "Browser belum bisa membuka stream.";
         setError(`${message} Jika tetap gagal, buka ulang halaman atau cek koneksi.`);
         setPlaying(false);
+        setPlayerStatus("error");
       }
     }
   }
@@ -180,7 +200,9 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
         metadata,
         refreshMetadata,
         isExpanded,
-        setIsExpanded
+        setIsExpanded,
+        playerStatus,
+        setPlayerStatus
       }}
     >
       {children}

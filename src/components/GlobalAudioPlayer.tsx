@@ -1,5 +1,7 @@
 import { ExternalLink, Pause, Play } from "lucide-react";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
+import { featureFlags } from "../config/featureFlags";
+import { PlayerStatusBadge } from "../features/listening/components/PlayerStatusBadge";
 
 export function GlobalAudioPlayer({
   hasBottomNav = true,
@@ -14,7 +16,8 @@ export function GlobalAudioPlayer({
     volume,
     setVolume,
     metadata,
-    isExpanded
+    isExpanded,
+    playerStatus
   } = useGlobalAudio();
 
   if (isExpanded) return null;
@@ -26,7 +29,14 @@ export function GlobalAudioPlayer({
       </div>
 
       <div className="global-mini-copy mini-player-title">
-        <strong><span>LIVE</span> {metadata.title}</strong>
+        <strong style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          {featureFlags.listeningEnhancements && playerStatus && playerStatus !== "paused" ? (
+            <PlayerStatusBadge status={playerStatus} />
+          ) : (
+            <span>LIVE</span>
+          )}
+          <span>{metadata.title}</span>
+        </strong>
         <small>{metadata.artist}</small>
       </div>
 

@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useRef, type FormEvent } from "react";
 import { ChevronRight, Radio, Play, Pause, Volume2, ChevronLeft } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
-import type { SongRequest } from "../types/domain";
+import type { SongRequest, AppUser } from "../types/domain";
+import { featureFlags } from "../config/featureFlags";
+import { EnhancedNowOnAirCard } from "../features/listening/components/EnhancedNowOnAirCard";
+import { SleepTimerControl } from "../features/listening/components/SleepTimerControl";
 import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
@@ -11,12 +14,14 @@ export function StreamingPage({
   data,
   onAirAnnouncer,
   onAirAnnouncers,
-  onExit
+  onExit,
+  session
 }: {
   data: DashboardSnapshot;
   onAirAnnouncer: string;
   onAirAnnouncers?: string[];
   onExit: () => void;
+  session?: AppUser | null;
 }) {
   const currentSlot = useCurrentBroadcastSlot();
   const [activeAnnouncerIndex, setActiveAnnouncerIndex] = useState(0);
@@ -42,7 +47,8 @@ export function StreamingPage({
     volume,
     setVolume,
     metadata,
-    setIsExpanded
+    setIsExpanded,
+    playerStatus
   } = useGlobalAudio();
   const stationFrequency = data.station.frequency;
   const [requesterName, setRequesterName] = useState("");
@@ -148,20 +154,34 @@ export function StreamingPage({
         </button>
       </div>
 
-      <section className="streaming-now-summary" aria-label="Ringkasan siaran">
-        <article>
-          <span>Status</span>
-          <strong>{metadata.isOnline ? "ON AIR" : "OFF AIR"}</strong>
-        </article>
-        <article>
-          <span>Program</span>
-          <strong>{currentSlot.title}</strong>
-        </article>
-        <article>
-          <span>Penyiar</span>
-          <strong>{currentAnnouncer || "Radio SBL"}</strong>
-        </article>
-      </section>
+      {featureFlags.listeningEnhancements ? (
+        <EnhancedNowOnAirCard
+          programSlot={currentSlot}
+          userId={session?.id}
+          playerStatus={playerStatus}
+          onRequestSong={() => {
+            setRequestFormOpen(true);
+            setTimeout(() => {
+              scrollTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 150);
+          }}
+        />
+      ) : (
+        <section className="streaming-now-summary" aria-label="Ringkasan siaran">
+          <article>
+            <span>Status</span>
+            <strong>{metadata.isOnline ? "ON AIR" : "OFF AIR"}</strong>
+          </article>
+          <article>
+            <span>Program</span>
+            <strong>{currentSlot.title}</strong>
+          </article>
+          <article>
+            <span>Penyiar</span>
+            <strong>{currentAnnouncer || "Radio SBL"}</strong>
+          </article>
+        </section>
+      )}
 
       <div className="streaming-content">
         <div className="streaming-col streaming-main-col">
@@ -213,6 +233,10 @@ export function StreamingPage({
               onChange={(event) => setVolume(Number(event.target.value))}
             />
           </label>
+
+          {featureFlags.listeningEnhancements && (
+            <SleepTimerControl />
+          )}
         </div>
 
         <div className="streaming-col">

@@ -1,6 +1,8 @@
 import { createContext } from "react";
 import type { RadioMetadata } from "../services/radioMetadata.service";
 
+export type PlayerStatusType = 'live' | 'buffering' | 'reconnecting' | 'paused' | 'error' | 'timer-ended';
+
 export type AudioContextType = {
   playing: boolean;
   error: string;
@@ -15,6 +17,8 @@ export type AudioContextType = {
   refreshMetadata: () => Promise<void>;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
+  playerStatus?: PlayerStatusType;
+  setPlayerStatus?: (status: PlayerStatusType) => void;
 };
 
 export const AudioContext = createContext<AudioContextType | null>(null);

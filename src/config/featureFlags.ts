@@ -1,5 +1,5 @@
 export const featureFlags = {
-  listeningEnhancements: false,
+  listeningEnhancements: true,
   listenerEngagement: false,
   contentHub: false,
   broadcastWorkflow: false,
