@@ -53,7 +53,6 @@ import ApprovalQueuePage from "./features/securityAudit/pages/ApprovalQueuePage"
 import ProgramRecordingRulesPage from "./pages/radioboss/ProgramRecordingRulesPage";
 import RecordingHistoryPage from "./pages/radioboss/RecordingHistoryPage";
 import RecordingControlPage from "./pages/radioboss/RecordingControlPage";
-import SongRequestReviewPage from "./pages/radioboss/SongRequestReviewPage";
 
 // Data & Repository
 import {
@@ -134,7 +133,6 @@ const navigablePages: PageKey[] = [
   "recordingControl",
   "recordingRules",
   "recordingHistory",
-  "songRequestReview",
   "listenerAnalytics",
   "auditLog",
   "approvalQueue",
@@ -699,8 +697,6 @@ export default function App() {
         return <ProgramRecordingRulesPage data={dashboardData} session={session} />;
       case "recordingHistory":
         return <RecordingHistoryPage />;
-      case "songRequestReview":
-        return <SongRequestReviewPage session={session} />;
       case "pinrangBerkabar":
         return <PinrangBerkabarPage />;
       case "complaints":

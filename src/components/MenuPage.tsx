@@ -23,7 +23,7 @@ const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Interaksi Pendengar",
-    items: ["songRequestReview", "requests", "studioInbox", "complaints"]
+    items: ["requests", "studioInbox", "complaints"]
   },
   {
     label: "RadioBOSS",
@@ -57,7 +57,7 @@ const profileNavItem: NavItem = {
   icon: LogIn
 };
 
-const quickActionKeys: PageKey[] = ["attendance", "songRequestReview", "schedule", "aiScript", "scheduleSwap", "pinrangBerkabar", "liveOb", "coverage"];
+const quickActionKeys: PageKey[] = ["attendance", "requests", "schedule", "aiScript", "scheduleSwap", "pinrangBerkabar", "liveOb", "coverage"];
 
 export function MenuPage({
   activePage,
@@ -296,7 +296,6 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     schedule: "jadwal siaran program penyiar kalender hari ini",
     scheduleSwap: "tukar jadwal pengganti konfirmasi permintaan",
     requests: "request pendengar salam lagu umum publik",
-    songRequestReview: "review request lagu whatsapp radioboss approve queue played rejected",
     aiScript: "naskah ai script draft berita cue",
     liveOb: "ob live luar studio event",
     coverage: "liputan event dokumentasi reporter",
@@ -331,8 +330,6 @@ function getQuickActionLabel(key: PageKey): string {
       return "Cek tukar jadwal";
     case "requests":
       return "Request pendengar";
-    case "songRequestReview":
-      return "Review request lagu";
     case "aiScript":
       return "Buat naskah";
     case "liveOb":
@@ -356,8 +353,6 @@ function getMenuDescription(key: PageKey): string {
       return "Absen dan lokasi";
     case "requests":
       return "Form request pendengar";
-    case "songRequestReview":
-      return "Antrean request lagu studio";
     case "scheduleSwap":
       return "Konfirmasi pengganti";
     case "streaming":

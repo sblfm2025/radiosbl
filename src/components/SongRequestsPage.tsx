@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Radio, Clock, PlayCircle, XCircle, RefreshCw, MessageCircle, Inbox, CheckCircle2 } from "lucide-react";
+import { Radio, Clock, RefreshCw, MessageCircle, Inbox, CheckCircle2 } from "lucide-react";
 import type { SongRequest } from "../types/domain";
 import {
   listSongRequests,
-  subscribeSongRequests,
-  updateSongRequestStatus
+  subscribeSongRequests
 } from "../services/songRequest.service";
 
 type RequestGroup = "new" | "queued" | "done";
@@ -89,7 +88,6 @@ function formatRequestTime(value: SongRequest["createdAt"]): string {
 export function SongRequestsPage() {
   const [requests, setRequests] = useState<SongRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState("");
 
   async function loadRequests() {
     setLoading(true);
@@ -108,15 +106,6 @@ export function SongRequestsPage() {
 
     return () => unsubscribe();
   }, []);
-
-  async function handleStatus(request: SongRequest, status: SongRequest["status"]) {
-    const updated = await updateSongRequestStatus(request, status);
-    setRequests((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item))
-    );
-    setNotice(`Request "${updated.title}" diperbarui menjadi ${getStatusLabel(status)}.`);
-    window.setTimeout(() => setNotice(""), 3000);
-  }
 
   const groupedRequests = {
     new: requests.filter((request) => ["new", "notified", "pending_review", "matched", "needs_review"].includes(request.status)),
@@ -152,32 +141,9 @@ export function SongRequestsPage() {
             <MessageCircle size={14} /> {request.requesterWhatsapp}
           </span>
         )}
-        {request.message && (
-          <blockquote>{request.message}</blockquote>
+        {(request.rawMessage || request.message || request.dedication) && (
+          <blockquote>{request.rawMessage || request.message || request.dedication}</blockquote>
         )}
-
-        <div className="song-request-actions">
-          {group === "new" && (
-            <button type="button" className="primary" onClick={() => handleStatus(request, "queued")}>
-              <Clock size={16} /> Simpan ke antrean
-            </button>
-          )}
-          {group === "queued" && (
-            <button type="button" className="success" onClick={() => handleStatus(request, "played")}>
-              <PlayCircle size={17} /> Tandai diputar
-            </button>
-          )}
-          {request.whatsappUrl && (
-            <a href={request.whatsappUrl} target="_blank" rel="noreferrer" aria-label={`Balas WhatsApp ${request.requesterName}`}>
-              <MessageCircle size={17} /> Balas
-            </a>
-          )}
-          {group !== "done" && (
-            <button type="button" className="danger" onClick={() => handleStatus(request, "rejected")}>
-              <XCircle size={17} /> Tolak
-            </button>
-          )}
-        </div>
       </div>
     </article>
   );
@@ -244,8 +210,6 @@ export function SongRequestsPage() {
       </div>
 
       <div className="song-request-content">
-        {notice && <p className="song-request-notice">{notice}</p>}
-
         <section className="song-request-live-strip" aria-label="Status realtime request lagu">
           <div>
             <span className={activeRequestCount > 0 ? "is-live" : ""} />

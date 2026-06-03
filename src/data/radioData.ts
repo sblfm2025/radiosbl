@@ -58,7 +58,6 @@ export type PageKey =
   | "recordingControl"
   | "recordingRules"
   | "recordingHistory"
-  | "songRequestReview"
   | "listenerAnalytics"
   | "auditLog"
   | "approvalQueue";
@@ -98,7 +97,6 @@ export const primaryNav: NavItem[] = [
   { key: "recordingControl", label: "Kontrol Rekaman", icon: CircleDot, requiredPermission: "radioboss:manage" },
   { key: "recordingRules", label: "Aturan Rekaman", icon: SlidersHorizontal, requiredPermission: "schedule:manage" },
   { key: "recordingHistory", label: "Riwayat Rekaman", icon: History, requiredPermission: "radioboss:manage" },
-  { key: "songRequestReview", label: "Review Request Lagu", icon: Headphones, requiredPermission: "radioboss:manage" },
   { key: "tutorial", label: "Tutorial", icon: BookOpen },
   { key: "pedoman", label: "Pedoman Media", icon: FileText }
 ];

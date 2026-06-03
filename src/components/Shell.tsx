@@ -31,7 +31,7 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Interaksi Pendengar",
-    items: ["songRequestReview", "requests", "studioInbox", "complaints"]
+    items: ["requests", "studioInbox", "complaints"]
   },
   {
     label: "RadioBOSS",
