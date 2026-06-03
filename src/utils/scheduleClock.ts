@@ -25,7 +25,7 @@ export type CurrentBroadcastSlot =
     }
   | {
       type: "offair";
-      label: "Off Air";
+      label: "Di Luar Jadwal Program";
       day: string;
       time: string;
       title: string;
@@ -115,11 +115,11 @@ export function findCurrentBroadcastSlotFromSchedule(
 
   return {
     type: "offair",
-    label: "Off Air",
+    label: "Di Luar Jadwal Program",
     day,
     time: "23.00 - 05.00",
-    title: "Jeda Siaran",
-    description: "Siaran utama dan playlist harian akan kembali pada pukul 05.00 WITA.",
+    title: "Playlist Otomatis Radio SBL",
+    description: "Tidak ada program penyiar terjadwal saat ini. Siaran tetap berjalan melalui playlist otomatis RadioBOSS.",
     announcer: "Radio Suara Bumi Lasinrang"
   };
 }

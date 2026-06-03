@@ -15,11 +15,13 @@ type EnhancedNowOnAirCardProps = {
 
 export function EnhancedNowOnAirCard({ programSlot, userId, playerStatus, onRequestSong }: EnhancedNowOnAirCardProps) {
   const programName = programSlot?.title || programSlot?.program || "";
-  const isOffAir = !programSlot || 
+  const isOffAir = !programSlot ||
+    programSlot?.type === "offair" ||
     !programName ||
     programName.toLowerCase().includes("offair") || 
     programName.toLowerCase().includes("istirahat") ||
-    programName.toLowerCase().includes("off air");
+    programName.toLowerCase().includes("off air") ||
+    programName.toLowerCase().includes("playlist otomatis");
 
   const programInfo = isOffAir
     ? {

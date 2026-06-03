@@ -127,7 +127,7 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
 
   const disabledReason = [
     !hasOperationalRole ? "Akses hanya untuk admin/operator." : "",
-    isOffAir ? "Tidak ada program aktif untuk direkam." : "",
+    isOffAir ? "Tidak ada program penyiar terjadwal untuk direkam." : "",
     !gatewayOnline ? "Studio Gateway offline." : "",
     !radioBossOnline ? "RadioBOSS offline." : "",
     !rule.recordingEnabled && !rule.allowManualOverride ? "Rule program belum mengizinkan rekaman/manual override." : ""

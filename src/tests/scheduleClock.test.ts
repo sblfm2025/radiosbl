@@ -32,10 +32,11 @@ describe("schedule clock", () => {
     });
   });
 
-  it("returns off-air outside scheduled hours", () => {
+  it("returns automatic playlist outside scheduled program hours", () => {
     expect(findCurrentBroadcastSlot(new Date("2026-01-02T02:00:00+08:00"))).toMatchObject({
       type: "offair",
-      title: "Jeda Siaran"
+      label: "Di Luar Jadwal Program",
+      title: "Playlist Otomatis Radio SBL"
     });
   });
 });
