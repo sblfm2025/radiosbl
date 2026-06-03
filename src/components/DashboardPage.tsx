@@ -396,7 +396,7 @@ export function DashboardPage({
     currentProgram: currentSlot.title
   });
   const requestQueue = useMemo(() => {
-    const activeStatuses = new Set<SongRequest["status"]>(["new", "notified", "matched", "needs_review", "sent_to_radioboss", "queued"]);
+    const activeStatuses = new Set<SongRequest["status"]>(["new", "notified", "pending_review", "matched", "needs_review", "sent_to_radioboss", "queued"]);
     const activeRequests = songRequests
       .filter((request) => activeStatuses.has(request.status))
       .sort((left, right) => {

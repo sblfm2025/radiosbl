@@ -36,6 +36,8 @@ function getSongTitle(request: SongRequest): string {
 
 function getStatusLabel(status: SongRequest["status"]): string {
   switch (status) {
+    case "pending_review":
+      return "Review WA";
     case "notified":
       return "Terkirim WA";
     case "queued":
@@ -117,7 +119,7 @@ export function SongRequestsPage() {
   }
 
   const groupedRequests = {
-    new: requests.filter((request) => ["new", "notified", "matched", "needs_review"].includes(request.status)),
+    new: requests.filter((request) => ["new", "notified", "pending_review", "matched", "needs_review"].includes(request.status)),
     queued: requests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued"),
     done: requests.filter((request) => ["played", "rejected", "expired"].includes(request.status))
   };

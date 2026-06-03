@@ -18,6 +18,7 @@ type SongRequestReviewPageProps = {
 const reviewStatuses = new Set<SongRequest["status"]>([
   "new",
   "notified",
+  "pending_review",
   "matched",
   "needs_review",
   "sent_to_radioboss",
@@ -36,9 +37,9 @@ export default function SongRequestReviewPage({ session }: SongRequestReviewPage
     [requests]
   );
   const stats = {
-    masuk: requests.filter((request) => request.status === "new" || request.status === "notified").length,
+    masuk: requests.filter((request) => request.status === "new" || request.status === "notified" || request.status === "pending_review").length,
     matched: requests.filter((request) => request.status === "matched").length,
-    review: requests.filter((request) => request.status === "needs_review").length,
+    review: requests.filter((request) => request.status === "needs_review" || request.status === "pending_review").length,
     sent: requests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued").length,
     played: requests.filter((request) => request.status === "played").length
   };

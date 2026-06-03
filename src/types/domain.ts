@@ -208,6 +208,7 @@ export type SongRequest = {
   status:
     | "new"
     | "notified"
+    | "pending_review"
     | "matched"
     | "needs_review"
     | "sent_to_radioboss"
@@ -216,6 +217,15 @@ export type SongRequest = {
     | "rejected"
     | "expired";
   matchStatus?: "unmatched" | "matched" | "ambiguous" | "not_found";
+  source?: "web" | "whatsapp" | string;
+  channel?: "web" | "whatsapp" | string;
+  reviewStatus?: "pending" | "approved" | "rejected" | string;
+  rawMessage?: string;
+  requestedTitle?: string;
+  requestedArtist?: string;
+  dedication?: string;
+  requesterPhoneMasked?: string;
+  whatsappMessageId?: string;
   matchedTrackId?: string | null;
   matchedFilePath?: string | null;
   confidence?: number;

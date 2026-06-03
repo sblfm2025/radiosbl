@@ -48,9 +48,9 @@ function formatRecordingStatus(status: RadioBossStatus | null): { label: string;
 
 function getRequestSummary(songRequests: SongRequest[]) {
   return {
-    masuk: songRequests.filter((request) => request.status === "new" || request.status === "notified").length,
+    masuk: songRequests.filter((request) => request.status === "new" || request.status === "notified" || request.status === "pending_review").length,
     cocok: songRequests.filter((request) => request.status === "matched").length,
-    review: songRequests.filter((request) => request.status === "needs_review").length,
+    review: songRequests.filter((request) => request.status === "needs_review" || request.status === "pending_review").length,
     dikirim: songRequests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued").length,
     diputar: songRequests.filter((request) => request.status === "played").length
   };
