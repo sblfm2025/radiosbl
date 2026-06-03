@@ -22,7 +22,7 @@ const menuGroups: Array<{ label: string; items: PageKey[] }> = [
     items: ["attendance", "schedule", "scheduleSwap"]
   },
   {
-    label: "Request & Inbox",
+    label: "Interaksi Pendengar",
     items: ["songRequestReview", "requests", "studioInbox", "complaints"]
   },
   {
@@ -414,7 +414,7 @@ function getMenuDescription(key: PageKey): string {
 function isGroupOpenByDefault(label: string, role?: string): boolean {
   if (label === "Beranda") return true;
   if (label === "Kehadiran & Jadwal") return true;
-  if (label === "Request & Inbox") return true;
+  if (label === "Interaksi Pendengar") return true;
   if (label === "RadioBOSS") return role === "admin" || role === "super_admin" || role === "operator";
   if (label === "Siaran") return true;
   if (label === "Konten & Liputan") return role === "reporter" || role === "leader";

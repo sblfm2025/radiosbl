@@ -30,7 +30,7 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
     items: ["attendance", "schedule", "scheduleSwap"]
   },
   {
-    label: "Request & Inbox",
+    label: "Interaksi Pendengar",
     items: ["songRequestReview", "requests", "studioInbox", "complaints"]
   },
   {
