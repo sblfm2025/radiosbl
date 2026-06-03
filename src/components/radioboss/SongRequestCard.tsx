@@ -21,6 +21,10 @@ function getRequestMessage(request: SongRequest): string {
   return request.rawMessage || request.message || request.dedication || "";
 }
 
+function isWhatsAppRequest(request: SongRequest): boolean {
+  return request.channel === "whatsapp" || request.source === "whatsapp";
+}
+
 export function SongRequestCard({
   request,
   busy,
@@ -35,6 +39,7 @@ export function SongRequestCard({
     request.matchedFilePath &&
     ["matched", "needs_review"].includes(request.status)
   );
+  const whatsappRequest = isWhatsAppRequest(request);
 
   return (
     <article className="song-review-card">
@@ -52,19 +57,23 @@ export function SongRequestCard({
       <SongRequestMatchPanel request={request} />
 
       <div className="song-review-actions">
-        <button type="button" disabled={busy || request.channel === "whatsapp"} onClick={() => onMatch(request)}>
-          <Search size={16} />
-          Cocokkan ke Library
-        </button>
-        <button type="button" disabled={busy || !canSend} onClick={() => onSend(request)}>
-          <Radio size={16} />
-          Kirim ke RadioBOSS
-        </button>
+        {!whatsappRequest && (
+          <button type="button" disabled={busy} onClick={() => onMatch(request)}>
+            <Search size={16} />
+            Cocokkan ke Library
+          </button>
+        )}
+        {!whatsappRequest && (
+          <button type="button" disabled={busy || !canSend} onClick={() => onSend(request)}>
+            <Radio size={16} />
+            Kirim ke RadioBOSS
+          </button>
+        )}
         <button type="button" disabled={busy || request.status === "played"} onClick={() => onPlayed(request)}>
           <Check size={16} />
           Tandai Diputar
         </button>
-        <SongRequestManualSearch onApply={(trackId, filePath) => onManualFile(request, trackId, filePath)} />
+        {!whatsappRequest && <SongRequestManualSearch onApply={(trackId, filePath) => onManualFile(request, trackId, filePath)} />}
         <button type="button" className="danger" disabled={busy || request.status === "rejected"} onClick={() => onReject(request)}>
           <XCircle size={16} />
           Tolak Request

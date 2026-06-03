@@ -533,6 +533,7 @@ service cloud.firestore {
         'approvedBy',
         'approvedAt',
         'sentToRadioBossAt',
+        'radioBossCommandId',
         'queuedAt',
         'playedAt',
         'rejectedBy',
@@ -541,6 +542,7 @@ service cloud.firestore {
         'expiresAt',
         'createdAt',
         'updatedAt',
+        'gatewayId',
         'notificationText',
         'whatsappUrl'
       ])

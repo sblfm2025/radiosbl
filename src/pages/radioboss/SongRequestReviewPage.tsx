@@ -63,8 +63,8 @@ export default function SongRequestReviewPage({ session }: SongRequestReviewPage
       <section className="radioboss-page-hero">
         <div>
           <p className="eyebrow">Integrasi RadioBOSS</p>
-          <h1>Song Request Inspector</h1>
-          <p>Gateway meneruskan request yang match ke daftar Song Requests RadioBOSS. Halaman ini hanya untuk inspeksi dan override bila diperlukan.</p>
+          <h1>Review Request Lagu</h1>
+          <p>Request WhatsApp otomatis masuk ke Song Requests RadioBOSS lewat file dummy. Penyiar cukup memantau, menandai diputar, atau menolak bila tidak sesuai.</p>
         </div>
         <span className="radioboss-hero-icon" aria-hidden="true">
           <Inbox size={24} />
@@ -83,8 +83,8 @@ export default function SongRequestReviewPage({ session }: SongRequestReviewPage
 
       <article className="radioboss-page-card">
         <div className="radioboss-card-head">
-          <strong>Antrean inspeksi</strong>
-          <small>Request confidence rendah tetap needs_review agar bisa diperbaiki manual tanpa menjadi langkah wajib penyiar.</small>
+          <strong>Antrean request RadioBOSS</strong>
+          <small>Item berstatus queued sudah dikirim ke RadioBOSS. Tandai diputar setelah penyiar mengeksekusi atau mengganti lagu di studio.</small>
         </div>
         <SongRequestQueue
           requests={queue}

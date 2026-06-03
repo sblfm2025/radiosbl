@@ -232,6 +232,7 @@ export type SongRequest = {
   approvedBy?: string | null;
   approvedAt?: TimestampLike | null;
   sentToRadioBossAt?: TimestampLike | null;
+  radioBossCommandId?: string | null;
   queuedAt?: TimestampLike | null;
   playedAt?: TimestampLike | null;
   rejectedBy?: string | null;
@@ -240,6 +241,7 @@ export type SongRequest = {
   expiresAt?: TimestampLike;
   createdAt: TimestampLike;
   updatedAt?: TimestampLike;
+  gatewayId?: string;
   notificationText: string;
   whatsappUrl?: string;
   notificationDelivered?: boolean;
