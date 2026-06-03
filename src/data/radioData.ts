@@ -78,8 +78,8 @@ export const primaryNav: NavItem[] = [
   { key: "scheduleSwap", label: "Tukar Jadwal", icon: ArrowLeftRight, requiredPermission: "schedule:swap" },
   { key: "aiScript", label: "Buat Naskah", icon: Sparkles, requiredPermission: "ai:use" },
   { key: "streaming", label: "Streaming", icon: Radio, requiredPermission: "dashboard:read" },
-  { key: "requests", label: "Request", icon: Headphones, requiredPermission: "complaints:submit" },
-  { key: "studioInbox", label: "Studio Inbox", icon: Inbox, requiredPermission: "complaints:manage" },
+  { key: "requests", label: "Request Pendengar", icon: Headphones, requiredPermission: "complaints:submit" },
+  { key: "studioInbox", label: "Inbox Studio", icon: Inbox, requiredPermission: "complaints:manage" },
   { key: "liveOb", label: "Live OB", icon: Video, requiredPermission: "live_ob:manage" },
   { key: "podcast", label: "Podcast", icon: Podcast, requiredPermission: "dashboard:read" },
   { key: "pinrangBerkabar", label: "Pinrang Berkabar", icon: Video, requiredPermission: "dashboard:read" },
@@ -96,9 +96,9 @@ export const primaryNav: NavItem[] = [
   { key: "broadcastLog", label: "Log Siaran", icon: ClipboardCheck, requiredPermission: "schedule:read" },
   { key: "handover", label: "Handover Shift", icon: ArrowLeftRight, requiredPermission: "schedule:read" },
   { key: "recordingControl", label: "Kontrol Rekaman", icon: CircleDot, requiredPermission: "radioboss:manage" },
-  { key: "recordingRules", label: "Rule Rekaman", icon: SlidersHorizontal, requiredPermission: "schedule:manage" },
+  { key: "recordingRules", label: "Aturan Rekaman", icon: SlidersHorizontal, requiredPermission: "schedule:manage" },
   { key: "recordingHistory", label: "Riwayat Rekaman", icon: History, requiredPermission: "radioboss:manage" },
-  { key: "songRequestReview", label: "Review Request", icon: Headphones, requiredPermission: "radioboss:manage" },
+  { key: "songRequestReview", label: "Review Request Lagu", icon: Headphones, requiredPermission: "radioboss:manage" },
   { key: "tutorial", label: "Tutorial", icon: BookOpen },
   { key: "pedoman", label: "Pedoman Media", icon: FileText }
 ];

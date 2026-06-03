@@ -22,28 +22,36 @@ type ShellProps = {
 
 const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   {
-    label: "Operasional",
-    items: ["dashboard", "attendance", "schedule", "requests", "songRequestReview", "scheduleSwap", "studioInbox", "recordingControl", "recordingHistory", "recordingRules", "rundown", "broadcastLog", "handover"]
+    label: "Beranda",
+    items: ["dashboard"]
+  },
+  {
+    label: "Kehadiran & Jadwal",
+    items: ["attendance", "schedule", "scheduleSwap"]
+  },
+  {
+    label: "Request & Inbox",
+    items: ["songRequestReview", "requests", "studioInbox", "complaints"]
+  },
+  {
+    label: "RadioBOSS",
+    items: ["recordingControl", "recordingRules", "recordingHistory"]
   },
   {
     label: "Siaran",
-    items: ["streaming", "podcast"]
+    items: ["rundown", "broadcastLog", "handover", "aiScript", "streaming", "podcast"]
   },
   {
-    label: "Tim",
-    items: ["announcers"]
+    label: "Konten & Liputan",
+    items: ["pinrangBerkabar", "coverage", "liveOb"]
   },
   {
-    label: "Konten",
-    items: ["pinrangBerkabar", "aiScript", "coverage", "liveOb", "complaints"]
+    label: "Tim & Administrasi",
+    items: ["announcers", "attendanceReport", "users", "listenerAnalytics", "auditLog", "approvalQueue"]
   },
   {
-    label: "Administrasi",
-    items: ["attendanceReport", "users", "listenerAnalytics", "auditLog", "approvalQueue"]
-  },
-  {
-    label: "Sistem",
-    items: ["profile"]
+    label: "Akun & Bantuan",
+    items: ["profile", "tutorial", "pedoman"]
   }
 ];
 

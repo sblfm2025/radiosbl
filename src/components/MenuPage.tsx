@@ -14,27 +14,35 @@ type MenuPageProps = {
 
 const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   {
-    label: "Operasional",
-    items: ["dashboard", "attendance", "schedule", "requests", "songRequestReview", "scheduleSwap", "recordingControl", "recordingHistory", "recordingRules"]
+    label: "Beranda",
+    items: ["dashboard"]
+  },
+  {
+    label: "Kehadiran & Jadwal",
+    items: ["attendance", "schedule", "scheduleSwap"]
+  },
+  {
+    label: "Request & Inbox",
+    items: ["songRequestReview", "requests", "studioInbox", "complaints"]
+  },
+  {
+    label: "RadioBOSS",
+    items: ["recordingControl", "recordingRules", "recordingHistory"]
   },
   {
     label: "Siaran",
-    items: ["streaming", "podcast"]
+    items: ["rundown", "broadcastLog", "handover", "aiScript", "streaming", "podcast"]
   },
   {
-    label: "Tim",
-    items: ["announcers"]
+    label: "Konten & Liputan",
+    items: ["pinrangBerkabar", "coverage", "liveOb"]
   },
   {
-    label: "Konten",
-    items: ["pinrangBerkabar", "aiScript", "coverage", "liveOb", "complaints"]
+    label: "Tim & Administrasi",
+    items: ["announcers", "attendanceReport", "users", "listenerAnalytics", "auditLog", "approvalQueue"]
   },
   {
-    label: "Administrasi",
-    items: ["attendanceReport", "users"]
-  },
-  {
-    label: "Sistem",
+    label: "Akun",
     items: ["profile"]
   },
   {
@@ -49,7 +57,7 @@ const profileNavItem: NavItem = {
   icon: LogIn
 };
 
-const quickActionKeys: PageKey[] = ["attendance", "scheduleSwap", "requests", "aiScript", "pinrangBerkabar", "liveOb", "coverage"];
+const quickActionKeys: PageKey[] = ["attendance", "songRequestReview", "schedule", "aiScript", "scheduleSwap", "pinrangBerkabar", "liveOb", "coverage"];
 
 export function MenuPage({
   activePage,
@@ -140,7 +148,7 @@ export function MenuPage({
             <p className="eyebrow">Menu Lengkap</p>
             <h1>Semua fitur Radio SBL</h1>
             <p>
-              Pilih fitur sesuai kebutuhan siaran, operasional, konten, dan administrasi.
+              Fitur disusun berdasarkan alur kerja: jadwal, request pendengar, RadioBOSS, siaran, konten, dan administrasi.
             </p>
           </div>
         </div>
@@ -168,7 +176,7 @@ export function MenuPage({
           <Search size={18} />
           <input
             type="search"
-            placeholder="Cari fitur, jadwal, request, user..."
+            placeholder="Cari fitur, jadwal, request, rekaman, user..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
@@ -287,8 +295,8 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     attendance: "absen masuk pulang lokasi gps selfie hadir",
     schedule: "jadwal siaran program penyiar kalender hari ini",
     scheduleSwap: "tukar jadwal pengganti konfirmasi permintaan",
-    requests: "request lagu pendengar salam putar",
-    songRequestReview: "review request lagu radioboss match approve queue played rejected",
+    requests: "request pendengar salam lagu umum publik",
+    songRequestReview: "review request lagu whatsapp radioboss approve queue played rejected",
     aiScript: "naskah ai script draft berita cue",
     liveOb: "ob live luar studio event",
     coverage: "liputan event dokumentasi reporter",
@@ -322,7 +330,9 @@ function getQuickActionLabel(key: PageKey): string {
     case "scheduleSwap":
       return "Cek tukar jadwal";
     case "requests":
-      return "Kelola request";
+      return "Request pendengar";
+    case "songRequestReview":
+      return "Review request lagu";
     case "aiScript":
       return "Buat naskah";
     case "liveOb":
@@ -345,9 +355,9 @@ function getMenuDescription(key: PageKey): string {
     case "attendance":
       return "Absen dan lokasi";
     case "requests":
-      return "Permintaan pendengar";
+      return "Form request pendengar";
     case "songRequestReview":
-      return "Review request lagu";
+      return "Antrean request lagu studio";
     case "scheduleSwap":
       return "Konfirmasi pengganti";
     case "streaming":
@@ -366,6 +376,20 @@ function getMenuDescription(key: PageKey): string {
       return "Live luar studio";
     case "complaints":
       return "Aduan dan saran";
+    case "studioInbox":
+      return "Moderasi interaksi";
+    case "rundown":
+      return "Susunan segmen siaran";
+    case "broadcastLog":
+      return "Catatan siaran selesai";
+    case "handover":
+      return "Serah terima shift";
+    case "listenerAnalytics":
+      return "Analitik pendengar";
+    case "auditLog":
+      return "Riwayat keamanan";
+    case "approvalQueue":
+      return "Persetujuan sensitif";
     case "attendanceReport":
       return "Rekap kehadiran";
     case "users":
@@ -388,12 +412,14 @@ function getMenuDescription(key: PageKey): string {
 }
 
 function isGroupOpenByDefault(label: string, role?: string): boolean {
-  if (label === "Operasional") return true;
+  if (label === "Beranda") return true;
+  if (label === "Kehadiran & Jadwal") return true;
+  if (label === "Request & Inbox") return true;
+  if (label === "RadioBOSS") return role === "admin" || role === "super_admin" || role === "operator";
   if (label === "Siaran") return true;
-  if (label === "Konten") return role === "reporter" || role === "leader";
-  if (label === "Administrasi") return role === "admin" || role === "super_admin";
-  if (label === "Tim") return true;
-  if (label === "Sistem") return false;
+  if (label === "Konten & Liputan") return role === "reporter" || role === "leader";
+  if (label === "Tim & Administrasi") return role === "admin" || role === "super_admin";
+  if (label === "Akun") return false;
   if (label === "Bantuan & Informasi") return false;
   return false;
 }

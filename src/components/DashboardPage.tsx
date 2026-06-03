@@ -685,7 +685,8 @@ export function DashboardPage({
       { key: "schedule", label: "Jadwal", icon: CalendarClock, tone: "schedule", requiredPermission: "schedule:read" },
       { key: "streaming", label: "Streaming", icon: Radio, tone: "streaming", requiredPermission: "dashboard:read" },
       { key: "podcast", label: "Podcast", icon: Headphones, tone: "podcast", requiredPermission: "dashboard:read" },
-      { key: "requests", label: "Request", icon: Headphones, tone: "requests", requiredPermission: "complaints:submit" },
+      { key: "requests", label: "Request Pendengar", icon: Headphones, tone: "requests", requiredPermission: "complaints:submit" },
+      { key: "songRequestReview", label: "Review Request Lagu", icon: Headphones, tone: "requests", requiredPermission: "radioboss:manage" },
       { key: "attendance", label: "Absensi", icon: ClipboardCheck, tone: "attendance", requiredPermission: "attendance:self" },
       { key: "scheduleSwap", label: "Tukar Jadwal", icon: CalendarClock, tone: "schedule-swap", requiredPermission: "schedule:swap" },
       { key: "aiScript", label: "Naskah AI", icon: Sparkles, tone: "ai-script", requiredPermission: "ai:use" },
@@ -714,11 +715,12 @@ export function DashboardPage({
     const userHasSlotToday = todaysUserSlots.length > 0;
     const liveMode = Boolean(activeUserSlot);
 
+    const requestShortcutKey: PageKey = canUser(session.user.role, "radioboss:manage") ? "songRequestReview" : "requests";
     const shortcuts: DashboardShortcut[] = [
       {
-        key: "requests",
-        label: liveMode ? "Buka request" : "Request lagu",
-        description: liveMode ? "Pantau antrean pendengar saat siaran berjalan." : "Lihat antrean permintaan terbaru.",
+        key: requestShortcutKey,
+        label: liveMode ? "Review request" : "Request lagu",
+        description: liveMode ? "Pantau request WhatsApp dan pendengar saat siaran berjalan." : "Lihat request lagu terbaru.",
         icon: Headphones,
         tone: "requests",
         priority: liveMode ? 0 : 2
