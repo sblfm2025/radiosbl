@@ -1,4 +1,4 @@
-import { Check, ListMusic, Radio, Search, XCircle } from "lucide-react";
+import { CheckCircle2, ListMusic, Radio, Search, XCircle } from "lucide-react";
 import type { SongRequest } from "../../types/domain";
 import { SongRequestManualSearch } from "./SongRequestManualSearch";
 import { SongRequestMatchPanel } from "./SongRequestMatchPanel";
@@ -40,6 +40,7 @@ export function SongRequestCard({
     ["matched", "needs_review"].includes(request.status)
   );
   const whatsappRequest = isWhatsAppRequest(request);
+  const readOnlyRequest = whatsappRequest || request.status === "queued" || request.status === "sent_to_radioboss";
 
   return (
     <article className="song-review-card">
@@ -56,7 +57,13 @@ export function SongRequestCard({
       {getRequestMessage(request) && <p>{getRequestMessage(request)}</p>}
       <SongRequestMatchPanel request={request} />
 
-      <div className="song-review-actions">
+      {readOnlyRequest ? (
+        <div className="song-review-status-note">
+          <CheckCircle2 size={16} />
+          <span>Sudah masuk ke RadioBOSS. Penyiar/operator memilih atau mengganti lagu langsung di studio.</span>
+        </div>
+      ) : (
+        <div className="song-review-actions">
         {!whatsappRequest && (
           <button type="button" disabled={busy} onClick={() => onMatch(request)}>
             <Search size={16} />
@@ -69,16 +76,13 @@ export function SongRequestCard({
             Kirim ke RadioBOSS
           </button>
         )}
-        <button type="button" disabled={busy || request.status === "played"} onClick={() => onPlayed(request)}>
-          <Check size={16} />
-          Tandai Diputar
-        </button>
         {!whatsappRequest && <SongRequestManualSearch onApply={(trackId, filePath) => onManualFile(request, trackId, filePath)} />}
         <button type="button" className="danger" disabled={busy || request.status === "rejected"} onClick={() => onReject(request)}>
           <XCircle size={16} />
           Tolak Request
         </button>
       </div>
+      )}
     </article>
   );
 }

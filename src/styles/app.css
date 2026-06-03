@@ -7632,6 +7632,27 @@ textarea:focus {
   gap: 8px;
 }
 
+.song-review-status-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 12px;
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.song-review-status-note span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .song-review-actions button,
 .song-review-manual-search button {
   display: inline-flex;
