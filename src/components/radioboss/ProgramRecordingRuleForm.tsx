@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ProgramRecordingRule } from "../../types/domain";
 import {
@@ -23,6 +23,38 @@ function toNumber(value: string, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
+
+const toggleOptions: Array<{
+  key: keyof Pick<ProgramRecordingRule, "recordingEnabled" | "requireAttendance" | "autoStart" | "autoStop" | "allowManualOverride">;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "recordingEnabled",
+    label: "Aktifkan rekaman program",
+    description: "Jika mati, program ini tidak akan direkam otomatis."
+  },
+  {
+    key: "requireAttendance",
+    label: "Wajib penyiar absen",
+    description: "Gateway menunggu absensi penyiar sebelum mulai rekaman."
+  },
+  {
+    key: "autoStart",
+    label: "Mulai otomatis",
+    description: "Rekaman dimulai sendiri saat jadwal program masuk."
+  },
+  {
+    key: "autoStop",
+    label: "Berhenti otomatis",
+    description: "Rekaman dihentikan sendiri saat jadwal program selesai."
+  },
+  {
+    key: "allowManualOverride",
+    label: "Izinkan kontrol manual",
+    description: "Operator tetap bisa start/stop manual saat dibutuhkan."
+  }
+];
 
 export function ProgramRecordingRuleForm({
   programs,
@@ -118,22 +150,40 @@ export function ProgramRecordingRuleForm({
         });
       }}
     >
+      <section className={`radioboss-rule-summary ${rule.recordingEnabled ? "is-enabled" : "is-disabled"}`}>
+        <div className="radioboss-rule-summary-icon">
+          <ShieldCheck size={20} />
+        </div>
+        <div>
+          <strong>{rule.recordingEnabled ? "Rekaman otomatis siap diatur" : "Rekaman otomatis masih nonaktif"}</strong>
+          <p>
+            {rule.recordingEnabled
+              ? `${rule.programName} akan ${rule.autoStart ? "mulai otomatis" : "menunggu start manual"}${rule.requireAttendance ? " setelah penyiar absen" : " tanpa syarat absensi"} dan ${rule.autoStop ? "berhenti otomatis" : "berhenti manual"}.`
+              : "Aktifkan rekaman program jika program ini memang perlu direkam oleh Studio Gateway."}
+          </p>
+        </div>
+      </section>
+
       <label>
-        <span>Cakupan Rule</span>
+        <span>Berlaku untuk</span>
         <select value={scope} onChange={(event) => handleScopeChange(event.target.value as "program" | "schedule")}>
           <option value="program">Semua jadwal program</option>
-          <option value="schedule">Slot jadwal tertentu</option>
+          <option value="schedule">Satu slot jadwal tertentu</option>
         </select>
+        <small className="radioboss-field-help">
+          Pilih semua jadwal jika aturan ini berlaku untuk seluruh program dengan nama yang sama.
+        </small>
       </label>
 
       {scope === "schedule" && (
         <label>
-          <span>Slot Jadwal</span>
+          <span>Slot jadwal</span>
           <select value={rule.scheduleId || ""} onChange={(event) => handleScheduleChange(event.target.value)}>
             {scheduleOptions.map((option) => (
               <option key={option.id} value={option.id}>{option.label}</option>
             ))}
           </select>
+          <small className="radioboss-field-help">Gunakan ini jika hanya jam/hari tertentu yang perlu aturan khusus.</small>
         </label>
       )}
 
@@ -144,74 +194,77 @@ export function ProgramRecordingRuleForm({
             <option key={program} value={program}>{program}</option>
           ))}
         </select>
+        <small className="radioboss-field-help">Nama program akan dipakai untuk folder dan identitas rekaman.</small>
       </label>
 
       <div className="radioboss-toggle-grid">
-        {[
-          ["recordingEnabled", "Recording Enabled"],
-          ["requireAttendance", "Require Attendance"],
-          ["autoStart", "Auto Start"],
-          ["autoStop", "Auto Stop"],
-          ["allowManualOverride", "Allow Manual Override"]
-        ].map(([key, label]) => (
-          <label key={key} className="radioboss-toggle-row">
+        {toggleOptions.map((option) => (
+          <label key={option.key} className="radioboss-toggle-row">
             <input
               type="checkbox"
-              checked={Boolean(rule[key as keyof ProgramRecordingRule])}
-              onChange={(event) => updateRule({ [key]: event.target.checked } as Partial<ProgramRecordingRule>)}
+              checked={Boolean(rule[option.key])}
+              onChange={(event) => updateRule({ [option.key]: event.target.checked } as Partial<ProgramRecordingRule>)}
             />
-            <span>{label}</span>
+            <span>
+              <strong>{option.label}</strong>
+              <small>{option.description}</small>
+            </span>
           </label>
         ))}
       </div>
 
       <div className="radioboss-form-grid">
         <label>
-          <span>Start Grace Minutes</span>
+          <span>Toleransi mulai</span>
           <input
             type="number"
             min="0"
             value={rule.startGraceMinutes}
             onChange={(event) => updateRule({ startGraceMinutes: toNumber(event.target.value, 15) })}
           />
+          <small className="radioboss-field-help">Menit setelah jadwal mulai. Contoh 15: masih boleh mulai otomatis sampai 15 menit terlambat.</small>
         </label>
         <label>
-          <span>Stop Grace Minutes</span>
+          <span>Toleransi berhenti</span>
           <input
             type="number"
             min="0"
             value={rule.stopGraceMinutes}
             onChange={(event) => updateRule({ stopGraceMinutes: toNumber(event.target.value, 10) })}
           />
+          <small className="radioboss-field-help">Menit tambahan setelah jadwal selesai sebelum stop otomatis dianggap perlu.</small>
         </label>
         <label>
-          <span>Max Overrun Minutes</span>
+          <span>Batas rekaman molor</span>
           <input
             type="number"
             min="1"
             value={rule.maxOverrunMinutes}
             onChange={(event) => updateRule({ maxOverrunMinutes: toNumber(event.target.value, 30) })}
           />
+          <small className="radioboss-field-help">Pengaman agar rekaman tidak berjalan terlalu lama jika ada masalah.</small>
         </label>
         <label>
-          <span>Folder Slug</span>
+          <span>Nama folder rekaman</span>
           <input
             value={rule.folderSlug}
             onChange={(event) => updateRule({ folderSlug: slugifyRecordingValue(event.target.value) })}
           />
+          <small className="radioboss-field-help">Dipakai sebagai folder program di root rekaman PC Studio.</small>
         </label>
         <label>
-          <span>Format</span>
+          <span>Format file</span>
           <select value={rule.format} onChange={(event) => updateRule({ format: event.target.value })}>
             <option value="mp3">mp3</option>
             <option value="wav">wav</option>
           </select>
+          <small className="radioboss-field-help">MP3 lebih ringan. WAV lebih besar dan biasanya hanya untuk kebutuhan arsip kualitas tinggi.</small>
         </label>
       </div>
 
       <button type="submit" className="radioboss-primary-action" disabled={saving}>
         <Save size={17} />
-        {saving ? "Menyimpan..." : "Simpan Rule"}
+        {saving ? "Menyimpan..." : "Simpan Aturan Rekaman"}
       </button>
     </form>
   );

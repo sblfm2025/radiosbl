@@ -76,16 +76,16 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
       <section className="radioboss-page-hero">
         <div>
           <p className="eyebrow">Integrasi RadioBOSS</p>
-          <h1>Program Recording Rules</h1>
-          <p>Atur program mana yang boleh direkam otomatis. Default tetap aman: recording tidak aktif sampai rule dinyalakan.</p>
+          <h1>Aturan Rekaman Program</h1>
+          <p>Tentukan program mana yang direkam otomatis, kapan mulai, kapan berhenti, dan apakah wajib menunggu absensi penyiar.</p>
         </div>
         <button type="button" className="radioboss-secondary-action" onClick={handleCreateDefault}>
           <RadioTower size={17} />
-          Rule baru
+          Aturan baru
         </button>
       </section>
 
-      <section className="radioboss-stat-grid" aria-label="Ringkasan rule rekaman">
+      <section className="radioboss-stat-grid" aria-label="Ringkasan aturan rekaman">
         <article>
           <ShieldCheck size={18} />
           <span>Program tersedia</span>
@@ -93,12 +93,12 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
         </article>
         <article>
           <ShieldCheck size={18} />
-          <span>Recording enabled</span>
+          <span>Rekaman aktif</span>
           <strong>{enabledCount}</strong>
         </article>
         <article>
           <ShieldCheck size={18} />
-          <span>Auto start aktif</span>
+          <span>Mulai otomatis</span>
           <strong>{autoStartCount}</strong>
         </article>
       </section>
@@ -108,8 +108,8 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
       <section className="radioboss-page-grid">
         <article className="radioboss-page-card">
           <div className="radioboss-card-head">
-            <strong>Form rule rekaman</strong>
-            <small>Jangan aktifkan auto recording massal tanpa verifikasi absensi dan gateway.</small>
+            <strong>Pengaturan rekaman</strong>
+            <small>Untuk penggunaan harian, aktifkan rekaman otomatis hanya pada program yang memang perlu diarsipkan.</small>
           </div>
           <ProgramRecordingRuleForm
             programs={programs}
@@ -122,8 +122,8 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
 
         <article className="radioboss-page-card">
           <div className="radioboss-card-head">
-            <strong>Rule tersimpan</strong>
-            <small>Pilih rule untuk diedit.</small>
+            <strong>Aturan tersimpan</strong>
+            <small>Pilih aturan untuk melihat atau mengubah pengaturannya.</small>
           </div>
           <ProgramRecordingRuleList rules={rules} onSelect={setSelectedRule} />
         </article>

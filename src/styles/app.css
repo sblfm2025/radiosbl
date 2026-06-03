@@ -7239,6 +7239,56 @@ textarea:focus {
   gap: 12px;
 }
 
+.radioboss-rule-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 16px;
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.radioboss-rule-summary.is-disabled {
+  border-color: rgba(100, 116, 139, 0.18);
+  background: rgba(100, 116, 139, 0.07);
+}
+
+.radioboss-rule-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.radioboss-rule-summary.is-disabled .radioboss-rule-summary-icon {
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.radioboss-rule-summary strong,
+.radioboss-rule-summary p {
+  margin: 0;
+}
+
+.radioboss-rule-summary strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 950;
+}
+
+.radioboss-rule-summary p {
+  margin-top: 3px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 .radioboss-form-grid,
 .radioboss-history-filters {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7260,6 +7310,13 @@ textarea:focus {
   color: #475569;
   font-size: 0.72rem;
   font-weight: 900;
+}
+
+.radioboss-field-help {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .radioboss-rule-form input,
@@ -7286,8 +7343,8 @@ textarea:focus {
 .radioboss-toggle-row {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  min-height: 44px;
-  padding: 10px;
+  min-height: 58px;
+  padding: 11px;
   border-radius: 14px;
   background: #f8fafc;
 }
@@ -7295,6 +7352,26 @@ textarea:focus {
 .radioboss-toggle-row input {
   width: 18px;
   min-height: 18px;
+}
+
+.radioboss-toggle-row span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.radioboss-toggle-row strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.radioboss-toggle-row small {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .radioboss-primary-action,
