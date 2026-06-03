@@ -17,6 +17,10 @@ function getSongTitle(request: SongRequest): string {
   return [request.artist, request.title].filter(Boolean).join(" - ");
 }
 
+function getRequestMessage(request: SongRequest): string {
+  return request.rawMessage || request.message || request.dedication || "";
+}
+
 export function SongRequestCard({
   request,
   busy,
@@ -44,11 +48,11 @@ export function SongRequestCard({
         </div>
       </div>
 
-      {request.message && <p>{request.message}</p>}
+      {getRequestMessage(request) && <p>{getRequestMessage(request)}</p>}
       <SongRequestMatchPanel request={request} />
 
       <div className="song-review-actions">
-        <button type="button" disabled={busy} onClick={() => onMatch(request)}>
+        <button type="button" disabled={busy || request.channel === "whatsapp"} onClick={() => onMatch(request)}>
           <Search size={16} />
           Cocokkan ke Library
         </button>
