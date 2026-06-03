@@ -12,3 +12,7 @@ npm-debug.log*
 debug.log
 .vscode/
 scratch/
+
+# Temporary local test files
+tmp-*.log
+tmp-*.png

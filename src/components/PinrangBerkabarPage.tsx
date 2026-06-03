@@ -32,6 +32,17 @@ function getSourceLabel(source: PinrangBerkabarVideo["source"]): string {
   }
 }
 
+function getSourceDescription(source: PinrangBerkabarVideo["source"]): string {
+  switch (source) {
+    case "proxy":
+      return "Data berasal dari feed resmi yang disediakan server Radio SBL.";
+    case "youtube-api":
+      return "Data ditarik langsung dari playlist YouTube resmi Pinrang Berkabar.";
+    default:
+      return "API belum tersedia, halaman memakai tautan playlist resmi sebagai sumber cadangan.";
+  }
+}
+
 function getEmbedUrl(video: PinrangBerkabarVideo): string {
   if (video.source === "fallback" || video.id === "pinrang-berkabar-playlist") {
     return `https://www.youtube-nocookie.com/embed/videoseries?list=${PINRANG_BERKABAR_PLAYLIST_ID}`;
@@ -104,7 +115,9 @@ export function PinrangBerkabarPage() {
     const source = videos[0]?.source ?? "fallback";
     return {
       count: videos.length,
-      source: getSourceLabel(source)
+      source,
+      sourceLabel: getSourceLabel(source),
+      sourceDescription: getSourceDescription(source)
     };
   }, [videos]);
   const filteredVideos = useMemo(() => {
@@ -144,7 +157,7 @@ export function PinrangBerkabarPage() {
                 Kanal video berita
               </span>
               <strong>Pinrang Berkabar</strong>
-              <p>{summary.count} video ditampilkan dari {summary.source} Radio SBL.</p>
+              <p>{summary.count} video ditampilkan dari {summary.sourceLabel} Radio SBL.</p>
             </div>
           </div>
           <div className="pinrang-video-actions">
@@ -165,6 +178,24 @@ export function PinrangBerkabarPage() {
             <span>{notice}</span>
           </div>
         )}
+
+        <section className="pinrang-video-source-panel" aria-label="Sumber data Pinrang Berkabar">
+          <div>
+            <span>Sumber data</span>
+            <strong>{summary.sourceLabel}</strong>
+            <p>{summary.sourceDescription}</p>
+          </div>
+          <div>
+            <span>Playlist resmi</span>
+            <strong>Pinrang Berkabar</strong>
+            <p>{PINRANG_BERKABAR_PLAYLIST_ID}</p>
+          </div>
+          <div>
+            <span>Status tampilan</span>
+            <strong>{loading ? "Memuat" : `${filteredVideos.length} video`}</strong>
+            <p>{hasSearch ? "Hasil pencarian aktif" : "Siap diputar di aplikasi"}</p>
+          </div>
+        </section>
 
         <label className="pinrang-video-search">
           <Search size={18} />
@@ -206,6 +237,9 @@ export function PinrangBerkabarPage() {
                   <span>Now Playing</span>
                   <strong>{playerVideo.title}</strong>
                   <p>{playerVideo.description}</p>
+                  <small className="pinrang-video-player-meta">
+                    {formatVideoDate(playerVideo.publishedAt)} - {getSourceLabel(playerVideo.source)}
+                  </small>
                   <a href={playerVideo.url} target="_blank" rel="noreferrer">
                     <ExternalLink size={15} />
                     Buka di YouTube

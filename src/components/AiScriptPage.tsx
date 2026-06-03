@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type FormEvent } from "react";
-import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive, Bold, Italic, Heading, List, Clock, Highlighter, SplitSquareHorizontal, Megaphone, Search, Download, CheckCircle2 } from "lucide-react";
+import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive, Bold, Italic, Heading, List, Clock, Highlighter, SplitSquareHorizontal, Megaphone, Search, Download, CheckCircle2, ClipboardCheck } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript, rewriteProgramScript } from "../services/aiScript.service";
@@ -8,15 +8,17 @@ import type { BroadcastProgramSlot, ProgramScriptDraft } from "../types/domain";
 import { formatAirNameOnly } from "../utils/announcerResolver";
 import { mergeScheduleSlots } from "../services/scheduleSlot.service";
 import { InlineHelp } from "./InlineHelp";
+import { ScriptBoard } from "../features/broadcastWorkflow/components/ScriptBoard";
 
-type StudioTab = "generator" | "drafts" | "review" | "ready";
+type StudioTab = "generator" | "drafts" | "review" | "ready" | "board";
 type RewriteMode = "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional";
 
-const studioTabs: Array<{ id: StudioTab; label: string; icon: typeof Wand2 }> = [
+const studioTabs: Array<{ id: StudioTab; label: string; icon: any }> = [
   { id: "generator", label: "Generator", icon: Wand2 },
   { id: "drafts", label: "Draft", icon: Save },
   { id: "review", label: "Review", icon: FileText },
-  { id: "ready", label: "Siap Siaran", icon: Radio }
+  { id: "ready", label: "Siap Siaran", icon: Radio },
+  { id: "board", label: "Script Board", icon: ClipboardCheck }
 ];
 
 const rewriteModes: Array<{ id: RewriteMode; label: string }> = [
@@ -797,6 +799,22 @@ export function AiScriptPage({
             </section>
           </div>
         )}
+        
+        {activeTab === "board" && (
+          <div className="ai-layout-grid ai-layout-single">
+            <section className="ai-result-panel">
+              <div className="panel-inner ai-drafts-panel" style={{ padding: "20px" }}>
+                <div className="panel-header">
+                  <ClipboardCheck size={20} />
+                  <h2>Papan Naskah Siaran (Script Board)</h2>
+                </div>
+                <div style={{ marginTop: "16px" }}>
+                  <ScriptBoard />
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
       </main>
 
       {isTeleprompter && (
@@ -843,6 +861,7 @@ function tabLabel(id: string) {
     case "drafts": return "Draft Saya";
     case "review": return "Review Naskah";
     case "ready": return "Naskah Siap Siaran";
+    case "board": return "Papan Status Naskah (Script Board)";
     default: return "";
   }
 }

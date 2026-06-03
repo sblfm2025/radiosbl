@@ -5708,6 +5708,54 @@ textarea:focus {
   font-weight: 850;
 }
 
+.pinrang-video-source-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pinrang-video-source-panel > div {
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid rgba(22, 119, 237, 0.1);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.pinrang-video-source-panel span,
+.pinrang-video-source-panel strong,
+.pinrang-video-source-panel p {
+  display: block;
+  min-width: 0;
+}
+
+.pinrang-video-source-panel span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pinrang-video-source-panel strong {
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.pinrang-video-source-panel p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pinrang-video-search {
   display: grid;
   grid-template-columns: 22px auto minmax(0, 1fr);
@@ -5811,6 +5859,12 @@ textarea:focus {
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.pinrang-video-player-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
 }
 
 .pinrang-video-player a {
@@ -6817,6 +6871,810 @@ textarea:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.radioboss-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+}
+
+.radioboss-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.radioboss-panel-head>div {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.radioboss-panel-head>div>span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.12);
+}
+
+.radioboss-panel-head small,
+.radioboss-panel-head strong {
+  display: block;
+}
+
+.radioboss-panel-head small {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.radioboss-panel-head strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.radioboss-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.radioboss-status-pill.is-online {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.13);
+}
+
+.radioboss-status-pill.is-offline {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.radioboss-status-pill.is-warning {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.radioboss-status-pill.is-recording {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.radioboss-status-pill.is-waiting {
+  color: #475569;
+  background: rgba(100, 116, 139, 0.13);
+}
+
+.radioboss-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.radioboss-summary-grid,
+.radioboss-live-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.radioboss-live-grid {
+  grid-template-columns: 1.1fr 1.2fr 1fr;
+}
+
+.radioboss-summary-grid article,
+.radioboss-program-card,
+.radioboss-now-playing,
+.radioboss-health-badge {
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.radioboss-summary-grid article {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.radioboss-summary-grid article>span,
+.radioboss-program-card>span,
+.radioboss-now-copy>span,
+.radioboss-health-copy>span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.radioboss-summary-grid article>strong,
+.radioboss-program-card strong,
+.radioboss-now-copy strong,
+.radioboss-health-copy strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.radioboss-summary-grid article small,
+.radioboss-program-card small,
+.radioboss-now-copy small,
+.radioboss-health-copy small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.radioboss-program-card,
+.radioboss-now-playing,
+.radioboss-health-badge {
+  display: grid;
+  gap: 8px;
+  padding: 13px;
+}
+
+.radioboss-program-card div {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.radioboss-now-playing,
+.radioboss-health-badge {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.radioboss-now-icon,
+.radioboss-health-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.1);
+}
+
+.radioboss-health-badge.is-online .radioboss-health-icon {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.13);
+}
+
+.radioboss-health-badge.is-warning .radioboss-health-icon {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.radioboss-health-badge.is-offline .radioboss-health-icon {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.radioboss-now-copy,
+.radioboss-health-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.radioboss-health-copy em {
+  color: #92400e;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.radioboss-progress {
+  grid-column: 1 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.radioboss-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1677ed;
+}
+
+.radioboss-page {
+  display: grid;
+  gap: 16px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding-bottom: 96px;
+}
+
+.radioboss-page-hero,
+.radioboss-page-card,
+.radioboss-stat-grid article {
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+}
+
+.radioboss-page-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+}
+
+.radioboss-page-hero h1,
+.radioboss-page-hero p {
+  margin: 0;
+}
+
+.radioboss-page-hero h1 {
+  color: var(--ink);
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.radioboss-page-hero p:not(.eyebrow) {
+  max-width: 720px;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.radioboss-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.1);
+}
+
+.radioboss-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.radioboss-stat-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.radioboss-stat-grid svg {
+  color: #0f766e;
+}
+
+.radioboss-stat-grid span,
+.radioboss-card-head small,
+.radioboss-rule-list small {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.radioboss-stat-grid strong {
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.radioboss-page-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.radioboss-page-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.radioboss-card-head {
+  display: grid;
+  gap: 3px;
+}
+
+.radioboss-card-head strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.radioboss-rule-form,
+.radioboss-form-grid,
+.radioboss-toggle-grid,
+.radioboss-history-filters {
+  display: grid;
+  gap: 12px;
+}
+
+.radioboss-form-grid,
+.radioboss-history-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.radioboss-history-filters {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.radioboss-rule-form label,
+.radioboss-history-filters label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.radioboss-rule-form label>span,
+.radioboss-history-filters label>span {
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.radioboss-rule-form input,
+.radioboss-rule-form select,
+.radioboss-history-filters input,
+.radioboss-history-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+}
+
+.radioboss-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.radioboss-toggle-row {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.radioboss-toggle-row input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.radioboss-primary-action,
+.radioboss-secondary-action,
+.radioboss-file-cell button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: none;
+  border-radius: 13px;
+  padding: 9px 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.radioboss-primary-action {
+  color: #ffffff;
+  background: #1677ed;
+}
+
+.radioboss-primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.radioboss-secondary-action,
+.radioboss-file-cell button {
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.09);
+}
+
+.radioboss-rule-list {
+  display: grid;
+  gap: 10px;
+}
+
+.radioboss-rule-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  padding: 11px;
+  text-align: left;
+  background: #f8fafc;
+}
+
+.radioboss-rule-list strong,
+.radioboss-rule-list small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.radioboss-rule-list strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.radioboss-rule-list em {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.radioboss-rule-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.radioboss-rule-dot.is-enabled {
+  background: #10b981;
+}
+
+.radioboss-empty-state {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 180px;
+  padding: 20px;
+  border: 1px dashed rgba(100, 116, 139, 0.28);
+  border-radius: 18px;
+  color: #64748b;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.radioboss-empty-state strong {
+  color: var(--ink);
+}
+
+.radioboss-empty-state p {
+  margin: 0;
+  max-width: 420px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.radioboss-page-message {
+  padding: 11px 13px;
+  border-radius: 14px;
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.12);
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+.radioboss-table-wrap {
+  overflow-x: auto;
+}
+
+.radioboss-table {
+  width: 100%;
+  min-width: 1060px;
+  border-collapse: collapse;
+}
+
+.radioboss-table th,
+.radioboss-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  color: #475569;
+  font-size: 0.78rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.radioboss-table th {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.radioboss-table td strong {
+  color: var(--ink);
+}
+
+.radioboss-file-cell {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.radioboss-file-cell small {
+  color: #64748b;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.radioboss-file-cell button {
+  width: fit-content;
+  min-height: 30px;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+}
+
+.recording-status-card,
+.recording-actions-card {
+  gap: 16px;
+}
+
+.recording-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recording-status-grid article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  min-height: 118px;
+  padding: 13px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.recording-status-grid svg {
+  color: #1677ed;
+}
+
+.recording-status-grid span {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.recording-status-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 950;
+}
+
+.recording-status-grid small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.recording-connection-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recording-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recording-action-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: #ffffff;
+  background: #1677ed;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.recording-action-grid button.danger {
+  background: #dc2626;
+}
+
+.recording-action-grid button:disabled {
+  cursor: not-allowed;
+  color: #94a3b8;
+  background: #e2e8f0;
+}
+
+.recording-retry-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.song-review-queue {
+  display: grid;
+  gap: 12px;
+}
+
+.song-review-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.song-review-card-head,
+.song-review-match-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.song-review-card-head>span,
+.song-review-match-panel>svg {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.1);
+}
+
+.song-review-card strong,
+.song-review-card small,
+.song-review-card p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.song-review-card strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.song-review-card small,
+.song-review-card p {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.song-review-card p {
+  margin: 0;
+}
+
+.song-review-match-panel {
+  padding: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.song-review-match-panel span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.song-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.song-review-actions button,
+.song-review-manual-search button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 11px;
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.09);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.song-review-actions button.danger {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.song-review-actions button:disabled {
+  cursor: not-allowed;
+  color: #94a3b8;
+  background: #e2e8f0;
+}
+
+.song-review-manual-search {
+  display: grid;
+  grid-template-columns: 120px minmax(180px, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.song-review-manual-search input {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .dashboard-shortcut-grid,
@@ -9392,6 +10250,7 @@ textarea:focus {
 @media (max-width: 980px) {
   .pinrang-video-player,
   .pinrang-video-hero,
+  .pinrang-video-source-panel,
   .pinrang-video-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -9431,6 +10290,13 @@ textarea:focus {
     border-radius: 20px;
   }
 
+  .pinrang-video-hero p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
   .pinrang-video-identity {
     grid-template-columns: 58px minmax(0, 1fr);
     gap: 10px;
@@ -9444,12 +10310,18 @@ textarea:focus {
 
   .pinrang-video-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pinrang-video-actions button,
   .pinrang-video-actions a {
     width: 100%;
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .pinrang-video-source-panel {
+    display: none;
   }
 
   .pinrang-video-search {
@@ -14969,6 +15841,10 @@ textarea:focus {
 }
 
 @media (max-width: 420px) {
+  .pinrang-video-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .users-mobile-actions,
   .users-mobile-meta {
     grid-template-columns: minmax(0, 1fr);
@@ -16419,6 +17295,33 @@ textarea:focus {
     gap: 12px;
   }
 
+  .radioboss-panel {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .radioboss-panel-head {
+    align-items: flex-start;
+  }
+
+  .radioboss-summary-grid,
+  .radioboss-live-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .radioboss-page-grid,
+  .radioboss-history-filters,
+  .recording-status-grid,
+  .recording-action-grid,
+  .song-review-manual-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .radioboss-page-hero {
+    align-items: flex-start;
+  }
+
   .dashboard-shortcut-card {
     min-height: 78px;
     border-radius: 16px;
@@ -17267,6 +18170,44 @@ textarea:focus {
 
   .dashboard-panel-head button {
     width: 100%;
+  }
+
+  .radioboss-panel-head,
+  .radioboss-summary-grid,
+  .radioboss-live-grid,
+  .radioboss-now-playing,
+  .radioboss-health-badge {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .radioboss-panel-head {
+    display: grid;
+  }
+
+  .radioboss-status-pill {
+    white-space: normal;
+  }
+
+  .radioboss-page-hero,
+  .radioboss-stat-grid,
+  .radioboss-form-grid,
+  .radioboss-toggle-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .radioboss-page-hero {
+    display: grid;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .radioboss-page-hero h1 {
+    font-size: 1.45rem;
+  }
+
+  .radioboss-page-card {
+    padding: 14px;
+    border-radius: 20px;
   }
 
   .schedule-swap-content {

@@ -32,7 +32,9 @@ import { ComplaintsPage } from "./components/ComplaintsPage";
 import { AttendancePage } from "./components/AttendancePage";
 import { StreamingPage } from "./components/StreamingPage";
 import { SplashPage } from "./components/SplashPage";
-import { PodcastPage } from "./components/PodcastPage";
+import { PodcastPage as PodcastPageLegacy } from "./components/PodcastPage";
+import PodcastPageNew from "./features/contentHub/pages/PodcastPage";
+import { featureFlags } from "./config/featureFlags";
 import { PinrangBerkabarPage } from "./components/PinrangBerkabarPage";
 import { CoveragePage } from "./components/CoveragePage";
 import { UsersManagementPage } from "./components/UsersManagementPage";
@@ -41,6 +43,17 @@ import { AttendanceReportPage } from "./components/AttendanceReportPage";
 import { TutorialPage } from "./components/TutorialPage";
 import { PedomanMediaPage } from "./components/PedomanMediaPage";
 import StudioInboxPage from "./features/engagement/pages/StudioInboxPage";
+import RundownPage from "./features/broadcastWorkflow/pages/RundownPage";
+import BroadcastLogPage from "./features/broadcastWorkflow/pages/BroadcastLogPage";
+import HandoverPage from "./features/broadcastWorkflow/pages/HandoverPage";
+import ListenerAnalyticsPage from "./features/analytics/pages/ListenerAnalyticsPage";
+import { ListenerAnalyticsTracker } from "./features/analytics/components/ListenerAnalyticsTracker";
+import AuditLogPage from "./features/securityAudit/pages/AuditLogPage";
+import ApprovalQueuePage from "./features/securityAudit/pages/ApprovalQueuePage";
+import ProgramRecordingRulesPage from "./pages/radioboss/ProgramRecordingRulesPage";
+import RecordingHistoryPage from "./pages/radioboss/RecordingHistoryPage";
+import RecordingControlPage from "./pages/radioboss/RecordingControlPage";
+import SongRequestReviewPage from "./pages/radioboss/SongRequestReviewPage";
 
 // Data & Repository
 import {
@@ -108,11 +121,22 @@ const navigablePages: PageKey[] = [
   "podcast",
   "requests",
   "studioInbox",
+  "videoHub",
   "complaints",
   "aiScript",
   "users",
   "scheduleSwap",
   "attendanceReport",
+  "rundown",
+  "broadcastLog",
+  "handover",
+  "recordingControl",
+  "recordingRules",
+  "recordingHistory",
+  "songRequestReview",
+  "listenerAnalytics",
+  "auditLog",
+  "approvalQueue",
   "profile",
   "menu",
   "tutorial",
@@ -582,7 +606,56 @@ export default function App() {
       case "studioInbox":
         return <StudioInboxPage session={session} />;
       case "podcast":
-        return <PodcastPage />;
+        return featureFlags.contentHub ? <PodcastPageNew /> : <PodcastPageLegacy />;
+      case "videoHub":
+        return <PinrangBerkabarPage />;
+      case "rundown":
+        return featureFlags.broadcastWorkflow ? (
+          <RundownPage session={session} data={dashboardData} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
+      case "broadcastLog":
+        return featureFlags.broadcastWorkflow ? (
+          <BroadcastLogPage session={session} data={dashboardData} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
+      case "handover":
+        return featureFlags.broadcastWorkflow ? (
+          <HandoverPage session={session} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
+      case "recordingControl":
+        return <RecordingControlPage session={session} />;
+      case "recordingRules":
+        return <ProgramRecordingRulesPage data={dashboardData} session={session} />;
+      case "recordingHistory":
+        return <RecordingHistoryPage />;
+      case "songRequestReview":
+        return <SongRequestReviewPage session={session} />;
       case "pinrangBerkabar":
         return <PinrangBerkabarPage />;
       case "complaints":
@@ -595,6 +668,45 @@ export default function App() {
         return <ScheduleSwapPage session={session} />;
       case "attendanceReport":
         return <AttendanceReportPage session={session} />;
+      case "listenerAnalytics":
+        return featureFlags.listenerAnalytics ? (
+          <ListenerAnalyticsPage session={session} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
+      case "auditLog":
+        return featureFlags.securityAuditLog ? (
+          <AuditLogPage session={session} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
+      case "approvalQueue":
+        return featureFlags.securityAuditLog ? (
+          <ApprovalQueuePage session={session} />
+        ) : session ? (
+          <DashboardPage
+            session={session} 
+            onNavigate={navigateToPage}
+            onLogout={handleLogout}
+            onAirAnnouncer={currentAnnouncer} 
+            onAirAnnouncers={currentAnnouncers}
+            attendanceRecords={attendanceRecords}
+          />
+        ) : null;
       case "tutorial":
         return <TutorialPage />;
       case "pedoman":
@@ -653,6 +765,12 @@ export default function App() {
       programTitle={currentSlot.title}
       announcer={currentAnnouncer}
     >
+      {featureFlags.listenerAnalytics && (
+        <ListenerAnalyticsTracker
+          session={session}
+          programTitle={currentSlot.title}
+        />
+      )}
       <Shell 
         activePage={activePage} 
         session={session} 

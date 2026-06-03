@@ -128,10 +128,10 @@ test("mobile navigation uses five items and opens complete menu", async ({ page 
   } else {
     const sidebar = page.locator(".sidebar");
     await expect(sidebar).toBeVisible();
-    await expect(sidebar.getByText("Operasional")).toBeVisible();
-    await expect(sidebar.getByText("Siaran")).toBeVisible();
-    await expect(sidebar.getByText("Konten")).toBeVisible();
-    await expect(sidebar.getByText("Administrasi")).toBeVisible();
+    await expect(sidebar.getByText("Operasional", { exact: true })).toBeVisible();
+    await expect(sidebar.getByText("Siaran", { exact: true })).toBeVisible();
+    await expect(sidebar.getByText("Konten", { exact: true })).toBeVisible();
+    await expect(sidebar.getByText("Administrasi", { exact: true })).toBeVisible();
   }
 
   const metrics = await page.evaluate(() => ({

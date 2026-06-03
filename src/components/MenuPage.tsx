@@ -15,7 +15,7 @@ type MenuPageProps = {
 const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   {
     label: "Operasional",
-    items: ["dashboard", "attendance", "schedule", "requests", "scheduleSwap"]
+    items: ["dashboard", "attendance", "schedule", "requests", "songRequestReview", "scheduleSwap", "recordingControl", "recordingHistory", "recordingRules"]
   },
   {
     label: "Siaran",
@@ -288,6 +288,7 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     schedule: "jadwal siaran program penyiar kalender hari ini",
     scheduleSwap: "tukar jadwal pengganti konfirmasi permintaan",
     requests: "request lagu pendengar salam putar",
+    songRequestReview: "review request lagu radioboss match approve queue played rejected",
     aiScript: "naskah ai script draft berita cue",
     liveOb: "ob live luar studio event",
     coverage: "liputan event dokumentasi reporter",
@@ -300,7 +301,10 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     complaints: "aduan saran keluhan warga",
     profile: "profil akun password preferensi",
     tutorial: "tutorial panduan bantuan faq help troubleshooting",
-    pedoman: "pedoman media siber aturan kebijakan privasi"
+    pedoman: "pedoman media siber aturan kebijakan privasi",
+    recordingControl: "radioboss kontrol rekaman manual command queue start stop skip retry",
+    recordingRules: "radioboss rekaman rules auto recording program gateway",
+    recordingHistory: "radioboss rekaman history file path gateway arsip"
   };
 
   return [
@@ -342,6 +346,8 @@ function getMenuDescription(key: PageKey): string {
       return "Absen dan lokasi";
     case "requests":
       return "Permintaan pendengar";
+    case "songRequestReview":
+      return "Review request lagu";
     case "scheduleSwap":
       return "Konfirmasi pengganti";
     case "streaming":
@@ -370,6 +376,12 @@ function getMenuDescription(key: PageKey): string {
       return "Panduan penggunaan aplikasi";
     case "pedoman":
       return "Aturan dan kebijakan privasi";
+    case "recordingRules":
+      return "Aturan rekaman program";
+    case "recordingControl":
+      return "Start/stop rekaman";
+    case "recordingHistory":
+      return "Riwayat file rekaman";
     default:
       return "Fitur Radio SBL";
   }

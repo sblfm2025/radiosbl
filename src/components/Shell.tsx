@@ -9,6 +9,7 @@ import { collection, query, where, onSnapshot, getDocs } from "firebase/firestor
 import { getFirebaseFirestore } from "../lib/firebase";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
 import { getScheduleSwapQueryAliasesForUser } from "../services/scheduleSwap.service";
+import { featureFlags } from "../config/featureFlags";
 
 type ShellProps = {
   activePage: PageKey;
@@ -22,7 +23,7 @@ type ShellProps = {
 const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   {
     label: "Operasional",
-    items: ["dashboard", "attendance", "schedule", "requests", "scheduleSwap", "studioInbox"]
+    items: ["dashboard", "attendance", "schedule", "requests", "songRequestReview", "scheduleSwap", "studioInbox", "recordingControl", "recordingHistory", "recordingRules", "rundown", "broadcastLog", "handover"]
   },
   {
     label: "Siaran",
@@ -38,7 +39,7 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "Administrasi",
-    items: ["attendanceReport", "users"]
+    items: ["attendanceReport", "users", "listenerAnalytics", "auditLog", "approvalQueue"]
   },
   {
     label: "Sistem",
@@ -48,6 +49,17 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
 
 const AUDIO_PERMISSION_ACCEPTED_KEY = "audio_permission_accepted";
 const AUDIO_PERMISSION_DISMISSED_KEY = "audio_permission_dismissed";
+
+function isFeaturePageEnabled(page: PageKey): boolean {
+  if (page === "studioInbox") return featureFlags.listenerEngagement;
+  if (page === "podcast") return featureFlags.contentHub;
+  if (page === "rundown" || page === "broadcastLog" || page === "handover") {
+    return featureFlags.broadcastWorkflow;
+  }
+  if (page === "listenerAnalytics") return featureFlags.listenerAnalytics;
+  if (page === "auditLog" || page === "approvalQueue") return featureFlags.securityAuditLog;
+  return true;
+}
 
 export function Shell({
   activePage,
@@ -78,10 +90,14 @@ export function Shell({
   const connectionLabel = online ? "Sinkron aktif" : "Mode offline";
   const connectionDescription = online ? "Data studio tersambung" : "Data lokal tetap bisa dibuka";
   const allowedNavItems = shellNavItems.filter(
-    (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
+    (item) =>
+      isFeaturePageEnabled(item.key) &&
+      (!item.requiredPermission || canUser(session?.user.role, item.requiredPermission))
   );
   const allowedBottomNavItems = bottomNav.filter(
-    (item) => !item.requiredPermission || canUser(session?.user.role, item.requiredPermission)
+    (item) =>
+      isFeaturePageEnabled(item.key) &&
+      (!item.requiredPermission || canUser(session?.user.role, item.requiredPermission))
   );
   const isDirectNavActive = useCallback((item: NavItem) => (
     activePage === item.key || (activePage === "announcerProfile" && item.key === "schedule")

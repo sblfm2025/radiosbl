@@ -11,6 +11,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "schedule:swap",
     "coverage:manage",
     "live_ob:manage",
+    "radioboss:manage",
     "complaints:submit",
     "complaints:manage",
     "ai:use",
@@ -25,6 +26,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "schedule:swap",
     "coverage:manage",
     "live_ob:manage",
+    "radioboss:manage",
     "complaints:submit",
     "complaints:manage",
     "ai:use"
@@ -56,7 +58,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "dashboard:read",
     "attendance:self",
     "schedule:read",
-    "live_ob:manage"
+    "live_ob:manage",
+    "radioboss:manage"
   ],
   employee: [
     "dashboard:read",
@@ -81,6 +84,7 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   "schedule:swap": "Mengajukan permintaan tukar jadwal siaran",
   "coverage:manage": "Mengelola penugasan liputan/event",
   "live_ob:manage": "Mengelola teknis siaran luar studio (Live OB)",
+  "radioboss:manage": "Memantau integrasi RadioBOSS dan mengelola antrean operasional studio",
   "complaints:submit": "Mengirimkan aduan atau request lagu",
   "complaints:manage": "Merespon dan mengelola status aduan masyarakat",
   "ai:use": "Menggunakan asisten AI untuk membuat naskah siaran",

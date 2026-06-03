@@ -31,6 +31,7 @@ import { mergeScheduleSlotsRemote } from "../services/scheduleSlot.service";
 import { getIndonesianDay, parseTimeRangeMinutes } from "../utils/scheduleClock";
 import { subscribeSongRequests } from "../services/songRequest.service";
 import { formatAirNameOnly } from "../utils/announcerResolver";
+import { RadioBossStatusPanel } from "./radioboss/RadioBossStatusPanel";
 
 const featuredPodcastEpisodes = [
   {
@@ -367,6 +368,14 @@ export function DashboardPage({
     }),
     [attendanceRecords, now, session.user.id]
   );
+  const attendanceLabel = useMemo(() => {
+    if (!todayAttendance) return "Belum absensi";
+    const checkInAt = toLocalDate(todayAttendance.checkInAt);
+    const timeLabel = checkInAt
+      ? checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+      : "";
+    return timeLabel ? `Sudah absensi ${timeLabel}` : "Sudah absensi";
+  }, [todayAttendance]);
   const todaysUserSlots = useMemo(
     () => scheduleSlots.filter((slot) => slot.day === todayDay && slotMatchesUser(slot, session)),
     [scheduleSlots, session, todayDay]
@@ -385,7 +394,7 @@ export function DashboardPage({
     currentProgram: currentSlot.title
   });
   const requestQueue = useMemo(() => {
-    const activeStatuses = new Set<SongRequest["status"]>(["new", "notified", "queued"]);
+    const activeStatuses = new Set<SongRequest["status"]>(["new", "notified", "matched", "needs_review", "sent_to_radioboss", "queued"]);
     const activeRequests = songRequests
       .filter((request) => activeStatuses.has(request.status))
       .sort((left, right) => {
@@ -397,7 +406,7 @@ export function DashboardPage({
     return {
       active: activeRequests,
       latest: activeRequests[0],
-      queued: activeRequests.filter((request) => request.status === "queued").length,
+      queued: activeRequests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued").length,
       playedToday: songRequests.filter((request) => {
         const requestDate = toLocalDate(request.createdAt);
         return request.status === "played" && requestDate && isSameLocalDay(requestDate, now);
@@ -570,7 +579,7 @@ export function DashboardPage({
       items.push({
         title: "Request terbaru",
         detail: `${requestQueue.latest.title} dari ${requestQueue.latest.requesterName}`,
-        tone: requestQueue.latest.status === "queued" ? "success" : "info",
+        tone: requestQueue.latest.status === "queued" || requestQueue.latest.status === "sent_to_radioboss" ? "success" : "info",
         page: "requests"
       });
     }
@@ -871,6 +880,16 @@ export function DashboardPage({
             </button>
           </div>
         </section>
+
+        <RadioBossStatusPanel
+          currentProgram={{
+            title: currentSlot.title,
+            time: currentSlot.time
+          }}
+          activeAnnouncer={displayAnnouncer || formatAirNameOnly(onAirAnnouncer)}
+          attendanceLabel={attendanceLabel}
+          songRequests={songRequests}
+        />
 
         <section className="dashboard-briefing-panel" aria-label="Briefing operasional">
           <div className="dashboard-briefing-head">

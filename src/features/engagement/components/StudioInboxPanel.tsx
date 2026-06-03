@@ -7,6 +7,33 @@ type StudioInboxPanelProps = {
   operatorName?: string;
 };
 
+const requestStatusLabel: Record<SongRequestV2["status"], string> = {
+  submitted: "Baru",
+  read: "Dibaca",
+  queued: "Antrean",
+  played: "Diputar",
+  rejected: "Ditolak",
+  archived: "Arsip"
+};
+
+const dedicationStatusLabel: Record<DedicationItem["status"], string> = {
+  submitted: "Baru",
+  approved: "Disetujui",
+  readOnAir: "Dibaca di Udara",
+  rejected: "Ditolak",
+  archived: "Arsip"
+};
+
+const toDate = (value: unknown) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate();
+  }
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInboxPanelProps) {
   const [activeTab, setActiveTab] = useState<"requests" | "dedications">("requests");
   const [requests, setRequests] = useState<SongRequestV2[]>([]);
@@ -57,50 +84,46 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
     }
   });
 
-  const formatTime = (timeString: string) => {
-    try {
-      const date = new Date(timeString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " - " + date.toLocaleDateString([], { day: 'numeric', month: 'short' });
-    } catch {
-      return timeString;
-    }
+  const formatTime = (timeValue: unknown) => {
+    const date = toDate(timeValue);
+    if (!date) return "Waktu tidak tersedia";
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " - " + date.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
 
   return (
     <div className="studio-inbox-panel" data-testid="studio-inbox-panel">
-      <div className="studio-inbox-tabs" style={{ marginBottom: "16px" }}>
-        <button
-          className={`studio-inbox-tab ${activeTab === "requests" ? "active" : ""}`}
-          onClick={() => setActiveTab("requests")}
-          data-testid="tab-requests"
-        >
-          Request Lagu ({requests.filter(r => r.status === 'submitted' || r.status === 'read' || r.status === 'queued').length})
-        </button>
-        <button
-          className={`studio-inbox-tab ${activeTab === "dedications" ? "active" : ""}`}
-          onClick={() => setActiveTab("dedications")}
-          data-testid="tab-dedications"
-        >
-          Salam Udara ({dedications.filter(d => d.status === 'submitted' || d.status === 'approved').length})
-        </button>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", cursor: "pointer" }}>
+      <div className="studio-inbox-tabs studio-inbox-panel-tabs">
+        <div className="studio-inbox-tab-group">
+          <button
+            className={`studio-inbox-tab ${activeTab === "requests" ? "active" : ""}`}
+            onClick={() => setActiveTab("requests")}
+            data-testid="tab-requests"
+          >
+            Request Lagu ({requests.filter(r => r.status === 'submitted' || r.status === 'read' || r.status === 'queued').length})
+          </button>
+          <button
+            className={`studio-inbox-tab ${activeTab === "dedications" ? "active" : ""}`}
+            onClick={() => setActiveTab("dedications")}
+            data-testid="tab-dedications"
+          >
+            Salam Udara ({dedications.filter(d => d.status === 'submitted' || d.status === 'approved').length})
+          </button>
+        </div>
+        <label className="studio-archive-toggle">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
             data-testid="toggle-archived"
           />
-          Tampilkan Arsip / Selesai
+          Tampilkan Arsip
         </label>
       </div>
 
       {activeTab === "requests" ? (
         <div className="studio-inbox-grid" data-testid="requests-grid">
           {filteredRequests.length === 0 ? (
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", textAlign: "center", gridColumn: "1 / -1", padding: "20px" }}>
+            <p className="studio-inbox-empty">
               Tidak ada request lagu dalam antrean.
             </p>
           ) : (
@@ -127,17 +150,17 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
                 {req.message && <p className="inbox-item-body">"{req.message}"</p>}
                 
                 {req.targetProgramTitle && (
-                  <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>
+                  <span className="inbox-item-meta">
                     Program: {req.targetProgramTitle}
                   </span>
                 )}
 
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
+                <div className="inbox-status-row">
                   <span className={`req-v2-status-badge badge-${req.status}`}>
-                    {req.status}
+                    {requestStatusLabel[req.status] ?? req.status}
                   </span>
                   {req.statusNote && (
-                    <span style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)" }}>
+                    <span className="inbox-item-meta">
                       ({req.statusNote})
                     </span>
                   )}
@@ -176,7 +199,7 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
                       className="action-btn primary"
                       data-testid={`btn-play-${req.requestId}`}
                     >
-                      Putar Lagu
+                      Tandai Diputar
                     </button>
                   )}
                   {req.status !== 'played' && req.status !== 'rejected' && (
@@ -207,16 +230,16 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
       ) : (
         <div className="studio-inbox-grid" data-testid="dedications-grid">
           {filteredDedications.length === 0 ? (
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", textAlign: "center", gridColumn: "1 / -1", padding: "20px" }}>
+            <p className="studio-inbox-empty">
               Tidak ada salam udara dalam antrean.
             </p>
           ) : (
             filteredDedications.map((ded) => (
               <div key={ded.dedicationId} className="inbox-item-card" data-testid={`dedication-card-${ded.dedicationId}`}>
                 <div className="inbox-item-header">
-                  <span className="inbox-item-sender" style={{ color: "#10b981" }}>
+                  <span className="inbox-item-sender is-dedication">
                     {ded.isAnonymous ? "Anonim" : (ded.senderName || "Pendengar SBL")}
-                    {ded.recipientName ? ` ➔ ${ded.recipientName}` : ""}
+                    {ded.recipientName ? ` -> ${ded.recipientName}` : ""}
                   </span>
                   <span className="inbox-item-time">
                     {formatTime(ded.createdAt)}
@@ -228,17 +251,17 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
                 </p>
 
                 {ded.targetProgramTitle && (
-                  <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>
+                  <span className="inbox-item-meta">
                     Program: {ded.targetProgramTitle}
                   </span>
                 )}
 
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
+                <div className="inbox-status-row">
                   <span className={`req-v2-status-badge badge-${ded.status === 'readOnAir' ? 'read' : ded.status === 'approved' ? 'played' : 'submitted'}`}>
-                    {ded.status === 'readOnAir' ? 'Dibaca di Udara' : ded.status === 'approved' ? 'Disetujui' : ded.status}
+                    {dedicationStatusLabel[ded.status] ?? ded.status}
                   </span>
                   {ded.statusNote && (
-                    <span style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)" }}>
+                    <span className="inbox-item-meta">
                       ({ded.statusNote})
                     </span>
                   )}
@@ -252,7 +275,7 @@ export function StudioInboxPanel({ operatorName = "Operator Studio" }: StudioInb
                         className="action-btn primary"
                         data-testid={`btn-approve-ded-${ded.dedicationId}`}
                       >
-                        Setujui (Publikasi)
+                        Setujui
                       </button>
                       <button
                         onClick={() => {

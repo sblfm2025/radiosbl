@@ -11,10 +11,14 @@ import {
   type RadioMetadata
 } from "../services/radioMetadata.service";
 import { AudioContext, type PlayerStatusType } from "./audioContextState";
+import { trackStreamingError } from "../features/analytics/services/streamingError.service";
+import { readLocalSessions } from "../features/analytics/services/listenerAnalytics.service";
+import { getDeviceInfo } from "../features/analytics/utils/deviceInfo";
 
 export function AudioProvider({ children, streamUrl, frequency, programTitle, announcer }: { children: ReactNode, streamUrl: string, frequency: string, programTitle: string, announcer: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const volumeRef = useRef(0.82);
+  const lastErrorLogRef = useRef<{ key: string; at: number } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState("");
   const [volume, setVolumeState] = useState(0.82);
@@ -23,6 +27,17 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
   const sweeperRef = useRef<HTMLAudioElement | null>(null);
   const hasPlayedSweeperRef = useRef(false);
   const [playerStatus, setPlayerStatus] = useState<PlayerStatusType>("paused");
+
+  function getLatestActiveSessionId(): string | undefined {
+    const sessions = readLocalSessions()
+      .filter((session) => session.status === "active")
+      .sort((a, b) => {
+        const aTime = Date.parse(String(a.lastSeenAt));
+        const bTime = Date.parse(String(b.lastSeenAt));
+        return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+      });
+    return sessions[0]?.id;
+  }
 
   const buildAudio = useCallback(() => {
     const audio = new Audio();
@@ -48,6 +63,10 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       setPlayerStatus("reconnecting");
     };
     audio.onerror = () => {
+      if (!audio.src || audio.networkState === HTMLMediaElement.NETWORK_EMPTY) {
+        return;
+      }
+
       const code = audio.error?.code;
       const reason =
         code === 2
@@ -61,6 +80,36 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       setError(`${reason} Coba tekan play sekali lagi.`);
       setPlaying(false);
       setPlayerStatus("error");
+
+      // Track streaming error secara fail-safe
+      try {
+        const mappedEvent =
+          code === 2
+            ? "network_error"
+            : code === 3 || code === 4
+              ? "media_error"
+              : "unknown";
+
+        const device = getDeviceInfo();
+
+        const errorKey = `${mappedEvent}:${reason}:${device.browser}:${device.os}:${programTitle || "Siaran Live"}`;
+        const now = Date.now();
+        const last = lastErrorLogRef.current;
+        if (!last || last.key !== errorKey || now - last.at > 30_000) {
+          lastErrorLogRef.current = { key: errorKey, at: now };
+          void trackStreamingError({
+            sessionId: getLatestActiveSessionId(),
+            event: mappedEvent,
+            message: reason,
+            programTitle: programTitle || "Siaran Live",
+            deviceType: device.type,
+            browser: device.browser,
+            os: device.os
+          });
+        }
+      } catch (err) {
+        console.warn("Gagal merekam log error streaming:", err);
+      }
     };
 
     return audio;
@@ -70,10 +119,17 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
     audioRef.current = buildAudio();
 
     return () => {
-      audioRef.current?.pause();
-      if (audioRef.current) {
-        audioRef.current.src = "";
-        audioRef.current.load();
+      const audio = audioRef.current;
+      if (audio) {
+        audio.onerror = null;
+        audio.onpause = null;
+        audio.onplaying = null;
+        audio.onwaiting = null;
+        audio.onstalled = null;
+        audio.onemptied = null;
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
         audioRef.current = null;
       }
     };

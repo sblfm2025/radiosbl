@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } from "firebase/firestore";
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
+import { writeAuditLog } from "../../securityAudit/services/auditLog.service";
 
 export type SongRequestV2 = {
   requestId: string;
@@ -91,6 +92,17 @@ export async function updateSongRequestStatus(
   if (status === 'played') updatePayload.playedAt = isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp();
   if (status === 'rejected') updatePayload.rejectedAt = isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp();
   if (handledBy) updatePayload.handledBy = handledBy;
+
+  // Catat audit log perubahan status request lagu secara fail-safe
+  void writeAuditLog({
+    actorUserId: handledBy || "system",
+    actorName: handledBy || "System",
+    action: `song_request_status_${status}`,
+    targetCollection: "songRequestsV2",
+    targetId: requestId,
+    after: { status, statusNote },
+    metadata: { handledBy }
+  });
 
   if (isTestOrNoFirebase()) {
     const list = getLocalRequests();

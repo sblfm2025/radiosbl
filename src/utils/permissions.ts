@@ -11,6 +11,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "schedule:swap",
     "coverage:manage",
     "live_ob:manage",
+    "radioboss:manage",
     "complaints:submit",
     "complaints:manage",
     "ai:use",
@@ -24,6 +25,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "schedule:manage",
     "coverage:manage",
     "live_ob:manage",
+    "radioboss:manage",
     "complaints:manage",
     "ai:use"
   ],
@@ -54,7 +56,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "dashboard:read",
     "attendance:self",
     "schedule:read",
-    "live_ob:manage"
+    "live_ob:manage",
+    "radioboss:manage"
   ],
   employee: ["dashboard:read", "attendance:self", "schedule:read"],
   public: ["complaints:submit"]

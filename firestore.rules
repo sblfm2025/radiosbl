@@ -50,6 +50,10 @@ service cloud.firestore {
       return isRole(['super_admin', 'admin', 'leader', 'operator']);
     }
 
+    function canAccessRadioBossOps() {
+      return isRole(['super_admin', 'admin', 'operator']);
+    }
+
     function canManageCoverage() {
       return isRole(['super_admin', 'admin', 'leader', 'reporter']);
     }
@@ -60,6 +64,10 @@ service cloud.firestore {
 
     function canUseAi() {
       return isRole(['super_admin', 'admin', 'leader', 'announcer', 'reporter']);
+    }
+
+    function canReadAnalytics() {
+      return isRole(['super_admin', 'admin', 'leader', 'operator']);
     }
 
     function isOwner(userId) {
@@ -106,6 +114,66 @@ service cloud.firestore {
 
     function validStatus(value, statuses) {
       return value in statuses;
+    }
+
+    function validListenerAnalyticsSessionPayload() {
+      return hasOnly([
+        'id',
+        'userId',
+        'anonymousId',
+        'startedAt',
+        'lastSeenAt',
+        'endedAt',
+        'status',
+        'source',
+        'device',
+        'program',
+        'playback',
+        'location',
+        'privacy',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll([
+        'id',
+        'anonymousId',
+        'startedAt',
+        'lastSeenAt',
+        'status',
+        'source',
+        'device',
+        'playback',
+        'location',
+        'privacy',
+        'createdAt',
+        'updatedAt'
+      ])
+      && validStatus(request.resource.data.status, ['active', 'paused', 'ended', 'error'])
+      && request.resource.data.source == 'web-pwa';
+    }
+
+    function validListenerStreamingErrorPayload() {
+      return hasOnly([
+        'sessionId',
+        'event',
+        'message',
+        'programId',
+        'programTitle',
+        'deviceType',
+        'browser',
+        'os',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll(['event', 'createdAt'])
+      && validStatus(request.resource.data.event, [
+        'play_failed',
+        'buffering_timeout',
+        'stalled',
+        'network_error',
+        'media_error',
+        'unknown'
+      ]);
     }
 
     function validUserPayload() {
@@ -449,6 +517,19 @@ service cloud.firestore {
         'announcerName',
         'announcerWhatsapp',
         'status',
+        'matchStatus',
+        'matchedTrackId',
+        'matchedFilePath',
+        'confidence',
+        'approvedBy',
+        'approvedAt',
+        'sentToRadioBossAt',
+        'queuedAt',
+        'playedAt',
+        'rejectedBy',
+        'rejectedAt',
+        'rejectReason',
+        'expiresAt',
         'createdAt',
         'updatedAt',
         'notificationText',
@@ -458,10 +539,16 @@ service cloud.firestore {
       && validStatus(request.resource.data.status, [
         'new',
         'notified',
+        'matched',
+        'needs_review',
+        'sent_to_radioboss',
         'queued',
         'played',
-        'rejected'
-      ]);
+        'rejected',
+        'expired'
+      ])
+      && (!('matchStatus' in request.resource.data)
+        || request.resource.data.matchStatus in ['unmatched', 'matched', 'ambiguous', 'not_found']);
     }
 
     function validProgramScriptDraftPayload() {
@@ -534,6 +621,105 @@ service cloud.firestore {
         'live',
         'completed'
       ]);
+    }
+
+    function validProgramRecordingRulePayload() {
+      return hasOnly([
+        'programId',
+        'programName',
+        'recordingEnabled',
+        'requireAttendance',
+        'autoStart',
+        'autoStop',
+        'allowManualOverride',
+        'startGraceMinutes',
+        'stopGraceMinutes',
+        'maxOverrunMinutes',
+        'minDurationMinutes',
+        'folderSlug',
+        'format',
+        'storageRootKey',
+        'createdAt',
+        'createdBy',
+        'updatedAt',
+        'updatedBy'
+      ])
+      && hasAll([
+        'programId',
+        'programName',
+        'recordingEnabled',
+        'requireAttendance',
+        'autoStart',
+        'autoStop',
+        'allowManualOverride',
+        'startGraceMinutes',
+        'stopGraceMinutes',
+        'maxOverrunMinutes',
+        'minDurationMinutes',
+        'folderSlug',
+        'format',
+        'storageRootKey'
+      ])
+      && request.resource.data.recordingEnabled is bool
+      && request.resource.data.requireAttendance is bool
+      && request.resource.data.autoStart is bool
+      && request.resource.data.autoStop is bool
+      && request.resource.data.allowManualOverride is bool
+      && request.resource.data.format in ['mp3', 'wav'];
+    }
+
+    function validRadiobossCommandPayload() {
+      return hasOnly([
+        'type',
+        'status',
+        'payload',
+        'requestedBy',
+        'requestedByName',
+        'requestedAt',
+        'priority',
+        'dedupeKey',
+        'attempts',
+        'maxAttempts',
+        'lockedBy',
+        'lockedAt',
+        'executedAt',
+        'gatewayId',
+        'result',
+        'errorCode',
+        'errorMessageSafe',
+        'createdAt',
+        'updatedAt'
+      ])
+      && hasAll([
+        'type',
+        'status',
+        'payload',
+        'requestedBy',
+        'requestedByName',
+        'requestedAt',
+        'priority',
+        'dedupeKey',
+        'attempts',
+        'maxAttempts',
+        'createdAt',
+        'updatedAt'
+      ])
+      && request.resource.data.status == 'pending'
+      && request.resource.data.type in [
+        'START_RECORDING',
+        'STOP_RECORDING',
+        'MARK_RECORDING_SKIPPED',
+        'RETRY_COMMAND',
+        'ADD_TRACK_TO_QUEUE',
+        'MARK_REQUEST_PLAYED'
+      ]
+      && request.resource.data.requestedBy == request.auth.uid
+      && request.resource.data.payload is map
+      && !('rawCommand' in request.resource.data)
+      && !('rawCommand' in request.resource.data.payload)
+      && request.resource.data.attempts == 0
+      && request.resource.data.maxAttempts <= 3
+      && request.resource.data.priority in ['low', 'normal', 'high'];
     }
 
     match /users/{userId} {
@@ -686,6 +872,69 @@ service cloud.firestore {
     match /streamingSettings/{settingId} {
       allow read: if true;
       allow create, update: if isAdmin() || isRole(['operator']);
+      allow delete: if isSuperAdmin();
+    }
+
+    match /radiobossStatus/{statusId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /radiobossNowPlaying/{nowPlayingId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /radiobossGatewayHeartbeat/{gatewayId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /radiobossTrackHistory/{trackId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /radiobossAuditLogs/{logId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /programRecordingRules/{programId} {
+      allow read: if canAccessRadioBossOps();
+      allow create, update: if canManageSchedule()
+        && request.resource.data.programId == programId
+        && validProgramRecordingRulePayload();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /programRecordings/{recordingId} {
+      allow read: if canAccessRadioBossOps();
+      allow write: if false;
+    }
+
+    match /radiobossCommands/{commandId} {
+      allow read: if canAccessRadioBossOps();
+      allow create: if canAccessRadioBossOps()
+        && validRadiobossCommandPayload();
+      allow update, delete: if false;
+    }
+
+    match /listenerAnalyticsSessions/{sessionId} {
+      allow read: if canReadAnalytics();
+      allow create: if validListenerAnalyticsSessionPayload()
+        && request.resource.data.id == sessionId;
+      allow update: if validListenerAnalyticsSessionPayload()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.anonymousId == resource.data.anonymousId
+        && request.resource.data.startedAt == resource.data.startedAt;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /listenerStreamingErrors/{errorId} {
+      allow read: if canReadAnalytics();
+      allow create: if validListenerStreamingErrorPayload();
+      allow update: if false;
       allow delete: if isSuperAdmin();
     }
 

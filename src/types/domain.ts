@@ -20,6 +20,7 @@ export type Permission =
   | "schedule:swap"
   | "coverage:manage"
   | "live_ob:manage"
+  | "radioboss:manage"
   | "complaints:submit"
   | "complaints:manage"
   | "ai:use"
@@ -196,6 +197,7 @@ export type Complaint = {
 
 export type SongRequest = {
   id: string;
+  requestId?: string;
   requesterName: string;
   requesterWhatsapp?: string;
   artist?: string;
@@ -203,11 +205,45 @@ export type SongRequest = {
   message?: string;
   announcerName?: string;
   announcerWhatsapp?: string;
-  status: "new" | "notified" | "queued" | "played" | "rejected";
+  status:
+    | "new"
+    | "notified"
+    | "matched"
+    | "needs_review"
+    | "sent_to_radioboss"
+    | "queued"
+    | "played"
+    | "rejected"
+    | "expired";
+  matchStatus?: "unmatched" | "matched" | "ambiguous" | "not_found";
+  matchedTrackId?: string | null;
+  matchedFilePath?: string | null;
+  confidence?: number;
+  approvedBy?: string | null;
+  approvedAt?: TimestampLike | null;
+  sentToRadioBossAt?: TimestampLike | null;
+  queuedAt?: TimestampLike | null;
+  playedAt?: TimestampLike | null;
+  rejectedBy?: string | null;
+  rejectedAt?: TimestampLike | null;
+  rejectReason?: string | null;
+  expiresAt?: TimestampLike;
   createdAt: TimestampLike;
+  updatedAt?: TimestampLike;
   notificationText: string;
   whatsappUrl?: string;
   notificationDelivered?: boolean;
+};
+
+export type MusicLibraryIndexTrack = {
+  id: string;
+  trackId?: string;
+  title: string;
+  artist?: string;
+  filePath: string;
+  normalizedTitle?: string;
+  normalizedArtist?: string;
+  updatedAt?: TimestampLike;
 };
 
 export type ProgramScriptDraft = {
@@ -222,7 +258,7 @@ export type ProgramScriptDraft = {
   durationMinutes: number;
   intervention?: string;
   content: string;
-  status: "draft" | "approved" | "used";
+  status: "draft" | "approved" | "used" | "archived";
   createdBy: string;
   createdByName: string;
   createdAt: TimestampLike;
@@ -290,3 +326,284 @@ export type AppSettings = {
   address: string;
   postalCode: string;
 };
+
+export type BroadcastRundownSegment = {
+  id: string;
+  order: number;
+  title: string;
+  type: 'opening' | 'talk' | 'music' | 'news' | 'ads' | 'psa' | 'interview' | 'closing' | 'other';
+  plannedDurationMinutes?: number;
+  notes?: string;
+  scriptId?: string;
+};
+
+export type BroadcastRundown = {
+  id: string;
+  programId: string;
+  programTitle: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hostIds: string[];
+  operatorId?: string;
+  status: 'draft' | 'ready' | 'onAir' | 'completed' | 'archived';
+  segments: BroadcastRundownSegment[];
+  createdBy: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+};
+
+export type PreBroadcastChecklistItem = {
+  id: string;
+  label: string;
+  checked: boolean;
+  checkedBy?: string;
+  checkedAt?: TimestampLike;
+};
+
+export type PreBroadcastChecklist = {
+  id: string;
+  programId: string;
+  programTitle: string;
+  date: string;
+  items: PreBroadcastChecklistItem[];
+  status: 'draft' | 'ready' | 'issue_found';
+  issueNotes?: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+};
+
+export type BroadcastLogSong = {
+  title: string;
+  artist?: string;
+};
+
+export type BroadcastLog = {
+  id: string;
+  programId: string;
+  programTitle: string;
+  date: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  hostIds: string[];
+  operatorId?: string;
+  topics: string[];
+  songsPlayed?: BroadcastLogSong[];
+  guestNames?: string[];
+  technicalIssues?: string;
+  publicFeedbackSummary?: string;
+  documentationLinks?: string[];
+  status: 'draft' | 'submitted' | 'reviewed' | 'archived';
+  createdBy: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+};
+
+export type RecordingStatus =
+  | "waiting_schedule"
+  | "waiting_attendance"
+  | "ready"
+  | "recording"
+  | "stopping"
+  | "stopped"
+  | "completed"
+  | "failed"
+  | "skipped_no_attendance"
+  | "skipped_disabled"
+  | "manual_override"
+  | "gateway_offline"
+  | "radioboss_offline";
+
+export type ProgramRecordingRule = {
+  id?: string;
+  programId: string;
+  programName: string;
+  recordingEnabled: boolean;
+  requireAttendance: boolean;
+  autoStart: boolean;
+  autoStop: boolean;
+  allowManualOverride: boolean;
+  startGraceMinutes: number;
+  stopGraceMinutes: number;
+  maxOverrunMinutes: number;
+  minDurationMinutes: number;
+  folderSlug: string;
+  format: "mp3" | "wav" | string;
+  storageRootKey: string;
+  createdAt?: TimestampLike;
+  createdBy?: string;
+  updatedAt?: TimestampLike;
+  updatedBy?: string;
+};
+
+export type ProgramRecording = {
+  id: string;
+  recordingId?: string;
+  programId: string;
+  programName: string;
+  scheduleId?: string;
+  announcerId?: string;
+  announcerName?: string;
+  status: RecordingStatus;
+  plannedStartAt?: TimestampLike;
+  plannedStopAt?: TimestampLike;
+  startedAt?: TimestampLike;
+  stoppedAt?: TimestampLike | null;
+  durationSeconds?: number | null;
+  fileName?: string;
+  filePath?: string;
+  gatewayId?: string;
+  source?: string;
+  startCommandId?: string | null;
+  stopCommandId?: string | null;
+  errorCode?: string | null;
+  errorMessageSafe?: string | null;
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+};
+
+export type RadiobossCommandStatus =
+  | "pending"
+  | "locked"
+  | "executing"
+  | "success"
+  | "failed"
+  | "retryable"
+  | "cancelled"
+  | "expired";
+
+export type RadiobossCommandType =
+  | "START_RECORDING"
+  | "STOP_RECORDING"
+  | "MARK_RECORDING_SKIPPED"
+  | "RETRY_COMMAND"
+  | "ADD_TRACK_TO_QUEUE"
+  | "MARK_REQUEST_PLAYED";
+
+export type RadiobossCommand = {
+  id: string;
+  type: RadiobossCommandType;
+  status: RadiobossCommandStatus;
+  payload: Record<string, unknown>;
+  requestedBy: string;
+  requestedByName: string;
+  requestedAt?: TimestampLike;
+  priority: "low" | "normal" | "high";
+  dedupeKey: string;
+  attempts: number;
+  maxAttempts: number;
+  lockedBy?: string | null;
+  lockedAt?: TimestampLike | null;
+  executedAt?: TimestampLike | null;
+  gatewayId?: string | null;
+  result?: Record<string, unknown> | null;
+  errorCode?: string | null;
+  errorMessageSafe?: string | null;
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+};
+
+export type ShiftHandover = {
+  id: string;
+  date: string;
+  fromUserId: string;
+  fromUserName?: string;
+  toUserId?: string;
+  toUserName?: string;
+  shiftLabel?: string;
+  notes: string;
+  pendingRequests?: string[];
+  technicalNotes?: string;
+  priority: 'low' | 'normal' | 'high';
+  status: 'open' | 'acknowledged' | 'resolved';
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+  acknowledgedBy?: string;
+  acknowledgedByName?: string;
+  acknowledgedAt?: TimestampLike;
+};
+
+export type ListenerAnalyticsSession = {
+  id: string;
+  userId?: string;
+  anonymousId: string;
+  startedAt: TimestampLike;
+  lastSeenAt: TimestampLike;
+  endedAt?: TimestampLike;
+  status: 'active' | 'paused' | 'ended' | 'error';
+  source: 'web-pwa';
+  device: {
+    type: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+    os: string;
+    browser: string;
+  };
+  program?: {
+    id?: string;
+    title?: string;
+  };
+  playback: {
+    playCount: number;
+    pauseCount: number;
+    errorCount: number;
+    playDurationSeconds: number;
+    lastEvent: 'play' | 'pause' | 'stop' | 'heartbeat' | 'error';
+  };
+  location: {
+    permission: 'unknown' | 'requested' | 'granted' | 'denied' | 'unavailable' | 'failed';
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+    capturedAt?: TimestampLike;
+    source: 'browser-geolocation' | 'none';
+  };
+  privacy: {
+    locationConsentVersion: string;
+    locationConsentText: string;
+    preciseLocationEnabled: boolean;
+  };
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+};
+
+export type ListenerStreamingError = {
+  id: string;
+  sessionId?: string;
+  event: 'play_failed' | 'buffering_timeout' | 'stalled' | 'network_error' | 'media_error' | 'unknown';
+  message?: string;
+  programId?: string;
+  programTitle?: string;
+  deviceType?: string;
+  browser?: string;
+  os?: string;
+  createdAt: TimestampLike;
+};
+
+export type SecurityAuditLog = {
+  id: string;
+  actorUserId: string;
+  actorName?: string;
+  actorRole?: string;
+  action: string;
+  targetCollection?: string;
+  targetId?: string;
+  before?: Record<string, any>;
+  after?: Record<string, any>;
+  metadata?: Record<string, any>;
+  createdAt: TimestampLike;
+};
+
+export type ApprovalRequest = {
+  id: string;
+  type: 'notification' | 'public_content' | 'schedule_change' | 'analytics_export';
+  title: string;
+  payload: Record<string, any>;
+  requestedBy: string;
+  requestedByName?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewNote?: string;
+  createdAt: TimestampLike;
+  reviewedAt?: TimestampLike;
+};
+

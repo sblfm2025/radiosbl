@@ -40,6 +40,14 @@ function getStatusLabel(status: SongRequest["status"]): string {
       return "Terkirim WA";
     case "queued":
       return "Antrean";
+    case "matched":
+      return "Cocok";
+    case "needs_review":
+      return "Review";
+    case "sent_to_radioboss":
+      return "Dikirim";
+    case "expired":
+      return "Kedaluwarsa";
     case "played":
       return "Diputar";
     case "rejected":
@@ -109,9 +117,9 @@ export function SongRequestsPage() {
   }
 
   const groupedRequests = {
-    new: requests.filter((request) => ["new", "notified"].includes(request.status)),
-    queued: requests.filter((request) => request.status === "queued"),
-    done: requests.filter((request) => ["played", "rejected"].includes(request.status))
+    new: requests.filter((request) => ["new", "notified", "matched", "needs_review"].includes(request.status)),
+    queued: requests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued"),
+    done: requests.filter((request) => ["played", "rejected", "expired"].includes(request.status))
   };
   const activeRequestCount = groupedRequests.new.length + groupedRequests.queued.length;
   const latestRequest = requests[0];

@@ -81,6 +81,25 @@ function updateLocalSongRequestStatus(id: string, status: SongRequestStatus): So
   return updated;
 }
 
+function updateLocalSongRequest(id: string, patch: Partial<SongRequest>): SongRequest | null {
+  const requests = readSongRequests();
+  let updated: SongRequest | null = null;
+  const nextRequests = requests.map((request) => {
+    if (request.id !== id) {
+      return request;
+    }
+
+    updated = {
+      ...request,
+      ...patch
+    };
+    return updated;
+  });
+
+  writeSongRequests(nextRequests);
+  return updated;
+}
+
 function toFirestoreSongRequest(request: SongRequest): Omit<SongRequest, "id"> {
   return {
     requesterName: request.requesterName,
@@ -91,7 +110,21 @@ function toFirestoreSongRequest(request: SongRequest): Omit<SongRequest, "id"> {
     ...(request.announcerName ? { announcerName: request.announcerName } : {}),
     ...(request.announcerWhatsapp ? { announcerWhatsapp: request.announcerWhatsapp } : {}),
     status: request.status,
+    matchStatus: request.matchStatus ?? "unmatched",
+    matchedTrackId: request.matchedTrackId ?? null,
+    matchedFilePath: request.matchedFilePath ?? null,
+    confidence: request.confidence ?? 0,
+    approvedBy: request.approvedBy ?? null,
+    approvedAt: request.approvedAt ?? null,
+    sentToRadioBossAt: request.sentToRadioBossAt ?? null,
+    queuedAt: request.queuedAt ?? null,
+    playedAt: request.playedAt ?? null,
+    rejectedBy: request.rejectedBy ?? null,
+    rejectedAt: request.rejectedAt ?? null,
+    rejectReason: request.rejectReason ?? null,
+    expiresAt: request.expiresAt,
     createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
     notificationText: request.notificationText,
     ...(request.whatsappUrl ? { whatsappUrl: request.whatsappUrl } : {})
   };
@@ -133,7 +166,21 @@ export function createSongRequestDraft(input: SongRequestInput): SongRequest {
     announcerName: input.announcer?.airName,
     announcerWhatsapp,
     status: whatsappUrl ? "notified" : "new",
+    matchStatus: "unmatched",
+    matchedTrackId: null,
+    matchedFilePath: null,
+    confidence: 0,
+    approvedBy: null,
+    approvedAt: null,
+    sentToRadioBossAt: null,
+    queuedAt: null,
+    playedAt: null,
+    rejectedBy: null,
+    rejectedAt: null,
+    rejectReason: null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     notificationText,
     whatsappUrl,
     notificationDelivered: false
@@ -226,21 +273,26 @@ export function subscribeSongRequests(
 
 export async function updateSongRequestStatus(
   request: SongRequest,
-  status: SongRequestStatus
+  status: SongRequestStatus,
+  patch: Partial<SongRequest> = {}
 ): Promise<SongRequest> {
+  const updatedPatch = {
+    ...patch,
+    status,
+    updatedAt: new Date().toISOString()
+  };
+
   if (shouldUseLocalFallback()) {
-    return updateLocalSongRequestStatus(request.id, status) ?? { ...request, status };
+    return updateLocalSongRequest(request.id, updatedPatch) ?? { ...request, ...updatedPatch };
   }
 
   try {
-    await updateDocument<Pick<SongRequest, "status">>("songRequests", request.id, {
-      status
-    });
+    await updateDocument<Partial<SongRequest>>("songRequests", request.id, updatedPatch);
     return {
       ...request,
-      status
+      ...updatedPatch
     };
   } catch {
-    return updateLocalSongRequestStatus(request.id, status) ?? { ...request, status };
+    return updateLocalSongRequest(request.id, updatedPatch) ?? { ...request, ...updatedPatch };
   }
 }
