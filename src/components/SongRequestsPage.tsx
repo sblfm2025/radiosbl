@@ -1,31 +1,37 @@
 import { useState, useEffect } from "react";
-import { Radio, Clock, RefreshCw, MessageCircle, Inbox, CheckCircle2 } from "lucide-react";
+import { Radio, Clock, RefreshCw, MessageCircle, Inbox, CheckCircle2, Send } from "lucide-react";
 import type { SongRequest } from "../types/domain";
 import {
   listSongRequests,
   subscribeSongRequests
 } from "../services/songRequest.service";
 
-type RequestGroup = "new" | "queued" | "done";
+type RequestGroup = "received" | "sending" | "delivered" | "archive";
 
 const groupMeta: Record<RequestGroup, { title: string; label: string; tone: string; empty: string }> = {
-  new: {
-    title: "Masuk sekarang",
-    label: "Butuh diproses",
+  received: {
+    title: "Masuk",
+    label: "Menunggu gateway",
     tone: "danger",
     empty: "Belum ada request lagu masuk."
   },
-  queued: {
-    title: "Siap diputar",
-    label: "Dalam antrean",
-    tone: "primary",
-    empty: "Antrean putar masih kosong."
+  sending: {
+    title: "Proses kirim",
+    label: "Command dibuat",
+    tone: "warning",
+    empty: "Belum ada request yang sedang dikirim."
   },
-  done: {
-    title: "Riwayat",
-    label: "Selesai",
+  delivered: {
+    title: "Masuk RadioBOSS",
+    label: "Sudah diterima",
+    tone: "primary",
+    empty: "Belum ada request yang diterima RadioBOSS."
+  },
+  archive: {
+    title: "Arsip",
+    label: "Riwayat lama",
     tone: "muted",
-    empty: "Belum ada request yang selesai diproses."
+    empty: "Belum ada request yang masuk arsip."
   }
 };
 
@@ -36,25 +42,25 @@ function getSongTitle(request: SongRequest): string {
 function getStatusLabel(status: SongRequest["status"]): string {
   switch (status) {
     case "pending_review":
-      return "Review WA";
+      return "Masuk";
     case "notified":
-      return "Terkirim WA";
+      return "Masuk";
     case "queued":
-      return "Antrean";
+      return "Masuk RadioBOSS";
     case "matched":
-      return "Cocok";
+      return "Masuk";
     case "needs_review":
-      return "Review";
+      return "Masuk";
     case "sent_to_radioboss":
-      return "Dikirim";
+      return "Proses kirim";
     case "expired":
-      return "Kedaluwarsa";
+      return "Arsip";
     case "played":
-      return "Diputar";
+      return "Arsip";
     case "rejected":
-      return "Ditolak";
+      return "Arsip";
     default:
-      return "Baru";
+      return "Masuk";
   }
 }
 
@@ -107,12 +113,13 @@ export function SongRequestsPage() {
     return () => unsubscribe();
   }, []);
 
-  const groupedRequests = {
-    new: requests.filter((request) => ["new", "notified", "pending_review", "matched", "needs_review"].includes(request.status)),
-    queued: requests.filter((request) => request.status === "sent_to_radioboss" || request.status === "queued"),
-    done: requests.filter((request) => ["played", "rejected", "expired"].includes(request.status))
+  const groupedRequests: Record<RequestGroup, SongRequest[]> = {
+    received: requests.filter((request) => ["new", "notified", "pending_review", "matched", "needs_review"].includes(request.status)),
+    sending: requests.filter((request) => request.status === "sent_to_radioboss"),
+    delivered: requests.filter((request) => request.status === "queued"),
+    archive: requests.filter((request) => ["played", "rejected", "expired"].includes(request.status))
   };
-  const activeRequestCount = groupedRequests.new.length + groupedRequests.queued.length;
+  const activeRequestCount = groupedRequests.received.length + groupedRequests.sending.length + groupedRequests.delivered.length;
   const latestRequest = requests[0];
   const latestRequestLabel = latestRequest
     ? `${getSongTitle(latestRequest)} - ${formatRequestTime(latestRequest.createdAt)}`
@@ -121,7 +128,10 @@ export function SongRequestsPage() {
   const renderRequestCard = (request: SongRequest, group: RequestGroup) => (
     <article className={`song-request-card ${group}`} key={request.id}>
       <div className="song-request-icon">
-        {group === "queued" ? <Clock size={20} /> : group === "done" ? <CheckCircle2 size={20} /> : <Radio size={20} />}
+        {group === "sending" && <Send size={20} />}
+        {group === "delivered" && <Clock size={20} />}
+        {group === "archive" && <CheckCircle2 size={20} />}
+        {group === "received" && <Radio size={20} />}
       </div>
 
       <div className="song-request-copy">
@@ -150,7 +160,7 @@ export function SongRequestsPage() {
 
   const renderGroup = (group: RequestGroup, items: SongRequest[]) => {
     const meta = groupMeta[group];
-    const visibleItems = group === "done" ? items.slice(0, 5) : items;
+    const visibleItems = group === "archive" ? items.slice(0, 5) : items;
 
     return (
       <section className="song-request-section" aria-label={meta.title}>
@@ -225,25 +235,31 @@ export function SongRequestsPage() {
         <section className="song-request-summary" aria-label="Ringkasan request lagu">
           <article>
             <small>Realtime</small>
-            <strong>{groupedRequests.new.length}</strong>
-            <span>Request masuk</span>
+            <strong>{groupedRequests.received.length}</strong>
+            <span>Masuk</span>
           </article>
           <article>
-            <small>Antrean</small>
-            <strong>{groupedRequests.queued.length}</strong>
-            <span>Siap diputar</span>
+            <small>Gateway</small>
+            <strong>{groupedRequests.sending.length}</strong>
+            <span>Proses kirim</span>
+          </article>
+          <article>
+            <small>RadioBOSS</small>
+            <strong>{groupedRequests.delivered.length}</strong>
+            <span>Masuk RadioBOSS</span>
           </article>
           <article>
             <small>Riwayat</small>
-            <strong>{groupedRequests.done.length}</strong>
-            <span>Selesai</span>
+            <strong>{groupedRequests.archive.length}</strong>
+            <span>Arsip</span>
           </article>
         </section>
 
         <div className="song-request-stack">
-          {renderGroup("new", groupedRequests.new)}
-          {renderGroup("queued", groupedRequests.queued)}
-          {renderGroup("done", groupedRequests.done)}
+          {renderGroup("received", groupedRequests.received)}
+          {renderGroup("sending", groupedRequests.sending)}
+          {renderGroup("delivered", groupedRequests.delivered)}
+          {renderGroup("archive", groupedRequests.archive)}
         </div>
       </div>
     </main>

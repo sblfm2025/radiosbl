@@ -10,6 +10,9 @@ import { getFirebaseFirestore } from "../lib/firebase";
 import { useGlobalAudio } from "../contexts/useGlobalAudio";
 import { getScheduleSwapQueryAliasesForUser } from "../services/scheduleSwap.service";
 import { featureFlags } from "../config/featureFlags";
+import { useCurrentBroadcastSlot } from "../hooks/useCurrentBroadcastSlot";
+import { subscribeSongRequests } from "../services/songRequest.service";
+import type { SongRequest } from "../types/domain";
 
 type ShellProps = {
   activePage: PageKey;
@@ -57,6 +60,15 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
 
 const AUDIO_PERMISSION_ACCEPTED_KEY = "audio_permission_accepted";
 const AUDIO_PERMISSION_DISMISSED_KEY = "audio_permission_dismissed";
+const ACTIVE_REQUEST_STATUSES = new Set<SongRequest["status"]>([
+  "new",
+  "notified",
+  "pending_review",
+  "matched",
+  "needs_review",
+  "sent_to_radioboss",
+  "queued"
+]);
 
 function isFeaturePageEnabled(page: PageKey): boolean {
   if (page === "studioInbox") return featureFlags.listenerEngagement;
@@ -67,6 +79,21 @@ function isFeaturePageEnabled(page: PageKey): boolean {
   if (page === "listenerAnalytics") return featureFlags.listenerAnalytics;
   if (page === "auditLog" || page === "approvalQueue") return featureFlags.securityAuditLog;
   return true;
+}
+
+function normalizeName(value?: string): string {
+  return (value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function currentSlotMatchesUser(slotAnnouncer: string, user: AuthSession["user"]): boolean {
+  const slotText = normalizeName(slotAnnouncer);
+  const userNames = [
+    user.airName,
+    user.displayName,
+    ...(user.announcerNames ?? [])
+  ].map(normalizeName).filter(Boolean);
+
+  return userNames.some((name) => name.length >= 3 && slotText.includes(name));
 }
 
 export function Shell({
@@ -82,10 +109,14 @@ export function Shell({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [pendingSwaps, setPendingSwaps] = useState(0);
+  const [activeRequestNotifications, setActiveRequestNotifications] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousNotificationCount = useRef(0);
   const hasInitializedNotification = useRef(false);
+  const previousRequestIds = useRef<Set<string>>(new Set());
+  const hasInitializedRequestNotification = useRef(false);
   const { togglePlayback } = useGlobalAudio();
+  const currentSlot = useCurrentBroadcastSlot();
   const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
   const [showAudioPrompt, setShowAudioPrompt] = useState(false);
   const profileNavItem: NavItem = {
@@ -97,6 +128,12 @@ export function Shell({
   const ConnectionIcon = online ? Wifi : WifiOff;
   const connectionLabel = online ? "Sinkron aktif" : "Mode offline";
   const connectionDescription = online ? "Data studio tersambung" : "Data lokal tetap bisa dibuka";
+  const activeAnnouncerCanReceiveRequestNotice = Boolean(
+    session?.user.role === "announcer" &&
+    currentSlot.type !== "offair" &&
+    currentSlotMatchesUser(currentSlot.announcer, session.user)
+  );
+  const notificationTotal = pendingSwaps + activeRequestNotifications;
   const allowedNavItems = shellNavItems.filter(
     (item) =>
       isFeaturePageEnabled(item.key) &&
@@ -214,6 +251,30 @@ export function Shell({
       unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!session || !activeAnnouncerCanReceiveRequestNotice) {
+      setActiveRequestNotifications(0);
+      previousRequestIds.current = new Set();
+      hasInitializedRequestNotification.current = false;
+      return;
+    }
+
+    return subscribeSongRequests((requests) => {
+      const activeRequests = requests.filter((request) => ACTIVE_REQUEST_STATUSES.has(request.status));
+      const nextIds = new Set(activeRequests.map((request) => request.id));
+      const hasNewRequest = Array.from(nextIds).some((id) => !previousRequestIds.current.has(id));
+
+      setActiveRequestNotifications(activeRequests.length);
+
+      if (hasInitializedRequestNotification.current && hasNewRequest) {
+        void audioRef.current?.play().catch(() => {});
+      }
+
+      previousRequestIds.current = nextIds;
+      hasInitializedRequestNotification.current = true;
+    });
+  }, [activeAnnouncerCanReceiveRequestNotice, session]);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -348,6 +409,11 @@ export function Shell({
                             {pendingSwaps}
                           </em>
                         )}
+                        {item.key === "requests" && activeRequestNotifications > 0 && (
+                          <em className="side-nav-badge danger">
+                            {activeRequestNotifications}
+                          </em>
+                        )}
                       </button>
                     );
                   })}
@@ -373,13 +439,13 @@ export function Shell({
           <button
               type="button"
               className="dashboard-notification-button shell-notification-button"
-              onClick={() => session && onNavigate("scheduleSwap")}
-              aria-label="Buka notifikasi pertukaran jadwal"
+              onClick={() => session && onNavigate(activeRequestNotifications > 0 ? "requests" : "scheduleSwap")}
+              aria-label="Buka notifikasi"
             >
               <Bell size={20} />
-              {(session && pendingSwaps > 0) && (
+              {(session && notificationTotal > 0) && (
                 <span className="shell-notification-badge">
-                  {pendingSwaps}
+                  {notificationTotal}
                 </span>
               )}
             </button>
@@ -485,9 +551,19 @@ export function Shell({
               >
                 <div className="shell-bottom-nav-icon">
                   <Icon size={26} strokeWidth={isActive ? 2.5 : 2} />
-                  {(item.key === "scheduleSwap" || item.key === "menu") && pendingSwaps > 0 && (
+                  {item.key === "requests" && activeRequestNotifications > 0 && (
+                    <span className="shell-bottom-nav-badge">
+                      {activeRequestNotifications}
+                    </span>
+                  )}
+                  {item.key === "scheduleSwap" && pendingSwaps > 0 && (
                     <span className="shell-bottom-nav-badge">
                       {pendingSwaps}
+                    </span>
+                  )}
+                  {item.key === "menu" && notificationTotal > 0 && (
+                    <span className="shell-bottom-nav-badge">
+                      {notificationTotal}
                     </span>
                   )}
                 </div>
