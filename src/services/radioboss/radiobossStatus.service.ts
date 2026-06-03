@@ -37,6 +37,7 @@ export type RadioBossNowPlaying = {
 export type RadioBossGatewayHeartbeat = {
   gatewayId?: string;
   status?: "online" | "warning" | "offline" | string;
+  lastSeenAt?: TimestampLike;
   lastHeartbeatAt?: TimestampLike;
   heartbeatIntervalSeconds?: number;
   version?: string;
@@ -83,19 +84,44 @@ export function resolveRadioBossOnline(status: RadioBossStatus | null): boolean 
   return status?.radioBossOnline ?? status?.online ?? false;
 }
 
-export function resolveGatewayOnline(status: RadioBossStatus | null): boolean {
-  return status?.gatewayOnline ?? false;
+export function resolveGatewayOnline(
+  status: RadioBossStatus | null,
+  heartbeat: RadioBossGatewayHeartbeat | null = null,
+  now = new Date()
+): boolean {
+  const heartbeatState = resolveHeartbeatState(heartbeat, now, status);
+  if (heartbeatState !== "online") {
+    return false;
+  }
+
+  return heartbeat?.status !== "offline" && status?.gatewayOnline !== false;
 }
 
 export function resolvePlaybackState(status: RadioBossStatus | null): string {
   return status?.playbackState ?? status?.playerState ?? "unknown";
 }
 
+export function getGatewayHeartbeatTime(
+  heartbeat: RadioBossGatewayHeartbeat | null,
+  status?: RadioBossStatus | null
+): TimestampLike | null {
+  return (
+    heartbeat?.lastSeenAt ??
+    heartbeat?.lastHeartbeatAt ??
+    heartbeat?.updatedAt ??
+    status?.lastHeartbeatAt ??
+    status?.lastSyncAt ??
+    status?.updatedAt ??
+    null
+  );
+}
+
 export function resolveHeartbeatState(
   heartbeat: RadioBossGatewayHeartbeat | null,
-  now = new Date()
+  now = new Date(),
+  status?: RadioBossStatus | null
 ): "online" | "warning" | "offline" {
-  const lastHeartbeatAt = toDate(heartbeat?.lastHeartbeatAt ?? heartbeat?.updatedAt);
+  const lastHeartbeatAt = toDate(getGatewayHeartbeatTime(heartbeat, status));
   if (!lastHeartbeatAt) return "offline";
 
   const intervalMs = Math.max(15, heartbeat?.heartbeatIntervalSeconds ?? 30) * 1000;

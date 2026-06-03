@@ -16,6 +16,13 @@ export type ResolvedAnnouncerPart =
       label: string;
     };
 
+export type ResolvedAnnouncerSlot = {
+  id: string;
+  fullName: string;
+  airName: string;
+  displayName: string;
+};
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -65,6 +72,21 @@ export function resolveAnnouncerText(value: string): ResolvedAnnouncerPart[] {
   });
 }
 
+export function resolveAnnouncerFromSlot(value: string): ResolvedAnnouncerSlot | null {
+  const resolved = resolveAnnouncerText(value).find(
+    (part): part is Extract<ResolvedAnnouncerPart, { kind: "announcer" }> => part.kind === "announcer"
+  );
+
+  if (!resolved) return null;
+
+  return {
+    id: resolved.profile.id ?? resolved.profile.airName,
+    fullName: resolved.profile.fullName,
+    airName: resolved.profile.airName,
+    displayName: formatAirNameOnly(resolved.profile.airName)
+  };
+}
+
 export function formatAnnouncerDisplay(value: string): string {
   return formatAirNameOnly(value);
 }
@@ -76,8 +98,9 @@ export function formatAirNameOnly(value: string): string {
 
       const rawAirName = part.profile.airName.toLowerCase();
       if (rawAirName === "miah") return "Miah Jufri";
-      if (rawAirName === "wiwik" || rawAirName === "rena") return "Rena Thabitha";
       if (rawAirName === "ria") return "Ria Finky";
+      if (rawAirName === "rena") return part.profile.fullName;
+      if (rawAirName === "wiwik") return part.profile.fullName;
 
       return toTitleCase(part.profile.airName);
     })

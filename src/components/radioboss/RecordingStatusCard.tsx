@@ -1,7 +1,7 @@
 import { Activity, CalendarClock, Mic2, RadioTower } from "lucide-react";
 import type { ProgramRecording, ProgramRecordingRule } from "../../types/domain";
 import type { CurrentBroadcastSlot } from "../../utils/scheduleClock";
-import type { RadioBossStatus } from "../../services/radioboss/radiobossStatus.service";
+import type { RadioBossGatewayHeartbeat, RadioBossStatus } from "../../services/radioboss/radiobossStatus.service";
 import {
   resolveGatewayOnline,
   resolvePlaybackState,
@@ -14,6 +14,7 @@ type RecordingStatusCardProps = {
   recording: ProgramRecording | null;
   rule: ProgramRecordingRule | null;
   status: RadioBossStatus | null;
+  heartbeat?: RadioBossGatewayHeartbeat | null;
 };
 
 function getRecordingLabel(recording: ProgramRecording | null, status: RadioBossStatus | null): string {
@@ -31,10 +32,11 @@ export function RecordingStatusCard({
   scheduleId,
   recording,
   rule,
-  status
+  status,
+  heartbeat
 }: RecordingStatusCardProps) {
   const radioBossOnline = resolveRadioBossOnline(status);
-  const gatewayOnline = resolveGatewayOnline(status);
+  const gatewayOnline = resolveGatewayOnline(status, heartbeat ?? null);
   const recordingLabel = getRecordingLabel(recording, status);
 
   return (

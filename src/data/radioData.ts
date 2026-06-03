@@ -128,7 +128,7 @@ export const todayPrograms = [
   {
     time: "14.00 - 16.00",
     title: "Informasi Seputar Pinrang",
-    host: "Wiwik",
+    host: "Rena Thabitha",
     status: "ready"
   },
   {
@@ -362,7 +362,7 @@ export const weeklyBroadcastSchedule: BroadcastProgramSlot[] = [
     time: "14.00 - 16.00",
     program: "Informasi Seputar Pinrang",
     description: "Berita/informasi, info lalu lintas, request/interaktif",
-    announcer: "Wiwik"
+    announcer: "Rena Thabitha"
   },
   {
     day: "Rabu",
@@ -543,9 +543,15 @@ export const dailyInsertPrograms = [
 export const announcerBreakdown = [
   {
     name: "Wiwik",
-    days: ["Senin", "Selasa", "Rabu", "Sabtu", "Minggu"],
-    totalDays: 5,
-    totalHours: 10
+    days: ["Senin", "Selasa", "Sabtu", "Minggu"],
+    totalDays: 4,
+    totalHours: 8
+  },
+  {
+    name: "Rena Thabitha",
+    days: ["Rabu"],
+    totalDays: 1,
+    totalHours: 2
   },
   {
     name: "Sul",
@@ -623,9 +629,18 @@ export const announcers = [
     id: "081342103115",
     fullName: "Wiwik",
     airName: "Wiwik",
-    scheduleNames: ["Rena", "Wiwik"],
+    scheduleNames: ["Wiwik"],
     photoUrl: "/crew/wiwik.png",
     decreeOrder: 3,
+    active: true
+  },
+  {
+    id: "rena-thabitha",
+    fullName: "Rena Thabitha",
+    airName: "Rena",
+    scheduleNames: ["Rena"],
+    photoUrl: "/crew/wiwik.png",
+    decreeOrder: 4,
     active: true
   },
   {

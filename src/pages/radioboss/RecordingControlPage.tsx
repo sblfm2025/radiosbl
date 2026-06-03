@@ -4,13 +4,17 @@ import { RecordingManualActions } from "../../components/radioboss/RecordingManu
 import { RecordingStatusCard } from "../../components/radioboss/RecordingStatusCard";
 import { useCurrentBroadcastSlot } from "../../hooks/useCurrentBroadcastSlot";
 import { getScheduleSlotId } from "../../services/scheduleSlot.service";
+import { parseTimeRangeMinutes } from "../../utils/scheduleClock";
+import { resolveAnnouncerFromSlot } from "../../utils/announcerResolver";
 import type { AuthSession } from "../../services/auth.service";
 import type { ProgramRecording, ProgramRecordingRule, RadiobossCommand } from "../../types/domain";
 import { canUser } from "../../utils/rbac";
 import {
   resolveGatewayOnline,
   resolveRadioBossOnline,
+  subscribeGatewayHeartbeat,
   subscribeRadioBossStatus,
+  type RadioBossGatewayHeartbeat,
   type RadioBossStatus
 } from "../../services/radioboss/radiobossStatus.service";
 import {
@@ -42,9 +46,34 @@ function getRequester(session: AuthSession | null) {
   };
 }
 
+function buildPlannedRecordingWindow(timeRange: string, baseDate = new Date()) {
+  const { start, end } = parseTimeRangeMinutes(timeRange);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return {
+      plannedStartAt: baseDate.toISOString(),
+      plannedEndAt: baseDate.toISOString()
+    };
+  }
+
+  const plannedStartAt = new Date(baseDate);
+  plannedStartAt.setHours(Math.floor(start / 60), start % 60, 0, 0);
+
+  const plannedEndAt = new Date(baseDate);
+  plannedEndAt.setHours(Math.floor(end / 60), end % 60, 0, 0);
+  if (end <= start) {
+    plannedEndAt.setDate(plannedEndAt.getDate() + 1);
+  }
+
+  return {
+    plannedStartAt: plannedStartAt.toISOString(),
+    plannedEndAt: plannedEndAt.toISOString()
+  };
+}
+
 export default function RecordingControlPage({ session }: RecordingControlPageProps) {
   const currentSlot = useCurrentBroadcastSlot();
   const [status, setStatus] = useState<RadioBossStatus | null>(null);
+  const [heartbeat, setHeartbeat] = useState<RadioBossGatewayHeartbeat | null>(null);
   const [rules, setRules] = useState<ProgramRecordingRule[]>([]);
   const [recording, setRecording] = useState<ProgramRecording | null>(null);
   const [commands, setCommands] = useState<RadiobossCommand[]>([]);
@@ -56,9 +85,12 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
     program: currentSlot.title
   }), [currentSlot.day, currentSlot.time, currentSlot.title]);
   const programId = useMemo(() => getProgramRecordingRuleId(currentSlot.title), [currentSlot.title]);
-  const rule = rules.find((item) => item.programId === programId) ?? buildDefaultRecordingRule(currentSlot.title);
+  const rule =
+    rules.find((item) => item.scheduleId === scheduleId) ??
+    rules.find((item) => item.programId === programId) ??
+    buildDefaultRecordingRule(currentSlot.title);
   const radioBossOnline = resolveRadioBossOnline(status);
-  const gatewayOnline = resolveGatewayOnline(status);
+  const gatewayOnline = resolveGatewayOnline(status, heartbeat);
   const hasOperationalRole = canUser(session?.user.role, "radioboss:manage");
   const hasActiveRecording = recording?.status === "recording" || Boolean(status?.recordingActive);
   const isOffAir = currentSlot.type === "offair";
@@ -68,6 +100,7 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
   )) ?? null;
 
   useEffect(() => subscribeRadioBossStatus(setStatus), []);
+  useEffect(() => subscribeGatewayHeartbeat(status?.gatewayId || "studio-main", setHeartbeat), [status?.gatewayId]);
   useEffect(() => subscribeProgramRecordingRules(setRules), []);
   useEffect(() => subscribeActiveProgramRecording(scheduleId, setRecording), [scheduleId]);
   useEffect(() => subscribeRecentRadiobossCommands(setCommands), []);
@@ -114,11 +147,19 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
   }
 
   function handleStart() {
+    const resolvedAnnouncer = resolveAnnouncerFromSlot(currentSlot.announcer);
+    const plannedWindow = buildPlannedRecordingWindow(currentSlot.time);
     void runAction(
       () => createStartRecordingCommand({
         programId,
         scheduleId,
-        announcerId: currentSlot.announcer,
+        programName: currentSlot.title,
+        announcerId: resolvedAnnouncer?.id ?? currentSlot.announcer,
+        announcerName: resolvedAnnouncer?.fullName ?? currentSlot.announcer,
+        announcerAirName: resolvedAnnouncer?.airName ?? currentSlot.announcer,
+        plannedStartAt: plannedWindow.plannedStartAt,
+        plannedEndAt: plannedWindow.plannedEndAt,
+        source: "manual_operator",
         ...getRequester(session)
       }),
       "Command mulai rekaman dibuat."
@@ -142,12 +183,14 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
   function handleSkip() {
     const reason = window.prompt("Alasan aman untuk menandai tidak perlu direkam:", "manual_operator_skip");
     if (!reason) return;
+    const plannedWindow = buildPlannedRecordingWindow(currentSlot.time);
 
     void runAction(
       () => createMarkRecordingSkippedCommand({
         recordingId: recording?.id ?? null,
         programId,
         scheduleId,
+        plannedStartAt: plannedWindow.plannedStartAt,
         reason,
         ...getRequester(session)
       }),
@@ -186,6 +229,7 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
         recording={recording}
         rule={rule}
         status={status}
+        heartbeat={heartbeat}
       />
 
       <RecordingManualActions

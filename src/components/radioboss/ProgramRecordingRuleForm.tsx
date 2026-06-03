@@ -9,6 +9,11 @@ import {
 
 type ProgramRecordingRuleFormProps = {
   programs: string[];
+  scheduleOptions: Array<{
+    id: string;
+    label: string;
+    programName: string;
+  }>;
   selectedRule: ProgramRecordingRule | null;
   saving: boolean;
   onSubmit: (rule: ProgramRecordingRule) => void;
@@ -21,6 +26,7 @@ function toNumber(value: string, fallback: number): number {
 
 export function ProgramRecordingRuleForm({
   programs,
+  scheduleOptions,
   selectedRule,
   saving,
   onSubmit
@@ -28,9 +34,11 @@ export function ProgramRecordingRuleForm({
   const firstProgram = programs[0] ?? "Program Radio SBL";
   const [rule, setRule] = useState<ProgramRecordingRule>(() => selectedRule ?? buildDefaultRecordingRule(firstProgram));
   const programOptions = useMemo(() => Array.from(new Set(programs)).sort(), [programs]);
+  const [scope, setScope] = useState<"program" | "schedule">(() => selectedRule?.scheduleId ? "schedule" : "program");
 
   useEffect(() => {
     setRule(selectedRule ?? buildDefaultRecordingRule(firstProgram));
+    setScope(selectedRule?.scheduleId ? "schedule" : "program");
   }, [firstProgram, selectedRule]);
 
   function updateRule(patch: Partial<ProgramRecordingRule>) {
@@ -39,6 +47,10 @@ export function ProgramRecordingRuleForm({
 
   function handleProgramChange(programName: string) {
     const nextDefault = buildDefaultRecordingRule(programName);
+    const matchingSchedule = scope === "schedule"
+      ? scheduleOptions.find((option) => option.programName === programName)
+      : undefined;
+
     setRule((current) => ({
       ...nextDefault,
       recordingEnabled: current.recordingEnabled,
@@ -51,7 +63,45 @@ export function ProgramRecordingRuleForm({
       maxOverrunMinutes: current.maxOverrunMinutes,
       minDurationMinutes: current.minDurationMinutes,
       format: current.format,
-      storageRootKey: current.storageRootKey
+      storageRootKey: current.storageRootKey,
+      scheduleId: matchingSchedule?.id
+    }));
+  }
+
+  function handleScopeChange(nextScope: "program" | "schedule") {
+    setScope(nextScope);
+    setRule((current) => {
+      if (nextScope === "program") {
+        return { ...current, scheduleId: undefined };
+      }
+
+      const matchingSchedule = scheduleOptions.find((option) => option.programName === current.programName) ?? scheduleOptions[0];
+      if (!matchingSchedule) {
+        return current;
+      }
+
+      const nextDefault = buildDefaultRecordingRule(matchingSchedule.programName);
+      return {
+        ...current,
+        programId: nextDefault.programId,
+        programName: nextDefault.programName,
+        folderSlug: current.folderSlug || nextDefault.folderSlug,
+        scheduleId: matchingSchedule.id
+      };
+    });
+  }
+
+  function handleScheduleChange(scheduleId: string) {
+    const selectedSchedule = scheduleOptions.find((option) => option.id === scheduleId);
+    if (!selectedSchedule) return;
+
+    const nextDefault = buildDefaultRecordingRule(selectedSchedule.programName);
+    setRule((current) => ({
+      ...current,
+      programId: nextDefault.programId,
+      programName: nextDefault.programName,
+      folderSlug: current.folderSlug || nextDefault.folderSlug,
+      scheduleId: selectedSchedule.id
     }));
   }
 
@@ -63,10 +113,30 @@ export function ProgramRecordingRuleForm({
         onSubmit({
           ...rule,
           programId: rule.programId || getProgramRecordingRuleId(rule.programName),
-          folderSlug: rule.folderSlug || slugifyRecordingValue(rule.programName)
+          folderSlug: rule.folderSlug || slugifyRecordingValue(rule.programName),
+          scheduleId: scope === "schedule" ? rule.scheduleId : undefined
         });
       }}
     >
+      <label>
+        <span>Cakupan Rule</span>
+        <select value={scope} onChange={(event) => handleScopeChange(event.target.value as "program" | "schedule")}>
+          <option value="program">Semua jadwal program</option>
+          <option value="schedule">Slot jadwal tertentu</option>
+        </select>
+      </label>
+
+      {scope === "schedule" && (
+        <label>
+          <span>Slot Jadwal</span>
+          <select value={rule.scheduleId || ""} onChange={(event) => handleScheduleChange(event.target.value)}>
+            {scheduleOptions.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <label>
         <span>Program</span>
         <select value={rule.programName} onChange={(event) => handleProgramChange(event.target.value)}>

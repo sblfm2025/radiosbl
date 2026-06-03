@@ -280,7 +280,8 @@ export function DashboardPage({
   onLogout,
   onAirAnnouncer,
   onAirAnnouncers,
-  attendanceRecords
+  attendanceRecords,
+  onAirAttendanceLabel
 }: {
   session: AuthSession;
   onNavigate: (page: PageKey) => void;
@@ -288,6 +289,7 @@ export function DashboardPage({
   onAirAnnouncer: string;
   onAirAnnouncers?: string[];
   attendanceRecords: AttendanceRecord[];
+  onAirAttendanceLabel?: string;
 }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -887,7 +889,7 @@ export function DashboardPage({
             time: currentSlot.time
           }}
           activeAnnouncer={displayAnnouncer || formatAirNameOnly(onAirAnnouncer)}
-          attendanceLabel={attendanceLabel}
+          attendanceLabel={onAirAttendanceLabel || attendanceLabel}
           songRequests={songRequests}
         />
 

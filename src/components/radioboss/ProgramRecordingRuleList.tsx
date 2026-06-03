@@ -20,15 +20,15 @@ export function ProgramRecordingRuleList({ rules, onSelect }: ProgramRecordingRu
   return (
     <div className="radioboss-rule-list">
       {rules.map((rule) => (
-        <button type="button" key={rule.programId} onClick={() => onSelect(rule)}>
+        <button type="button" key={rule.id || rule.scheduleId || rule.programId} onClick={() => onSelect(rule)}>
           <span className={`radioboss-rule-dot${rule.recordingEnabled ? " is-enabled" : ""}`} />
           <span>
             <strong>{rule.programName}</strong>
             <small>
-              {rule.recordingEnabled ? "Recording aktif" : "Recording nonaktif"} - {rule.autoStart ? "auto start" : "manual"} - {rule.format}
+              {rule.scheduleId ? "Slot tertentu" : "Semua jadwal program"} - {rule.recordingEnabled ? "Recording aktif" : "Recording nonaktif"} - {rule.autoStart ? "auto start" : "manual"} - {rule.format}
             </small>
           </span>
-          <em>{rule.folderSlug}</em>
+          <em>{rule.scheduleId || rule.folderSlug}</em>
         </button>
       ))}
     </div>

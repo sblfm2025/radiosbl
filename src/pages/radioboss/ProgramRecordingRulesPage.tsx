@@ -7,9 +7,11 @@ import { ProgramRecordingRuleForm } from "../../components/radioboss/ProgramReco
 import { ProgramRecordingRuleList } from "../../components/radioboss/ProgramRecordingRuleList";
 import {
   buildDefaultRecordingRule,
+  getRecordingRuleDocumentId,
   subscribeProgramRecordingRules,
   upsertProgramRecordingRule
 } from "../../services/radioboss/recordingRules.service";
+import { getScheduleSlotId } from "../../services/scheduleSlot.service";
 
 type ProgramRecordingRulesPageProps = {
   data: DashboardSnapshot;
@@ -26,12 +28,24 @@ function getPrograms(data: DashboardSnapshot): string[] {
   return Array.from(new Set(names.filter(Boolean))).sort();
 }
 
+function getScheduleOptions(data: DashboardSnapshot) {
+  return data.weeklySchedule
+    .filter((slot) => Boolean(slot.program && slot.time && slot.day))
+    .map((slot) => ({
+      id: getScheduleSlotId(slot),
+      label: `${slot.day}, ${slot.time.replace(/ WITA/g, "")} - ${slot.program}`,
+      programName: slot.program
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 export default function ProgramRecordingRulesPage({ data, session }: ProgramRecordingRulesPageProps) {
   const [rules, setRules] = useState<ProgramRecordingRule[]>([]);
   const [selectedRule, setSelectedRule] = useState<ProgramRecordingRule | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const programs = useMemo(() => getPrograms(data), [data]);
+  const scheduleOptions = useMemo(() => getScheduleOptions(data), [data]);
   const enabledCount = rules.filter((rule) => rule.recordingEnabled).length;
   const autoStartCount = rules.filter((rule) => rule.recordingEnabled && rule.autoStart).length;
 
@@ -42,7 +56,7 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
     setMessage("");
 
     try {
-      await upsertProgramRecordingRule(rule.programId, rule, { uid: session?.user.id });
+      await upsertProgramRecordingRule(getRecordingRuleDocumentId(rule), rule, { uid: session?.user.id });
       setSelectedRule(rule);
       setMessage("Rule rekaman berhasil disimpan.");
     } catch {
@@ -99,6 +113,7 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
           </div>
           <ProgramRecordingRuleForm
             programs={programs}
+            scheduleOptions={scheduleOptions}
             selectedRule={selectedRule}
             saving={saving}
             onSubmit={handleSubmit}

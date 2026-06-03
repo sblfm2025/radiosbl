@@ -29,7 +29,7 @@ export function SongRequestCard({
   const canSend = Boolean(
     request.matchedTrackId &&
     request.matchedFilePath &&
-    ["matched", "needs_review", "sent_to_radioboss", "queued"].includes(request.status)
+    ["matched", "needs_review"].includes(request.status)
   );
 
   return (

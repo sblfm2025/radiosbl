@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveOnAirAttendanceRecords,
   resolveOnAirAnnouncerFromAttendance,
   resolveOnAirAnnouncersFromAttendance
 } from "../services/onAir.service";
@@ -169,6 +170,41 @@ describe("on air announcer resolver", () => {
     expect(resolveOnAirAnnouncersFromAttendance(multiSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
       "Amar",
       "Riska"
+    ]);
+  });
+
+  it("returns attendance records for the active scheduled announcer, not the logged-in operator", () => {
+    const riskaSlot: CurrentBroadcastSlot = {
+      ...slot,
+      title: "Halo Bumi Lasinrang",
+      announcer: "Riska"
+    };
+    const records: AttendanceRecord[] = [
+      {
+        id: "attendance-admin",
+        userId: "admin-1",
+        displayName: "Operator Studio",
+        checkInAt: "2026-05-15T00:30:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-admin",
+        status: "present"
+      },
+      {
+        id: "attendance-riska",
+        userId: "firebase-uid-riska",
+        displayName: "Riska Dwi Ayanti",
+        airName: "Riska",
+        checkInAt: "2026-05-15T01:05:00.000Z",
+        latitude: -3.7931,
+        longitude: 119.6522,
+        selfieDriveFileId: "drive-riska",
+        status: "present"
+      }
+    ];
+
+    expect(resolveOnAirAttendanceRecords(riskaSlot, records, new Date("2026-05-15T02:00:00.000Z"))).toEqual([
+      records[1]
     ]);
   });
 });

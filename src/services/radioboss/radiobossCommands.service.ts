@@ -22,6 +22,15 @@ type BaseCommandInput = Requester & {
 
 const MAX_ATTEMPTS = 3;
 
+export function getRadiobossCommandOccurrenceKey(scheduleId: string, plannedStartAt?: string): string {
+  const date = plannedStartAt ? new Date(plannedStartAt) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    return `${scheduleId}_${date.toISOString().slice(0, 10)}`;
+  }
+
+  return `${scheduleId}_${new Date().toISOString().slice(0, 10)}`;
+}
+
 function assertFirestoreAvailable() {
   if (shouldUseLocalFallback()) {
     throw new Error("Command RadioBOSS membutuhkan koneksi Firebase/Firestore aktif.");
@@ -78,24 +87,48 @@ async function createRadiobossCommand(input: Parameters<typeof buildCommandPaylo
 export async function createStartRecordingCommand({
   programId,
   scheduleId,
+  programName,
   announcerId,
+  announcerName,
+  announcerAirName,
+  plannedStartAt,
+  plannedEndAt,
   recordingId,
+  source = "manual_admin_start",
   reason = "manual_admin_start",
   requestedBy,
   requestedByName
 }: BaseCommandInput & {
   programId: string;
   scheduleId: string;
+  programName?: string;
   announcerId?: string;
+  announcerName?: string;
+  announcerAirName?: string;
+  plannedStartAt?: string;
+  plannedEndAt?: string;
   recordingId?: string | null;
+  source?: string;
   reason?: string;
 }): Promise<string> {
   return createRadiobossCommand({
     type: "START_RECORDING",
-    payload: { programId, scheduleId, announcerId, recordingId: recordingId ?? null, reason },
+    payload: {
+      programId,
+      scheduleId,
+      programName,
+      announcerId,
+      announcerName,
+      announcerAirName,
+      plannedStartAt,
+      plannedEndAt,
+      recordingId: recordingId ?? null,
+      source,
+      reason
+    },
     requestedBy,
     requestedByName,
-    dedupeKey: `START_RECORDING_${scheduleId}`
+    dedupeKey: `START_RECORDING_${getRadiobossCommandOccurrenceKey(scheduleId, plannedStartAt)}`
   });
 }
 
@@ -119,6 +152,7 @@ export async function createMarkRecordingSkippedCommand({
   recordingId,
   programId,
   scheduleId,
+  plannedStartAt,
   reason,
   requestedBy,
   requestedByName
@@ -126,14 +160,15 @@ export async function createMarkRecordingSkippedCommand({
   recordingId?: string | null;
   programId: string;
   scheduleId: string;
+  plannedStartAt?: string;
   reason: string;
 }): Promise<string> {
   return createRadiobossCommand({
     type: "MARK_RECORDING_SKIPPED",
-    payload: { recordingId: recordingId ?? null, programId, scheduleId, reason },
+    payload: { recordingId: recordingId ?? null, programId, scheduleId, plannedStartAt, reason },
     requestedBy,
     requestedByName,
-    dedupeKey: `MARK_RECORDING_SKIPPED_${scheduleId}`
+    dedupeKey: `MARK_RECORDING_SKIPPED_${getRadiobossCommandOccurrenceKey(scheduleId, plannedStartAt)}`
   });
 }
 

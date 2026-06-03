@@ -3,8 +3,8 @@ import { AlertTriangle, CheckCircle2, Radio, Server, Timer, Waves } from "lucide
 import type { SongRequest } from "../../types/domain";
 import {
   formatRelativeTime,
+  getGatewayHeartbeatTime,
   resolveGatewayOnline,
-  resolveHeartbeatState,
   resolvePlaybackState,
   resolveRadioBossOnline,
   subscribeGatewayHeartbeat,
@@ -72,7 +72,7 @@ export function RadioBossStatusPanel({
   useEffect(() => subscribeGatewayHeartbeat(status?.gatewayId || gatewayId, setHeartbeat), [gatewayId, status?.gatewayId]);
 
   const radioBossOnline = resolveRadioBossOnline(status);
-  const gatewayOnline = resolveGatewayOnline(status) || resolveHeartbeatState(heartbeat) === "online";
+  const gatewayOnline = resolveGatewayOnline(status, heartbeat);
   const playbackState = resolvePlaybackState(status);
   const recording = formatRecordingStatus(status);
   const requestSummary = useMemo(() => getRequestSummary(songRequests), [songRequests]);
@@ -113,7 +113,7 @@ export function RadioBossStatusPanel({
         <article>
           <span><Server size={16} /> Gateway</span>
           <StatusPill label={gatewayOnline ? "Online" : "Offline"} tone={gatewayOnline ? "online" : "offline"} />
-          <small>Heartbeat {formatRelativeTime(heartbeat?.lastHeartbeatAt ?? status?.lastHeartbeatAt)}</small>
+          <small>Heartbeat {formatRelativeTime(getGatewayHeartbeatTime(heartbeat, status))}</small>
         </article>
         <article>
           <span><Timer size={16} /> Rekaman</span>

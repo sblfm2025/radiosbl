@@ -416,6 +416,7 @@ export type RecordingStatus =
 
 export type ProgramRecordingRule = {
   id?: string;
+  scheduleId?: string;
   programId: string;
   programName: string;
   recordingEnabled: boolean;
@@ -606,4 +607,3 @@ export type ApprovalRequest = {
   createdAt: TimestampLike;
   reviewedAt?: TimestampLike;
 };
-

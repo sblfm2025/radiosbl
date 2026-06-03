@@ -1,6 +1,7 @@
 import { Router, WifiOff } from "lucide-react";
 import {
   formatRelativeTime,
+  getGatewayHeartbeatTime,
   resolveHeartbeatState,
   type RadioBossGatewayHeartbeat
 } from "../../services/radioboss/radiobossStatus.service";
@@ -19,7 +20,7 @@ export function GatewayHealthBadge({ heartbeat }: GatewayHealthBadgeProps) {
   const state = resolveHeartbeatState(heartbeat);
   const Icon = state === "offline" ? WifiOff : Router;
   const gatewayId = heartbeat?.gatewayId || "studio-main";
-  const lastHeartbeat = heartbeat?.lastHeartbeatAt ?? heartbeat?.updatedAt;
+  const lastHeartbeat = getGatewayHeartbeatTime(heartbeat);
   const safeError = heartbeat?.errorMessageSafe ?? heartbeat?.lastError ?? "";
 
   return (

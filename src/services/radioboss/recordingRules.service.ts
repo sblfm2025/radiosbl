@@ -44,6 +44,10 @@ export function getProgramRecordingRuleId(programName: string): string {
   return slugifyRecordingValue(programName).toLowerCase().replace(/_/g, "-") || "program";
 }
 
+export function getRecordingRuleDocumentId(rule: Pick<ProgramRecordingRule, "programId" | "scheduleId">): string {
+  return rule.scheduleId || rule.programId;
+}
+
 export function buildDefaultRecordingRule(programName: string): ProgramRecordingRule {
   const programId = getProgramRecordingRuleId(programName);
   return {
@@ -67,13 +71,13 @@ export async function getProgramRecordingRule(programId: string): Promise<Progra
 }
 
 export async function upsertProgramRecordingRule(
-  programId: string,
+  ruleId: string,
   data: ProgramRecordingRule,
   actor?: { uid?: string }
 ): Promise<void> {
   const ruleData = { ...data };
   delete ruleData.id;
-  const ruleRef = doc(getFirebaseFirestore(), "programRecordingRules", programId);
+  const ruleRef = doc(getFirebaseFirestore(), "programRecordingRules", ruleId);
   const existing = await getDoc(ruleRef);
   const payload = {
     ...(!existing.exists() ? {
@@ -81,7 +85,7 @@ export async function upsertProgramRecordingRule(
       ...(actor?.uid ? { createdBy: actor.uid } : {})
     } : {}),
     ...ruleData,
-    programId,
+    programId: data.programId,
     updatedAt: serverTimestamp(),
     ...(actor?.uid ? { updatedBy: actor.uid } : {})
   };

@@ -113,25 +113,21 @@ function isActiveAttendanceRecord(record: AttendanceRecord): boolean {
   return !record.status || !["rejected", "sick", "leave"].includes(record.status);
 }
 
-export function resolveOnAirAnnouncersFromAttendance(
-  slot: CurrentBroadcastSlot,
-  records: AttendanceRecord[],
-  now = new Date(),
-  users: AppUser[] = []
-): string[] {
+function getScheduledAnnouncerProfiles(slot: CurrentBroadcastSlot): AnnouncerProfile[] {
   if (slot.type !== "main") {
     return [];
   }
 
-  const scheduledProfiles = resolveAnnouncerText(slot.announcer)
+  return resolveAnnouncerText(slot.announcer)
     .map((part) => (part.kind === "announcer" ? part.profile : findAnnouncerProfile(part.label)))
     .filter(isAnnouncerProfile);
+}
 
-  if (scheduledProfiles.length === 0) {
-    return [];
-  }
-
-  const activeRecords = records.filter((record) => {
+function getActiveAttendanceRecords(
+  records: AttendanceRecord[],
+  now: Date
+): AttendanceRecord[] {
+  return records.filter((record) => {
     const checkInAt = toDate(record.checkInAt);
     return (
       !Number.isNaN(checkInAt.getTime()) &&
@@ -140,21 +136,67 @@ export function resolveOnAirAnnouncersFromAttendance(
       !record.checkOutAt
     );
   });
+}
+
+function recordMatchesProfile(
+  record: AttendanceRecord,
+  profile: AnnouncerProfile,
+  users: AppUser[]
+): boolean {
+  const profileNames = [profile.fullName, profile.airName, ...profile.scheduleNames].map(normalize);
+  const profilePhones = localPhoneVariants(profile.id);
+  const recordNames = attendanceNames(record, users);
+  const recordNameMatches = recordNames.some((recordName) =>
+    profileNames.some((profileName) => namesMatch(recordName, profileName))
+  );
+  const recordPhones = attendancePhones(record, users);
+  const phoneMatches = recordPhones.some((phone) => profilePhones.includes(phone));
+
+  return recordNameMatches || phoneMatches;
+}
+
+export function resolveOnAirAttendanceRecords(
+  slot: CurrentBroadcastSlot,
+  records: AttendanceRecord[],
+  now = new Date(),
+  users: AppUser[] = []
+): AttendanceRecord[] {
+  const scheduledProfiles = getScheduledAnnouncerProfiles(slot);
+
+  if (scheduledProfiles.length === 0) {
+    return [];
+  }
+
+  const activeRecords = getActiveAttendanceRecords(records, now)
+    .sort((left, right) => toDate(right.checkInAt).getTime() - toDate(left.checkInAt).getTime());
+  const matchedRecords = new Map<string, AttendanceRecord>();
+
+  scheduledProfiles.forEach((profile) => {
+    const record = activeRecords.find((item) => recordMatchesProfile(item, profile, users));
+    if (record) {
+      matchedRecords.set(record.id, record);
+    }
+  });
+
+  return Array.from(matchedRecords.values());
+}
+
+export function resolveOnAirAnnouncersFromAttendance(
+  slot: CurrentBroadcastSlot,
+  records: AttendanceRecord[],
+  now = new Date(),
+  users: AppUser[] = []
+): string[] {
+  const scheduledProfiles = getScheduledAnnouncerProfiles(slot);
+
+  if (scheduledProfiles.length === 0) {
+    return [];
+  }
+
+  const activeRecords = getActiveAttendanceRecords(records, now);
 
   const activeProfiles = scheduledProfiles.filter((profile) => {
-    const profileNames = [profile.fullName, profile.airName, ...profile.scheduleNames].map(normalize);
-    const profilePhones = localPhoneVariants(profile.id);
-
-    return activeRecords.some((record) => {
-      const recordNames = attendanceNames(record, users);
-      const recordNameMatches = recordNames.some((recordName) =>
-        profileNames.some((profileName) => namesMatch(recordName, profileName))
-      );
-      const recordPhones = attendancePhones(record, users);
-      const phoneMatches = recordPhones.some((phone) => profilePhones.includes(phone));
-
-      return recordNameMatches || phoneMatches;
-    });
+    return activeRecords.some((record) => recordMatchesProfile(record, profile, users));
   });
 
   return activeProfiles.map((profile) => formatAnnouncerDisplay(profile.airName));

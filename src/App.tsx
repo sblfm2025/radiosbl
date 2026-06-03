@@ -82,6 +82,7 @@ import {
   subscribeAttendanceRecords
 } from "./services/attendance.service";
 import {
+  resolveOnAirAttendanceRecords,
   resolveOnAirAnnouncerFromAttendance,
   resolveOnAirAnnouncersFromAttendance
 } from "./services/onAir.service";
@@ -154,6 +155,41 @@ function buildPageUrl(page: PageKey): string {
   const url = new URL(window.location.href);
   url.searchParams.set("page", page);
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function toAppLocalDate(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof value.toDate === "function"
+  ) {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+function formatOnAirAttendanceLabel(records: AttendanceRecord[]): string {
+  if (records.length === 0) {
+    return "Belum absensi";
+  }
+
+  if (records.length > 1) {
+    return `${records.length} penyiar sudah absensi`;
+  }
+
+  const checkInAt = toAppLocalDate(records[0].checkInAt);
+  const timeLabel = checkInAt
+    ? checkInAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+    : "";
+
+  return timeLabel ? `Sudah absensi ${timeLabel}` : "Sudah absensi";
 }
 
 function getPostLoginPageFromUrl(): PageKey {
@@ -544,6 +580,12 @@ export default function App() {
     () => resolveOnAirAnnouncersFromAttendance(currentSlot, attendanceRecords, new Date(), userProfiles),
     [attendanceRecords, currentSlot, userProfiles]
   );
+  const onAirAttendanceLabel = useMemo(
+    () => formatOnAirAttendanceLabel(
+      resolveOnAirAttendanceRecords(currentSlot, attendanceRecords, new Date(), userProfiles)
+    ),
+    [attendanceRecords, currentSlot, userProfiles]
+  );
 
   const page = useMemo(() => {
     switch (activePage) {
@@ -620,6 +662,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "broadcastLog":
@@ -633,6 +676,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "handover":
@@ -646,6 +690,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "recordingControl":
@@ -679,6 +724,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "auditLog":
@@ -692,6 +738,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "approvalQueue":
@@ -705,6 +752,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
       case "tutorial":
@@ -731,6 +779,7 @@ export default function App() {
             onAirAnnouncer={currentAnnouncer} 
             onAirAnnouncers={currentAnnouncers}
             attendanceRecords={attendanceRecords}
+            onAirAttendanceLabel={onAirAttendanceLabel}
           />
         ) : null;
     }
@@ -743,6 +792,7 @@ export default function App() {
     handleLogout,
     attendanceRecords,
     navigateToPage,
+    onAirAttendanceLabel,
     refreshAttendanceRecords,
     selectedAnnouncerAirName,
     session

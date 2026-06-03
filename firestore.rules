@@ -626,6 +626,7 @@ service cloud.firestore {
     function validProgramRecordingRulePayload() {
       return hasOnly([
         'programId',
+        'scheduleId',
         'programName',
         'recordingEnabled',
         'requireAttendance',
@@ -660,6 +661,7 @@ service cloud.firestore {
         'format',
         'storageRootKey'
       ])
+      && (!('scheduleId' in request.resource.data) || request.resource.data.scheduleId is string)
       && request.resource.data.recordingEnabled is bool
       && request.resource.data.requireAttendance is bool
       && request.resource.data.autoStart is bool
@@ -903,7 +905,13 @@ service cloud.firestore {
     match /programRecordingRules/{programId} {
       allow read: if canAccessRadioBossOps();
       allow create, update: if canManageSchedule()
-        && request.resource.data.programId == programId
+        && (
+          request.resource.data.programId == programId
+          || (
+            'scheduleId' in request.resource.data
+            && request.resource.data.scheduleId == programId
+          )
+        )
         && validProgramRecordingRulePayload();
       allow delete: if isSuperAdmin();
     }

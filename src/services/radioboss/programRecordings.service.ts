@@ -22,6 +22,17 @@ export type RecordingHistoryFilters = {
   gateway?: string;
 };
 
+const activeRecordingStatuses: RecordingStatus[] = [
+  "recording",
+  "stopping",
+  "ready",
+  "waiting_attendance",
+  "waiting_schedule",
+  "failed",
+  "gateway_offline",
+  "radioboss_offline"
+];
+
 function matchesText(value: string | undefined, queryValue: string | undefined): boolean {
   if (!queryValue?.trim()) return true;
   return (value ?? "").toLowerCase().includes(queryValue.trim().toLowerCase());
@@ -69,7 +80,10 @@ export function subscribeActiveProgramRecording(
             const data = item.data() as ProgramRecording;
             return { ...data, id: item.id };
           })
-          .find((recording) => ["ready", "recording", "stopping"].includes(recording.status));
+          .filter((recording) => activeRecordingStatuses.includes(recording.status))
+          .sort((left, right) => (
+            activeRecordingStatuses.indexOf(left.status) - activeRecordingStatuses.indexOf(right.status)
+          ))[0];
         callback(active ?? null);
       },
       () => callback(null)
