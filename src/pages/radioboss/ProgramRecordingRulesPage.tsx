@@ -51,13 +51,21 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
 
   useEffect(() => subscribeProgramRecordingRules(setRules), []);
 
+  useEffect(() => {
+    if (selectedRule || rules.length === 0) return;
+
+    const firstProgramRule = rules.find((rule) => rule.programName === programs[0] && !rule.scheduleId);
+    setSelectedRule(firstProgramRule ?? rules[0]);
+  }, [programs, rules, selectedRule]);
+
   async function handleSubmit(rule: ProgramRecordingRule) {
     setSaving(true);
     setMessage("");
 
     try {
-      await upsertProgramRecordingRule(getRecordingRuleDocumentId(rule), rule, { uid: session?.user.id });
-      setSelectedRule(rule);
+      const ruleId = getRecordingRuleDocumentId(rule);
+      await upsertProgramRecordingRule(ruleId, rule, { uid: session?.user.id });
+      setSelectedRule({ ...rule, id: ruleId });
       setMessage("Rule rekaman berhasil disimpan.");
     } catch {
       setMessage("Gagal menyimpan rule. Periksa akses admin/operator dan koneksi Firestore.");
@@ -114,6 +122,7 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
           <ProgramRecordingRuleForm
             programs={programs}
             scheduleOptions={scheduleOptions}
+            existingRules={rules}
             selectedRule={selectedRule}
             saving={saving}
             onSubmit={handleSubmit}

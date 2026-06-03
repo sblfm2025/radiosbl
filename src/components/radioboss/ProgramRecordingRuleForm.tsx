@@ -14,6 +14,7 @@ type ProgramRecordingRuleFormProps = {
     label: string;
     programName: string;
   }>;
+  existingRules: ProgramRecordingRule[];
   selectedRule: ProgramRecordingRule | null;
   saving: boolean;
   onSubmit: (rule: ProgramRecordingRule) => void;
@@ -59,6 +60,7 @@ const toggleOptions: Array<{
 export function ProgramRecordingRuleForm({
   programs,
   scheduleOptions,
+  existingRules,
   selectedRule,
   saving,
   onSubmit
@@ -77,11 +79,31 @@ export function ProgramRecordingRuleForm({
     setRule((current) => ({ ...current, ...patch }));
   }
 
+  function findExistingProgramRule(programName: string) {
+    return existingRules.find((item) => item.programName === programName && !item.scheduleId);
+  }
+
+  function findExistingScheduleRule(scheduleId: string) {
+    return existingRules.find((item) => item.scheduleId === scheduleId);
+  }
+
   function handleProgramChange(programName: string) {
+    const existingProgramRule = scope === "program" ? findExistingProgramRule(programName) : undefined;
+    if (existingProgramRule) {
+      setRule(existingProgramRule);
+      return;
+    }
+
     const nextDefault = buildDefaultRecordingRule(programName);
     const matchingSchedule = scope === "schedule"
       ? scheduleOptions.find((option) => option.programName === programName)
       : undefined;
+    const existingScheduleRule = matchingSchedule ? findExistingScheduleRule(matchingSchedule.id) : undefined;
+
+    if (existingScheduleRule) {
+      setRule(existingScheduleRule);
+      return;
+    }
 
     setRule((current) => ({
       ...nextDefault,
@@ -104,12 +126,17 @@ export function ProgramRecordingRuleForm({
     setScope(nextScope);
     setRule((current) => {
       if (nextScope === "program") {
-        return { ...current, scheduleId: undefined };
+        const existingProgramRule = findExistingProgramRule(current.programName);
+        return existingProgramRule ?? { ...current, scheduleId: undefined };
       }
 
       const matchingSchedule = scheduleOptions.find((option) => option.programName === current.programName) ?? scheduleOptions[0];
       if (!matchingSchedule) {
         return current;
+      }
+      const existingScheduleRule = findExistingScheduleRule(matchingSchedule.id);
+      if (existingScheduleRule) {
+        return existingScheduleRule;
       }
 
       const nextDefault = buildDefaultRecordingRule(matchingSchedule.programName);
@@ -126,6 +153,12 @@ export function ProgramRecordingRuleForm({
   function handleScheduleChange(scheduleId: string) {
     const selectedSchedule = scheduleOptions.find((option) => option.id === scheduleId);
     if (!selectedSchedule) return;
+
+    const existingScheduleRule = findExistingScheduleRule(scheduleId);
+    if (existingScheduleRule) {
+      setRule(existingScheduleRule);
+      return;
+    }
 
     const nextDefault = buildDefaultRecordingRule(selectedSchedule.programName);
     setRule((current) => ({
