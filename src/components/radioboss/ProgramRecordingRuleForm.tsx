@@ -179,7 +179,7 @@ export function ProgramRecordingRuleForm({
           ...rule,
           programId: rule.programId || getProgramRecordingRuleId(rule.programName),
           folderSlug: rule.folderSlug || slugifyRecordingValue(rule.programName),
-          scheduleId: scope === "schedule" ? rule.scheduleId : undefined
+          ...(scope === "schedule" ? { scheduleId: rule.scheduleId } : {})
         });
       }}
     >

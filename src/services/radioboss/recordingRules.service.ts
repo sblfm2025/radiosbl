@@ -58,6 +58,12 @@ export function buildDefaultRecordingRule(programName: string): ProgramRecording
   };
 }
 
+function stripUndefinedFields<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)
+  ) as T;
+}
+
 export async function getProgramRecordingRule(programId: string): Promise<ProgramRecordingRule | null> {
   if (shouldUseLocalFallback()) return null;
 
@@ -75,11 +81,11 @@ export async function upsertProgramRecordingRule(
   data: ProgramRecordingRule,
   actor?: { uid?: string }
 ): Promise<void> {
-  const ruleData = { ...data };
+  const ruleData = stripUndefinedFields({ ...data });
   delete ruleData.id;
   const ruleRef = doc(getFirebaseFirestore(), "programRecordingRules", ruleId);
   const existing = await getDoc(ruleRef);
-  const payload = {
+  const payload = stripUndefinedFields({
     ...(!existing.exists() ? {
       createdAt: serverTimestamp(),
       ...(actor?.uid ? { createdBy: actor.uid } : {})
@@ -88,7 +94,7 @@ export async function upsertProgramRecordingRule(
     programId: data.programId,
     updatedAt: serverTimestamp(),
     ...(actor?.uid ? { updatedBy: actor.uid } : {})
-  };
+  });
 
   await setDoc(
     ruleRef,

@@ -67,7 +67,8 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
       await upsertProgramRecordingRule(ruleId, rule, { uid: session?.user.id });
       setSelectedRule({ ...rule, id: ruleId });
       setMessage("Rule rekaman berhasil disimpan.");
-    } catch {
+    } catch (error) {
+      console.warn("[ProgramRecordingRulesPage] Gagal menyimpan aturan rekaman", error);
       setMessage("Gagal menyimpan rule. Periksa akses admin/operator dan koneksi Firestore.");
     } finally {
       setSaving(false);
