@@ -4,7 +4,7 @@ import type { DashboardSnapshot } from "../../../data/mockRepository";
 import type { AuthSession } from "../../../services/auth.service";
 import { BroadcastLogForm } from "../components/BroadcastLogForm";
 import { subscribeBroadcastLogs, updateBroadcastLog } from "../services/broadcastLog.service";
-import { ClipboardCheck, FileText, CheckCircle2, AlertTriangle, Calendar, Search } from "lucide-react";
+import { ClipboardCheck, FileText, AlertTriangle, Search } from "lucide-react";
 import "../styles/broadcastWorkflow.css";
 
 type BroadcastLogPageProps = {
@@ -100,7 +100,7 @@ export default function BroadcastLogPage({ data, session }: BroadcastLogPageProp
             </div>
             <div className="workflow-card-body" style={{ padding: "12px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-                {(data.programs || []).map((prog: any, idx: number) => {
+                {(data.programs || []).map((prog, idx: number) => {
                   const isSelected = selectedProgram.title === prog.title;
                   return (
                     <div

@@ -4,6 +4,10 @@ import { submitVideoItem, updateVideoItem, subscribeVideoItems, type VideoItem }
 import { weeklyBroadcastSchedule } from "../../../data/radioData";
 import "../styles/contentHub.css";
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function ContentHubAdminPanel() {
   const [activeSubTab, setActiveSubTab] = useState<"podcast" | "video">("podcast");
   
@@ -69,8 +73,8 @@ export function ContentHubAdminPanel() {
       setEpCoverUrl("");
       setEpTags("");
       setEpNotice("Episode podcast berhasil ditambahkan!");
-    } catch (err: any) {
-      setEpError(err?.message || "Gagal menambahkan episode.");
+    } catch (err: unknown) {
+      setEpError(getErrorMessage(err, "Gagal menambahkan episode."));
     } finally {
       setEpSubmitting(false);
     }
@@ -110,8 +114,8 @@ export function ContentHubAdminPanel() {
       setVidEmbedUrl("");
       setVidTags("");
       setVidNotice("Video SBL TV berhasil ditambahkan!");
-    } catch (err: any) {
-      setVidError(err?.message || "Gagal menambahkan video.");
+    } catch (err: unknown) {
+      setVidError(getErrorMessage(err, "Gagal menambahkan video."));
     } finally {
       setVidSubmitting(false);
     }
@@ -209,7 +213,7 @@ export function ContentHubAdminPanel() {
                 <select
                   className="create-poll-input"
                   value={epStatus}
-                  onChange={(e) => setEpStatus(e.target.value as any)}
+                  onChange={(e) => setEpStatus(e.target.value as ProgramEpisode["status"])}
                   style={{ background: "#0a0f1d", color: "#fff" }}
                 >
                   <option value="published">Langsung Publikasikan (Published)</option>
@@ -316,7 +320,7 @@ export function ContentHubAdminPanel() {
                 <select
                   className="create-poll-input"
                   value={vidSource}
-                  onChange={(e) => setVidSource(e.target.value as any)}
+                  onChange={(e) => setVidSource(e.target.value as VideoItem["source"])}
                   style={{ background: "#0a0f1d", color: "#fff" }}
                 >
                   <option value="youtube">YouTube Video</option>
@@ -352,7 +356,7 @@ export function ContentHubAdminPanel() {
                 <select
                   className="create-poll-input"
                   value={vidStatus}
-                  onChange={(e) => setVidStatus(e.target.value as any)}
+                  onChange={(e) => setVidStatus(e.target.value as VideoItem["status"])}
                   style={{ background: "#0a0f1d", color: "#fff" }}
                 >
                   <option value="published">Langsung Publikasikan (Published)</option>

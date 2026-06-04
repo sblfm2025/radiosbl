@@ -25,8 +25,25 @@ const POLLING_INTERVAL_MS = 30_000; // 30 detik
 
 // URL Icecast terkonfigurasi via env var
 const ICECAST_STATUS_URL =
-  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_ICECAST_STATUS_URL) ||
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_ICECAST_STATUS_URL) ||
   "https://pu.klikhost.com/proxy/sbl/status-json.xsl"; // default fallback stasiun
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object");
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function getIcecastSource(data: unknown): Array<Record<string, unknown>> {
+  const icestats = isRecord(data) ? data.icestats : undefined;
+  const source = isRecord(icestats) ? icestats.source : undefined;
+  if (Array.isArray(source)) {
+    return source.filter(isRecord);
+  }
+  return isRecord(source) ? [source] : [];
+}
 
 async function fetchIcecastStatus(url: string): Promise<IcecastStatus> {
   let res: Response;
@@ -34,7 +51,7 @@ async function fetchIcecastStatus(url: string): Promise<IcecastStatus> {
   try {
     // 1. Coba fetch langsung
     res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-  } catch (err) {
+  } catch {
     // 2. Jika gagal (misal karena kendala CORS di browser), coba bypass via CORS proxy
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
@@ -42,8 +59,7 @@ async function fetchIcecastStatus(url: string): Promise<IcecastStatus> {
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  const contentType = res.headers.get("content-type") || "";
-  let data: any;
+  let data: unknown;
 
   // Mendapatkan text untuk diparse
   const text = await res.text();
@@ -64,18 +80,17 @@ async function fetchIcecastStatus(url: string): Promise<IcecastStatus> {
   }
 
   // Format JSON Icecast: data.icestats.source
-  const source = data?.icestats?.source;
-  const sourceArr = Array.isArray(source) ? source : source ? [source] : [];
+  const sourceArr = getIcecastSource(data);
   const totalListeners = sourceArr.reduce(
-    (sum: number, s: any) => sum + (parseInt(s.listeners ?? "0", 10) || 0),
+    (sum, s) => sum + (parseInt(String(s.listeners ?? "0"), 10) || 0),
     0
   );
-  const firstName = sourceArr[0]?.server_name || "RADIO SBL 92.4 FM";
+  const firstName = getString(sourceArr[0]?.server_name) || "RADIO SBL 92.4 FM";
 
   return {
     listeners: totalListeners,
     streamName: firstName,
-    streamStart: sourceArr[0]?.stream_start,
+    streamStart: getString(sourceArr[0]?.stream_start),
     online: true // Jika berhasil parsing dan source ada data
   };
 }
@@ -97,8 +112,13 @@ export function useIcecastStatus(): IcecastStatusState {
         ...result,
         lastUpdatedAt: new Date().toISOString()
       });
-    } catch (err: any) {
-      setStatus(prev => ({ ...prev, online: false, error: err?.message, lastUpdatedAt: new Date().toISOString() }));
+    } catch (err: unknown) {
+      setStatus(prev => ({
+        ...prev,
+        online: false,
+        error: err instanceof Error ? err.message : "Gagal mengambil status Icecast.",
+        lastUpdatedAt: new Date().toISOString()
+      }));
     } finally {
       setLoading(false);
     }

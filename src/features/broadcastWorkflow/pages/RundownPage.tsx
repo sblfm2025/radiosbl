@@ -5,7 +5,7 @@ import { RundownEditor } from "../components/RundownEditor";
 import { PreBroadcastChecklistComponent } from "../components/PreBroadcastChecklist";
 import { submitRundown, subscribeRundowns } from "../services/rundown.service";
 import type { BroadcastRundown } from "../../../types/domain";
-import { FileText, ClipboardCheck, Radio, Sparkles, ChevronRight, Calendar } from "lucide-react";
+import { FileText, ClipboardCheck, Radio, Calendar } from "lucide-react";
 import "../styles/broadcastWorkflow.css";
 
 type RundownPageProps = {
@@ -128,7 +128,7 @@ export default function RundownPage({ data, session }: RundownPageProps) {
             </div>
             <div className="workflow-card-body" style={{ padding: "12px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {(data.programs || []).map((prog: any, idx: number) => {
+                {(data.programs || []).map((prog, idx: number) => {
                   const isSelected = selectedProgram.title === prog.title;
                   const progRundown = rundowns.find((r) => r.programTitle === prog.title);
 

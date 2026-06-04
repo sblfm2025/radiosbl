@@ -18,6 +18,13 @@ type GPSPoint = {
   label: string;
 };
 
+const MAP_CONFIG = {
+  minLat: -7.5,
+  maxLat: -1.5,
+  minLng: 118.5,
+  maxLng: 122.5
+};
+
 export function GeoDistributionTab({ sessions }: GeoDistributionTabProps) {
   const locationGroups = useMemo(() => computeLocationGroups(sessions), [sessions]);
   const gpsPoints = useMemo<GPSPoint[]>(() => {
@@ -35,13 +42,6 @@ export function GeoDistributionTab({ sessions }: GeoDistributionTabProps) {
   }, [sessions]);
 
   const totalSesi = sessions.length;
-  const mapConfig = {
-    minLat: -7.5,
-    maxLat: -1.5,
-    minLng: 118.5,
-    maxLng: 122.5
-  };
-
   const plotPoints = useMemo(() => {
     const width = 360;
     const height = 220;
@@ -57,8 +57,8 @@ export function GeoDistributionTab({ sessions }: GeoDistributionTabProps) {
           ];
 
     return pointsToPlot.map((p) => {
-      const latFraction = (p.lat - mapConfig.minLat) / (mapConfig.maxLat - mapConfig.minLat);
-      const lngFraction = (p.lng - mapConfig.minLng) / (mapConfig.maxLng - mapConfig.minLng);
+      const latFraction = (p.lat - MAP_CONFIG.minLat) / (MAP_CONFIG.maxLat - MAP_CONFIG.minLat);
+      const lngFraction = (p.lng - MAP_CONFIG.minLng) / (MAP_CONFIG.maxLng - MAP_CONFIG.minLng);
       const x = padding + lngFraction * (width - padding * 2);
       const y = height - padding - latFraction * (height - padding * 2);
 

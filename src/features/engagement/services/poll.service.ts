@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
+import type { TimestampLike } from "../../../types/domain";
 
 export type PollOption = {
   id: string;
@@ -15,9 +16,9 @@ export type PollItem = {
   status: 'draft' | 'active' | 'closed';
   targetProgramId?: string;
   createdBy: string;
-  createdAt: any;
-  updatedAt: any;
-  closedAt?: any;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+  closedAt?: TimestampLike;
 };
 
 export type VoteItem = {
@@ -25,7 +26,7 @@ export type VoteItem = {
   optionId: string;
   userId?: string;
   anonymousSessionId?: string;
-  createdAt: any;
+  createdAt: TimestampLike;
 };
 
 const isTestOrNoFirebase = () => {
@@ -102,17 +103,17 @@ export async function createPoll(
 }
 
 export async function closePoll(pollId: string): Promise<void> {
-  const updatePayload = {
-    status: 'closed' as const,
-    closedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp(),
-    updatedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp()
-  };
-
   if (isTestOrNoFirebase()) {
     const list = getLocalPolls();
     const idx = list.findIndex(p => p.pollId === pollId);
     if (idx !== -1) {
-      list[idx] = { ...list[idx], ...updatePayload };
+      const now = new Date().toISOString();
+      list[idx] = {
+        ...list[idx],
+        status: "closed",
+        closedAt: now,
+        updatedAt: now
+      };
       saveLocalPolls(list);
     }
     return;
@@ -121,7 +122,11 @@ export async function closePoll(pollId: string): Promise<void> {
   try {
     const db = getFirebaseFirestore();
     const docRef = doc(db, "broadcastPolls", pollId);
-    await updateDoc(docRef, updatePayload);
+    await updateDoc(docRef, {
+      status: "closed",
+      closedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
   } catch (error) {
     console.warn("[poll.service] closePoll failed", error);
     throw error;

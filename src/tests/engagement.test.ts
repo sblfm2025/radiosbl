@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { submitSongRequestV2, updateSongRequestStatus, subscribeSongRequestsV2 } from "../features/engagement/services/requestSongStatus.service";
-import { submitDedication, updateDedicationStatus, subscribeDedications, subscribeApprovedDedications } from "../features/engagement/services/dedication.service";
-import { createPoll, closePoll, submitVote, checkHasVoted, subscribeActivePolls, subscribePollVotes } from "../features/engagement/services/poll.service";
+import type { SongRequestV2 } from "../features/engagement/services/requestSongStatus.service";
+import { submitDedication, updateDedicationStatus, subscribeApprovedDedications } from "../features/engagement/services/dedication.service";
+import type { DedicationItem } from "../features/engagement/services/dedication.service";
+import { createPoll, closePoll, submitVote, checkHasVoted, subscribeActivePolls } from "../features/engagement/services/poll.service";
+import type { PollItem } from "../features/engagement/services/poll.service";
 
 function createMemoryStorage(): Storage {
   let store: Record<string, string> = {};
@@ -68,12 +71,15 @@ describe("Layanan Engagement Pendengar V2", () => {
 
       await updateSongRequestStatus(req.requestId, "queued", "Diputar segera", "Operator A");
 
-      let updatedReqs: any[] = [];
+      let updatedReqs: SongRequestV2[] = [];
       subscribeSongRequestsV2((reqs) => {
         updatedReqs = reqs;
       });
 
       const updated = updatedReqs.find(r => r.requestId === req.requestId);
+      if (!updated) {
+        throw new Error("Request lagu tidak ditemukan setelah update status.");
+      }
       expect(updated.status).toBe("queued");
       expect(updated.statusNote).toBe("Diputar segera");
       expect(updated.handledBy).toBe("Operator A");
@@ -114,7 +120,7 @@ describe("Layanan Engagement Pendengar V2", () => {
       await updateDedicationStatus(d1.dedicationId, "approved", undefined, "Operator");
       await updateDedicationStatus(d2.dedicationId, "rejected", undefined, "Operator");
 
-      let approved: any[] = [];
+      let approved: DedicationItem[] = [];
       subscribeApprovedDedications((items) => {
         approved = items;
       });
@@ -149,12 +155,15 @@ describe("Layanan Engagement Pendengar V2", () => {
       const poll = await createPoll("Siapa penyanyi favorit?", ["Penyanyi A", "Penyanyi B"], "Operator");
       await closePoll(poll.pollId);
 
-      let activePolls: any[] = [];
+      let activePolls: PollItem[] = [];
       subscribeActivePolls((pollsList) => {
         activePolls = pollsList;
       });
 
       const updated = activePolls.find(p => p.pollId === poll.pollId);
+      if (!updated) {
+        throw new Error("Polling tidak ditemukan setelah ditutup.");
+      }
       expect(updated.status).toBe("closed");
       expect(updated.closedAt).toBeDefined();
     });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../../components/PageHeader";
 import { subscribeActiveSessions, listAllSessions } from "../services/listenerAnalytics.service";
 import { subscribeStreamingErrors } from "../services/streamingError.service";
@@ -34,6 +34,23 @@ export default function ListenerAnalyticsPage({ session }: ListenerAnalyticsPage
 
   // Status Icecast Server dari polling hook
   const icecastStatus = useIcecastStatus();
+  const refreshIcecastStatus = icecastStatus.refresh;
+
+  const loadHistoricalData = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [data] = await Promise.all([
+        listAllSessions(),
+        refreshIcecastStatus()
+      ]);
+      setAllSessions(data);
+    } catch (err) {
+      console.error("Gagal memuat data analisis historis:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [refreshIcecastStatus]);
 
   useEffect(() => {
     // 1. Subscribe sesi aktif secara real-time
@@ -53,23 +70,7 @@ export default function ListenerAnalyticsPage({ session }: ListenerAnalyticsPage
       unsubscribeActive();
       unsubscribeErrors();
     };
-  }, []);
-
-  const loadHistoricalData = async () => {
-    setRefreshing(true);
-    try {
-      const [data] = await Promise.all([
-        listAllSessions(),
-        icecastStatus.refresh()
-      ]);
-      setAllSessions(data);
-    } catch (err) {
-      console.error("Gagal memuat data analisis historis:", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  }, [loadHistoricalData]);
 
   const renderActiveTabContent = () => {
     switch (activeTab) {

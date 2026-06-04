@@ -1,7 +1,6 @@
 import { shouldUseLocalFallback } from "../../../lib/env";
 import type { ListenerAnalyticsSession } from "../../../types/domain";
 import {
-  createDocument,
   updateDocument,
   listDocuments,
   subscribeDocuments,

@@ -57,8 +57,8 @@ export function RequestSongFormV2({ activeProgramTitle, activeProgramId }: Reque
       setArtistName("");
       setMessage("");
       setNotice("Request lagu berhasil dikirim. Melacak status...");
-    } catch (err: any) {
-      setError(err?.message || "Gagal mengirim request lagu.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal mengirim request lagu.");
     } finally {
       setSubmitting(false);
     }

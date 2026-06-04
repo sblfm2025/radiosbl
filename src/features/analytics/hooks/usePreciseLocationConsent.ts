@@ -37,7 +37,9 @@ export function usePreciseLocationConsent() {
         (position) => {
           try {
             localStorage.setItem(CONSENT_LOCAL_KEY, "granted");
-          } catch {}
+          } catch {
+            // Persetujuan tetap berlaku untuk sesi ini meski storage tidak tersedia.
+          }
           setConsentStatus("granted");
           resolve({
             permission: "granted",
@@ -53,7 +55,9 @@ export function usePreciseLocationConsent() {
           if (isDenied) {
             try {
               localStorage.setItem(CONSENT_LOCAL_KEY, "denied");
-            } catch {}
+            } catch {
+              // Penolakan tetap dicatat di state meski storage tidak tersedia.
+            }
             setConsentStatus("denied");
           }
           
@@ -74,14 +78,18 @@ export function usePreciseLocationConsent() {
   const denyLocation = useCallback(() => {
     try {
       localStorage.setItem(CONSENT_LOCAL_KEY, "denied");
-    } catch {}
+    } catch {
+      // Storage opsional; state tetap diperbarui.
+    }
     setConsentStatus("denied");
   }, []);
 
   const resetConsent = useCallback(() => {
     try {
       localStorage.removeItem(CONSENT_LOCAL_KEY);
-    } catch {}
+    } catch {
+      // Storage opsional; state tetap direset.
+    }
     setConsentStatus("undecided");
   }, []);
 

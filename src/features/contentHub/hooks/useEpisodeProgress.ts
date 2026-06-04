@@ -20,6 +20,15 @@ export function useEpisodeProgress() {
     }
   }, []);
 
+  const clearProgress = useCallback((episodeId: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem(`${PROGRESS_PREFIX}${episodeId}`);
+    } catch (err) {
+      console.warn("Gagal menghapus progres pemutaran:", err);
+    }
+  }, []);
+
   const saveProgress = useCallback((episodeId: string, currentTime: number, duration: number) => {
     if (typeof window === "undefined" || !episodeId || duration <= 0) return;
     
@@ -40,16 +49,7 @@ export function useEpisodeProgress() {
     } catch (err) {
       console.warn("Gagal menyimpan progres pemutaran:", err);
     }
-  }, []);
-
-  const clearProgress = useCallback((episodeId: string) => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.removeItem(`${PROGRESS_PREFIX}${episodeId}`);
-    } catch (err) {
-      console.warn("Gagal menghapus progres pemutaran:", err);
-    }
-  }, []);
+  }, [clearProgress]);
 
   return {
     getProgress,

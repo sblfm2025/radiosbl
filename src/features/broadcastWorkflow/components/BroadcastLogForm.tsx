@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BroadcastLog, BroadcastLogSong } from "../../../types/domain";
 import { submitBroadcastLog } from "../services/broadcastLog.service";
-import { Plus, Trash2, CheckCircle2, AlertTriangle, FileText } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { AuthSession } from "../../../services/auth.service";
 
 type BroadcastLogFormProps = {

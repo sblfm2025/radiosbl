@@ -1,4 +1,4 @@
-import type { SecurityAuditLog } from "../../../types/domain";
+import type { SecurityAuditLog, TimestampLike } from "../../../types/domain";
 import { ShieldCheck, User, Calendar } from "lucide-react";
 import "../styles/securityAudit.css";
 
@@ -7,7 +7,7 @@ type AuditLogTableProps = {
 };
 
 export function AuditLogTable({ logs }: AuditLogTableProps) {
-  const getFormatTime = (isoString: any) => {
+  const getFormatTime = (isoString: TimestampLike) => {
     try {
       const d = new Date(isoString);
       return d.toLocaleString("id-ID", {
@@ -19,7 +19,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
         second: "2-digit"
       });
     } catch {
-      return isoString;
+      return String(isoString);
     }
   };
 

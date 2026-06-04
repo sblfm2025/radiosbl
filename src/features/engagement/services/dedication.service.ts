@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, where } from "firebase/firestore";
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
+import type { TimestampLike } from "../../../types/domain";
 
 export type DedicationItem = {
   dedicationId: string;
@@ -11,8 +12,8 @@ export type DedicationItem = {
   targetProgramTitle?: string;
   isAnonymous: boolean;
   status: 'submitted' | 'approved' | 'readOnAir' | 'rejected' | 'archived';
-  createdAt: any;
-  updatedAt: any;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
   handledBy?: string;
   statusNote?: string;
 };
@@ -78,7 +79,7 @@ export async function updateDedicationStatus(
   statusNote?: string,
   handledBy?: string
 ): Promise<void> {
-  const updatePayload: any = {
+  const updatePayload: Record<string, unknown> = {
     status,
     statusNote: statusNote || null,
     updatedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp()

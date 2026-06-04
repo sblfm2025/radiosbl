@@ -1,5 +1,5 @@
 import type { ListenerAnalyticsSession } from "../../../types/domain";
-import { Award, Clock } from "lucide-react";
+import { Award } from "lucide-react";
 
 type ProgramPerformanceCardProps = {
   sessions: ListenerAnalyticsSession[];

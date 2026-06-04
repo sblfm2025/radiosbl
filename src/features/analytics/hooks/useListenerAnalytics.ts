@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { getDeviceInfo } from "../utils/deviceInfo";
 import {
   trackStreamPlay,
-  trackStreamPause,
   trackStreamStop,
   updateSessionLocation
 } from "../services/listenerAnalytics.service";
@@ -80,13 +79,10 @@ export function useListenerAnalytics({
           }
         );
       }
-    } catch {}
+    } catch {
+      // Akses storage/lokasi bersifat opsional untuk analytics.
+    }
   }, [userId, programId, programTitle]);
-
-  const pauseSession = useCallback(async () => {
-    if (!sessionId) return;
-    await trackStreamPause(sessionId);
-  }, [sessionId]);
 
   const stopSession = useCallback(async () => {
     if (!sessionId) return;

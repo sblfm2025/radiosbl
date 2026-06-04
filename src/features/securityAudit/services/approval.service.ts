@@ -3,11 +3,10 @@ import type { ApprovalRequest } from "../../../types/domain";
 import {
   createDocument,
   updateDocument,
-  listDocuments,
   subscribeDocuments
 } from "../../../services/firestore.service";
 import { writeAuditLog } from "./auditLog.service";
-import { orderBy, where, type Unsubscribe } from "firebase/firestore";
+import { orderBy, type Unsubscribe } from "firebase/firestore";
 
 const APPROVAL_LOCAL_KEY = "radiosbl_approval_requests";
 
@@ -15,7 +14,9 @@ function getSafeLocalStorage(): Storage | null {
   if (typeof window !== "undefined") {
     try {
       return window.localStorage;
-    } catch {}
+    } catch {
+      // localStorage bisa diblokir browser; fallback tetap boleh kosong.
+    }
   }
   if (typeof localStorage !== "undefined") {
     return localStorage;
@@ -66,7 +67,7 @@ export async function createApprovalRequest(
     action: "create_approval_request",
     targetCollection: "approvalRequests",
     targetId: reqItem.id,
-    after: reqItem as any,
+    after: { ...reqItem },
     metadata: { type: input.type, title: input.title }
   });
 

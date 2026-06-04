@@ -124,7 +124,7 @@ export async function updateRundown(id: string, updates: Partial<BroadcastRundow
     action: "update_rundown",
     targetCollection: "broadcastRundowns",
     targetId: id,
-    after: updates as any
+    after: Object.fromEntries(Object.entries(updates))
   });
 
   if (shouldUseLocalFallback()) {

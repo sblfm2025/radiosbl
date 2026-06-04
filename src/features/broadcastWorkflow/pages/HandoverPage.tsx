@@ -129,7 +129,7 @@ export default function HandoverPage({ session }: HandoverPageProps) {
                 <label>Prioritas Pesan:</label>
                 <select
                   value={priority}
-                  onChange={(e) => setPriority(e.target.value as any)}
+                  onChange={(e) => setPriority(e.target.value as ShiftHandover["priority"])}
                   className="premium-select"
                 >
                   <option value="low">Rendah (Hanya Informasi)</option>

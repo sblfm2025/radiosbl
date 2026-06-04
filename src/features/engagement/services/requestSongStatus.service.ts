@@ -2,6 +2,7 @@ import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query,
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
 import { writeAuditLog } from "../../securityAudit/services/auditLog.service";
+import type { TimestampLike } from "../../../types/domain";
 
 export type SongRequestV2 = {
   requestId: string;
@@ -13,11 +14,11 @@ export type SongRequestV2 = {
   targetProgramTitle?: string;
   status: 'submitted' | 'read' | 'queued' | 'played' | 'rejected' | 'archived';
   statusNote?: string;
-  createdAt: any;
-  updatedAt: any;
-  readAt?: any;
-  playedAt?: any;
-  rejectedAt?: any;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+  readAt?: TimestampLike | null;
+  playedAt?: TimestampLike | null;
+  rejectedAt?: TimestampLike | null;
   handledBy?: string;
 };
 
@@ -82,7 +83,7 @@ export async function updateSongRequestStatus(
   statusNote?: string,
   handledBy?: string
 ): Promise<void> {
-  const updatePayload: any = {
+  const updatePayload: Record<string, unknown> = {
     status,
     statusNote: statusNote || null,
     updatedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp()

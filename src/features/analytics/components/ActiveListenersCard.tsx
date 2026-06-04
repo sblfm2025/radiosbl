@@ -1,4 +1,4 @@
-import { Radio, Users } from "lucide-react";
+import { Radio } from "lucide-react";
 
 type ActiveListenersCardProps = {
   activeCount: number;

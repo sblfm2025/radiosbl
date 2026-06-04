@@ -14,6 +14,7 @@ import {
   processApprovalRequest,
   readLocalApprovals
 } from "../features/securityAudit/services/approval.service";
+import type { SecurityAuditLog } from "../types/domain";
 
 // ── Membuat in-memory localStorage ──────────────────────────────────────────
 
@@ -233,12 +234,12 @@ describe("Security Audit — Audit Log Service", () => {
   });
 
   it("writeLocalAuditLogs membatasi penyimpanan maksimum 100 entri", () => {
-    const banyakLog = Array.from({ length: 120 }, (_, i) => ({
+    const banyakLog: SecurityAuditLog[] = Array.from({ length: 120 }, (_, i) => ({
       id: `audit-${i}`,
       actorUserId: `user-${i}`,
       action: "create_rundown",
       createdAt: new Date().toISOString()
-    })) as any[];
+    }));
 
     writeLocalAuditLogs(banyakLog);
     const dibaca = readLocalAuditLogs();

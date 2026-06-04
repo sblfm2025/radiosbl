@@ -1,4 +1,5 @@
 import type { ProgramEpisode } from "../services/episode.service";
+import type { TimestampLike } from "../../../types/domain";
 import { Play, Pause, Calendar, Clock } from "lucide-react";
 import "../styles/contentHub.css";
 
@@ -16,12 +17,12 @@ export function EpisodeCard({ episode, onPlay, isPlaying }: EpisodeCardProps) {
     return `${minutes}m ${remainingSeconds}d`;
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: TimestampLike) => {
     try {
       const date = new Date(dateStr);
       return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
     } catch {
-      return dateStr;
+      return String(dateStr);
     }
   };
 

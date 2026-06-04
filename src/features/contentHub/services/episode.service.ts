@@ -2,6 +2,7 @@ import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query,
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
 import { writeAuditLog } from "../../securityAudit/services/auditLog.service";
+import type { TimestampLike } from "../../../types/domain";
 
 export type ProgramEpisode = {
   episodeId: string;
@@ -17,11 +18,11 @@ export type ProgramEpisode = {
   audioStoragePath?: string;
   coverImageUrl?: string;
   durationSeconds?: number;
-  publishedAt: any;
+  publishedAt: TimestampLike | null;
   status: 'draft' | 'published' | 'archived';
   createdBy: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
 };
 
 const isTestOrNoFirebase = () => {
@@ -91,7 +92,7 @@ export async function updateEpisode(
   payload: Partial<Omit<ProgramEpisode, 'episodeId' | 'createdAt'>>,
   actorUserId?: string
 ): Promise<void> {
-  const updatePayload: any = {
+  const updatePayload: Record<string, unknown> = {
     ...payload,
     updatedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp()
   };
@@ -113,7 +114,7 @@ export async function updateEpisode(
           : "update_episode",
     targetCollection: "programEpisodes",
     targetId: episodeId,
-    after: { status: payload.status, title: payload.title } as any
+    after: { status: payload.status, title: payload.title }
   });
 
   if (isTestOrNoFirebase()) {

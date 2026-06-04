@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { VideoItem } from "../services/videoHub.service";
+import type { TimestampLike } from "../../../types/domain";
 import { Play, Youtube } from "lucide-react";
 import "../styles/contentHub.css";
 
@@ -32,12 +33,12 @@ export function VideoCard({ video }: VideoCardProps) {
     return null;
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: TimestampLike) => {
     try {
       const date = new Date(dateStr);
       return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
     } catch {
-      return dateStr;
+      return String(dateStr);
     }
   };
 

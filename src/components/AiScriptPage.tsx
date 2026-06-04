@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, type FormEvent } from "react";
 import { Bot, CalendarClock, FileText, Radio, Save, Sparkles, Wand2, MonitorPlay, X, Play, Pause, FastForward, Rewind, Copy, Archive, Bold, Italic, Heading, List, Clock, Highlighter, SplitSquareHorizontal, Megaphone, Search, Download, CheckCircle2, ClipboardCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { DashboardSnapshot } from "../data/mockRepository";
 import type { AuthSession } from "../services/auth.service";
 import { generateProgramScript, rewriteProgramScript } from "../services/aiScript.service";
@@ -13,7 +14,7 @@ import { ScriptBoard } from "../features/broadcastWorkflow/components/ScriptBoar
 type StudioTab = "generator" | "drafts" | "review" | "ready" | "board";
 type RewriteMode = "formal" | "santai" | "singkat" | "energik" | "anak-muda" | "profesional";
 
-const studioTabs: Array<{ id: StudioTab; label: string; icon: any }> = [
+const studioTabs: Array<{ id: StudioTab; label: string; icon: LucideIcon }> = [
   { id: "generator", label: "Generator", icon: Wand2 },
   { id: "drafts", label: "Draft", icon: Save },
   { id: "review", label: "Review", icon: FileText },

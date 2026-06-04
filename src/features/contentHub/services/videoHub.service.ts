@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, where } from "firebase/firestore";
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
+import type { TimestampLike } from "../../../types/domain";
 
 export type VideoItem = {
   videoId: string;
@@ -13,9 +14,9 @@ export type VideoItem = {
   programTitle?: string;
   tags: string[];
   status: 'draft' | 'published' | 'archived';
-  publishedAt: any;
-  createdAt: any;
-  updatedAt: any;
+  publishedAt: TimestampLike | null;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
 };
 
 const isTestOrNoFirebase = () => {
@@ -72,7 +73,7 @@ export async function updateVideoItem(
   videoId: string,
   payload: Partial<Omit<VideoItem, 'videoId' | 'createdAt'>>
 ): Promise<void> {
-  const updatePayload: any = {
+  const updatePayload: Record<string, unknown> = {
     ...payload,
     updatedAt: isTestOrNoFirebase() ? new Date().toISOString() : serverTimestamp()
   };

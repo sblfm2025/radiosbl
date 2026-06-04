@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ProgramScriptDraft } from "../../../types/domain";
 import { listProgramScripts, updateProgramScriptStatus } from "../../../services/programScript.service";
 import { FileText, Radio, CheckCircle, Archive, ArrowRight, ArrowLeft } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export function ScriptBoard() {
   const [scripts, setScripts] = useState<ProgramScriptDraft[]>([]);
@@ -38,7 +39,7 @@ export function ScriptBoard() {
   const columns: Array<{
     id: ProgramScriptDraft["status"];
     label: string;
-    icon: any;
+    icon: LucideIcon;
     color: string;
   }> = [
     { id: "draft", label: "Draft Naskah", icon: FileText, color: "#475569" },

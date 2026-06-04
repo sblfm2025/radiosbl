@@ -7,7 +7,10 @@ import { Radio } from "lucide-react";
 import "../styles/listening.css";
 
 type EnhancedNowOnAirCardProps = {
-  programSlot?: any;
+  programSlot?: Partial<BroadcastProgramSlot> & {
+    title?: string;
+    type?: string;
+  };
   userId?: string;
   playerStatus?: PlayerStatusType;
   onRequestSong?: () => void;

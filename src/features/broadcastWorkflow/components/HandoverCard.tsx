@@ -1,6 +1,6 @@
 import type { ShiftHandover } from "../../../types/domain";
 import { acknowledgeHandover } from "../services/handover.service";
-import { User, Clock, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { AuthSession } from "../../../services/auth.service";
 
 type HandoverCardProps = {

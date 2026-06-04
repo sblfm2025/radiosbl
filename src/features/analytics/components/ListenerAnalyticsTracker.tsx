@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useGlobalAudio } from "../../../contexts/useGlobalAudio";
 import { useListenerAnalytics } from "../hooks/useListenerAnalytics";
 import { LocationPermissionPrompt } from "./LocationPermissionPrompt";

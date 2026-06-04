@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BroadcastRundown, BroadcastRundownSegment } from "../../../types/domain";
-import { submitRundown, updateRundown } from "../services/rundown.service";
-import { Plus, Trash2, ArrowUp, ArrowDown, Radio, Save, AlertCircle } from "lucide-react";
+import { updateRundown } from "../services/rundown.service";
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, AlertCircle } from "lucide-react";
 import type { AuthSession } from "../../../services/auth.service";
 
 type RundownEditorProps = {
@@ -52,7 +52,13 @@ export function RundownEditor({ rundown, onSave, session }: RundownEditorProps) 
     setSegments(reordered);
   };
 
-  const handleUpdateSegmentField = (id: string, field: keyof BroadcastRundownSegment, value: any) => {
+  const actorUserId = session?.user.id;
+
+  const handleUpdateSegmentField = <K extends keyof BroadcastRundownSegment>(
+    id: string,
+    field: K,
+    value: BroadcastRundownSegment[K]
+  ) => {
     setSegments(
       segments.map((s) => {
         if (s.id === id) {
@@ -89,7 +95,7 @@ export function RundownEditor({ rundown, onSave, session }: RundownEditorProps) 
       await updateRundown(rundown.id, {
         segments,
         status: rundown.status === "draft" ? "ready" : rundown.status
-      });
+      }, actorUserId);
       setSuccessMsg("Rundown berhasil disimpan ke server stasiun!");
       onSave?.();
     } catch {
@@ -190,7 +196,11 @@ export function RundownEditor({ rundown, onSave, session }: RundownEditorProps) 
                   <label>Jenis:</label>
                   <select
                     value={seg.type}
-                    onChange={(e) => handleUpdateSegmentField(seg.id, "type", e.target.value)}
+                    onChange={(e) => handleUpdateSegmentField(
+                      seg.id,
+                      "type",
+                      e.target.value as BroadcastRundownSegment["type"]
+                    )}
                   >
                     {SEGMENT_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>

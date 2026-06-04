@@ -599,9 +599,9 @@ export type SecurityAuditLog = {
   action: string;
   targetCollection?: string;
   targetId?: string;
-  before?: Record<string, any>;
-  after?: Record<string, any>;
-  metadata?: Record<string, any>;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   createdAt: TimestampLike;
 };
 
@@ -609,7 +609,7 @@ export type ApprovalRequest = {
   id: string;
   type: 'notification' | 'public_content' | 'schedule_change' | 'analytics_export';
   title: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   requestedBy: string;
   requestedByName?: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';

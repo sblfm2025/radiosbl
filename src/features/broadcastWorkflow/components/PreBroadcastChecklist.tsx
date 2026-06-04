@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PreBroadcastChecklist, PreBroadcastChecklistItem } from "../../../types/domain";
-import { getPreBroadcastChecklist, savePreBroadcastChecklist, subscribePreBroadcastChecklist } from "../services/rundown.service";
+import { savePreBroadcastChecklist, subscribePreBroadcastChecklist } from "../services/rundown.service";
 import { Check, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { AuthSession } from "../../../services/auth.service";
 

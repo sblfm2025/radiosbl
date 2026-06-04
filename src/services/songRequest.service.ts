@@ -62,25 +62,6 @@ function writeSongRequests(requests: SongRequest[]) {
   storage.setItem(SONG_REQUESTS_KEY, JSON.stringify(requests.slice(0, MAX_LOCAL_REQUESTS)));
 }
 
-function updateLocalSongRequestStatus(id: string, status: SongRequestStatus): SongRequest | null {
-  const requests = readSongRequests();
-  let updated: SongRequest | null = null;
-  const nextRequests = requests.map((request) => {
-    if (request.id !== id) {
-      return request;
-    }
-
-    updated = {
-      ...request,
-      status
-    };
-    return updated;
-  });
-
-  writeSongRequests(nextRequests);
-  return updated;
-}
-
 function updateLocalSongRequest(id: string, patch: Partial<SongRequest>): SongRequest | null {
   const requests = readSongRequests();
   let updated: SongRequest | null = null;

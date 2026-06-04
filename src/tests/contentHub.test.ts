@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { submitEpisode, updateEpisode, subscribeEpisodes, subscribeActiveEpisodes } from "../features/contentHub/services/episode.service";
-import { submitVideoItem, updateVideoItem, subscribeVideoItems, subscribeActiveVideoItems } from "../features/contentHub/services/videoHub.service";
+import { submitEpisode, updateEpisode, subscribeActiveEpisodes } from "../features/contentHub/services/episode.service";
+import type { ProgramEpisode } from "../features/contentHub/services/episode.service";
+import { submitVideoItem, updateVideoItem, subscribeActiveVideoItems } from "../features/contentHub/services/videoHub.service";
+import type { VideoItem } from "../features/contentHub/services/videoHub.service";
 import { useEpisodeProgress } from "../features/contentHub/hooks/useEpisodeProgress";
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
     ...actual,
-    useCallback: (fn: any) => fn
+    useCallback: <T extends (...args: never[]) => unknown>(fn: T) => fn
   };
 });
 
@@ -86,7 +88,7 @@ describe("Content Hub (Podcast & Video Hub) Services & Hooks", () => {
 
       await updateEpisode(ep.episodeId, { status: "published" });
 
-      let list: any[] = [];
+      let list: ProgramEpisode[] = [];
       subscribeActiveEpisodes((items) => {
         list = items;
       });
@@ -125,7 +127,7 @@ describe("Content Hub (Podcast & Video Hub) Services & Hooks", () => {
 
       await updateVideoItem(vid.videoId, { title: "Siaran Rapat Pleno", status: "published" });
 
-      let list: any[] = [];
+      let list: VideoItem[] = [];
       subscribeActiveVideoItems((items) => {
         list = items;
       });

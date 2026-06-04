@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ApprovalRequest } from "../../../types/domain";
+import type { ApprovalRequest, TimestampLike } from "../../../types/domain";
 import { Check, X, FileText, Calendar, RefreshCw } from "lucide-react";
 import "../styles/securityAudit.css";
 
@@ -18,7 +18,7 @@ export function ApprovalCard({
 }: ApprovalCardProps) {
   const [note, setNote] = useState("");
 
-  const getFormatTime = (isoString: any) => {
+  const getFormatTime = (isoString: TimestampLike) => {
     try {
       const d = new Date(isoString);
       return d.toLocaleString("id-ID", {
@@ -29,7 +29,7 @@ export function ApprovalCard({
         minute: "2-digit"
       });
     } catch {
-      return isoString;
+      return String(isoString);
     }
   };
 

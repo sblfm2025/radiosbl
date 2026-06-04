@@ -48,8 +48,8 @@ export function DedicationForm({ activeProgramTitle, activeProgramId }: Dedicati
       setMessage("");
       setRecipientName("");
       setNotice("Salam udara berhasil dikirim dan sedang menunggu moderasi.");
-    } catch (err: any) {
-      setError(err?.message || "Gagal mengirim salam udara.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal mengirim salam udara.");
     } finally {
       setSubmitting(false);
     }

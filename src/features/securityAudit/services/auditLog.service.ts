@@ -13,7 +13,9 @@ function getSafeLocalStorage(): Storage | null {
   if (typeof window !== "undefined") {
     try {
       return window.localStorage;
-    } catch {}
+    } catch {
+      // localStorage bisa diblokir browser; audit tetap fail-safe.
+    }
   }
   if (typeof localStorage !== "undefined") {
     return localStorage;

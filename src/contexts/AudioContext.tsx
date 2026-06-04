@@ -113,7 +113,7 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
     };
 
     return audio;
-  }, [streamUrl]);
+  }, [programTitle, streamUrl]);
 
   useEffect(() => {
     audioRef.current = buildAudio();

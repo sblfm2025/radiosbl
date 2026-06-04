@@ -1,13 +1,14 @@
 import { doc, setDoc, deleteDoc, getDoc, collection, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { getFirebaseFirestore } from "../../../lib/firebase";
 import { hasFirebaseConfig } from "../../../lib/env";
+import type { TimestampLike } from "../../../types/domain";
 
 export type FavoriteProgramItem = {
   programId: string;
   programTitle: string;
   programPoster?: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
 };
 
 const isTestOrNoFirebase = () => {
