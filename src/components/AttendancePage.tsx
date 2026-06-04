@@ -15,6 +15,7 @@ import {
 import type { AttendanceRecord } from "../types/domain";
 import { findAnnouncerProfile } from "../utils/announcerResolver";
 import { analyzeAttendancePhoto } from "../services/gemini.service";
+import { upsertUserProfile } from "../services/userProfile.service";
 import {
   analyzeAttendanceFace,
   analyzeFaceSpoofMovement,
@@ -108,6 +109,31 @@ function getSpoofCheckLabel(result?: FaceSpoofCheckResult | null): string {
   return result.faceSpoofCheckError || "Cek gerakan wajah belum tersedia.";
 }
 
+async function ensureAttendanceUserProfile(session: AuthSession | null): Promise<void> {
+  if (!session || session.provider !== "firebase") {
+    return;
+  }
+
+  const profilePatch = {
+    email: session.user.email,
+    displayName: session.user.displayName,
+    role: session.user.role,
+    active: session.user.active,
+    airName: session.user.airName,
+    announcerNames: session.user.announcerNames,
+    employeeId: session.user.employeeId,
+    photoUrl: session.user.photoUrl,
+    whatsapp: session.user.whatsapp
+  };
+
+  await upsertUserProfile(
+    session.user.id,
+    Object.fromEntries(
+      Object.entries(profilePatch).filter(([, value]) => value !== undefined)
+    )
+  );
+}
+
 export function AttendancePage({
   session,
   onAttendanceRecorded
@@ -137,7 +163,7 @@ export function AttendancePage({
   
   useEffect(() => {
     if (session) {
-      getTodayAttendance(session.user.id).then(setTodayRecord);
+      getTodayAttendance(session.user.id).then(setTodayRecord).catch(() => undefined);
     }
   }, [session]);
 
@@ -418,6 +444,7 @@ export function AttendancePage({
     try {
       setChecking(true);
       setFileError("");
+      await ensureAttendanceUserProfile(session);
 
       const spoofResult = firstFrameFile
         ? await analyzeFaceSpoofMovement(firstFrameFile, selfieFile)
@@ -439,6 +466,18 @@ export function AttendancePage({
         session?.user.airName ||
         session?.user.announcerNames?.[0] ||
         findAnnouncerProfile(displayName)?.airName;
+      const existingTodayRecord = await getTodayAttendance(userId).catch(() => null);
+
+      if (existingTodayRecord) {
+        setTodayRecord(existingTodayRecord);
+        activeAttendanceRecordIdRef.current = existingTodayRecord.id;
+        setRecordStatus(
+          existingTodayRecord.checkOutAt
+            ? "Absensi hari ini sudah lengkap tercatat."
+            : "Absensi masuk hari ini sudah tercatat. Silakan lanjut absen pulang setelah tugas selesai."
+        );
+        return;
+      }
 
       const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType)
         .catch((error) => {
@@ -567,6 +606,7 @@ export function AttendancePage({
     if (!todayRecord) return;
     try {
       setCheckingOut(true);
+      await ensureAttendanceUserProfile(session);
       await checkOut(todayRecord.id);
       setTodayRecord({ ...todayRecord, checkOutAt: new Date().toISOString() });
       setRecordStatus("Terima kasih! Absen pulang berhasil dikonfirmasi.");

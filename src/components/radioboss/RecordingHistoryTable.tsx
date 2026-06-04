@@ -12,12 +12,12 @@ const statusLabel: Record<RecordingStatus, string> = {
   ready: "Siap rekam",
   recording: "Sedang direkam",
   stopping: "Menghentikan",
-  stopped: "Stopped",
+  stopped: "Berhenti",
   completed: "Selesai",
   failed: "Gagal",
-  skipped_no_attendance: "Skip absensi",
-  skipped_disabled: "Skip disabled",
-  manual_override: "Manual override",
+  skipped_no_attendance: "Tidak direkam: absensi",
+  skipped_disabled: "Tidak direkam: rule nonaktif",
+  manual_override: "Manual",
   gateway_offline: "Gateway offline",
   radioboss_offline: "RadioBOSS offline"
 };
@@ -50,6 +50,12 @@ function getStatusTone(status: RecordingStatus): string {
   return "waiting";
 }
 
+function getRecordingNote(recording: ProgramRecording): string {
+  if (recording.errorMessageSafe) return recording.errorMessageSafe;
+  if (recording.gatewayId) return `Gateway: ${recording.gatewayId}`;
+  return "-";
+}
+
 async function copyPath(filePath?: string) {
   if (!filePath) return;
   await navigator.clipboard?.writeText(filePath);
@@ -72,26 +78,29 @@ export function RecordingHistoryTable({ recordings }: RecordingHistoryTableProps
         <thead>
           <tr>
             <th>Tanggal</th>
-            <th>Program</th>
-            <th>Penyiar</th>
-            <th>Jam mulai</th>
-            <th>Jam selesai</th>
-            <th>Durasi</th>
+            <th>Program & Penyiar</th>
+            <th>Waktu</th>
             <th>Status</th>
             <th>File</th>
-            <th>Gateway</th>
-            <th>Error aman</th>
+            <th>Catatan</th>
           </tr>
         </thead>
         <tbody>
           {recordings.map((recording) => (
             <tr key={recording.id}>
               <td>{formatDate(recording.plannedStartAt ?? recording.startedAt)}</td>
-              <td><strong>{recording.programName}</strong></td>
-              <td>{recording.announcerName || "-"}</td>
-              <td>{formatTime(recording.startedAt ?? recording.plannedStartAt)}</td>
-              <td>{formatTime(recording.stoppedAt ?? recording.plannedStopAt)}</td>
-              <td>{formatDuration(recording.durationSeconds)}</td>
+              <td>
+                <span className="radioboss-stack-cell">
+                  <strong>{recording.programName}</strong>
+                  <small>{recording.announcerName || "Penyiar tidak tercatat"}</small>
+                </span>
+              </td>
+              <td>
+                <span className="radioboss-stack-cell">
+                  <strong>{formatTime(recording.startedAt ?? recording.plannedStartAt)} - {formatTime(recording.stoppedAt ?? recording.plannedStopAt)}</strong>
+                  <small>{formatDuration(recording.durationSeconds)}</small>
+                </span>
+              </td>
               <td>
                 <span className={`radioboss-status-pill is-${getStatusTone(recording.status)}`}>
                   {statusLabel[recording.status] ?? recording.status}
@@ -109,8 +118,7 @@ export function RecordingHistoryTable({ recordings }: RecordingHistoryTableProps
                   )}
                 </span>
               </td>
-              <td>{recording.gatewayId || "-"}</td>
-              <td>{recording.errorMessageSafe || "-"}</td>
+              <td>{getRecordingNote(recording)}</td>
             </tr>
           ))}
         </tbody>

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { RadioTower } from "lucide-react";
+import { RadioTower, Settings2 } from "lucide-react";
 import { RecordingManualActions } from "../../components/radioboss/RecordingManualActions";
 import { RecordingStatusCard } from "../../components/radioboss/RecordingStatusCard";
 import { useCurrentBroadcastSlot } from "../../hooks/useCurrentBroadcastSlot";
 import { getScheduleSlotId } from "../../services/scheduleSlot.service";
-import { parseTimeRangeMinutes } from "../../utils/scheduleClock";
-import { resolveAnnouncerFromSlot } from "../../utils/announcerResolver";
 import type { AuthSession } from "../../services/auth.service";
 import type { ProgramRecording, ProgramRecordingRule, RadiobossCommand } from "../../types/domain";
 import { canUser } from "../../utils/rbac";
@@ -22,22 +20,20 @@ import {
   getProgramRecordingRuleId,
   subscribeProgramRecordingRules
 } from "../../services/radioboss/recordingRules.service";
+import { isRecordableBroadcastSlot } from "../../services/radioboss/recordingAutomation.service";
 import {
   subscribeActiveProgramRecording
 } from "../../services/radioboss/programRecordings.service";
 import {
-  createMarkRecordingSkippedCommand,
   createRetryCommand,
-  createStartRecordingCommand,
   createStopRecordingCommand,
   subscribeRecentRadiobossCommands
 } from "../../services/radioboss/radiobossCommands.service";
 
 type RecordingControlPageProps = {
   session: AuthSession | null;
+  onNavigate?: (page: "recordingRules") => void;
 };
-
-const skipEligibleStatuses = new Set(["waiting_schedule", "waiting_attendance", "ready", "failed"]);
 
 function getRequester(session: AuthSession | null) {
   return {
@@ -46,31 +42,32 @@ function getRequester(session: AuthSession | null) {
   };
 }
 
-function buildPlannedRecordingWindow(timeRange: string, baseDate = new Date()) {
-  const { start, end } = parseTimeRangeMinutes(timeRange);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) {
-    return {
-      plannedStartAt: baseDate.toISOString(),
-      plannedEndAt: baseDate.toISOString()
-    };
+function isRetryableCommandForCurrentView({
+  command,
+  scheduleId,
+  activeRecordingId,
+  isRecordableSlot
+}: {
+  command: RadiobossCommand;
+  scheduleId: string;
+  activeRecordingId?: string | null;
+  isRecordableSlot: boolean;
+}) {
+  if (command.status !== "failed" && command.status !== "retryable") return false;
+  if (command.attempts >= command.maxAttempts) return false;
+
+  if (command.type === "START_RECORDING") {
+    return isRecordableSlot && command.payload?.scheduleId === scheduleId;
   }
 
-  const plannedStartAt = new Date(baseDate);
-  plannedStartAt.setHours(Math.floor(start / 60), start % 60, 0, 0);
-
-  const plannedEndAt = new Date(baseDate);
-  plannedEndAt.setHours(Math.floor(end / 60), end % 60, 0, 0);
-  if (end <= start) {
-    plannedEndAt.setDate(plannedEndAt.getDate() + 1);
+  if (command.type === "STOP_RECORDING") {
+    return Boolean(activeRecordingId && command.payload?.recordingId === activeRecordingId);
   }
 
-  return {
-    plannedStartAt: plannedStartAt.toISOString(),
-    plannedEndAt: plannedEndAt.toISOString()
-  };
+  return false;
 }
 
-export default function RecordingControlPage({ session }: RecordingControlPageProps) {
+export default function RecordingControlPage({ session, onNavigate }: RecordingControlPageProps) {
   const currentSlot = useCurrentBroadcastSlot();
   const [status, setStatus] = useState<RadioBossStatus | null>(null);
   const [heartbeat, setHeartbeat] = useState<RadioBossGatewayHeartbeat | null>(null);
@@ -85,19 +82,29 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
     program: currentSlot.title
   }), [currentSlot.day, currentSlot.time, currentSlot.title]);
   const programId = useMemo(() => getProgramRecordingRuleId(currentSlot.title), [currentSlot.title]);
-  const rule =
-    rules.find((item) => item.scheduleId === scheduleId) ??
-    rules.find((item) => item.programId === programId) ??
-    buildDefaultRecordingRule(currentSlot.title);
+  const isRecordableSlot = currentSlot.type === "main" && isRecordableBroadcastSlot({
+    program: currentSlot.title,
+    announcer: currentSlot.announcer
+  });
+  const rule = isRecordableSlot
+    ? (
+      rules.find((item) => item.scheduleId === scheduleId) ??
+      rules.find((item) => item.programId === programId) ??
+      buildDefaultRecordingRule(currentSlot.title)
+    )
+    : null;
   const radioBossOnline = resolveRadioBossOnline(status);
   const gatewayOnline = resolveGatewayOnline(status, heartbeat);
   const hasOperationalRole = canUser(session?.user.role, "radioboss:manage");
+  const canManageRecordingSettings = canUser(session?.user.role, "schedule:manage");
   const hasActiveRecording = recording?.status === "recording" || Boolean(status?.recordingActive);
-  const isOffAir = currentSlot.type === "offair";
-  const retryCommand = commands.find((command) => (
-    (command.status === "failed" || command.status === "retryable")
-    && command.attempts < command.maxAttempts
-  )) ?? null;
+  const activeRecordingId = recording?.id ?? status?.activeRecordingId ?? null;
+  const retryCommand = commands.find((command) => isRetryableCommandForCurrentView({
+    command,
+    scheduleId,
+    activeRecordingId,
+    isRecordableSlot
+  })) ?? null;
 
   useEffect(() => subscribeRadioBossStatus(setStatus), []);
   useEffect(() => subscribeGatewayHeartbeat(status?.gatewayId || "studio-main", setHeartbeat), [status?.gatewayId]);
@@ -105,32 +112,18 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
   useEffect(() => subscribeActiveProgramRecording(scheduleId, setRecording), [scheduleId]);
   useEffect(() => subscribeRecentRadiobossCommands(setCommands), []);
 
-  const canStart =
-    !isOffAir
-    && gatewayOnline
-    && radioBossOnline
-    && !hasActiveRecording
-    && hasOperationalRole
-    && (rule.recordingEnabled || rule.allowManualOverride);
-
   const canStop =
     hasActiveRecording
     && hasOperationalRole
     && gatewayOnline
     && Boolean(recording?.id || status?.activeRecordingId);
 
-  const canSkip =
-    !hasActiveRecording
-    && hasOperationalRole
-    && !isOffAir
-    && (!recording || skipEligibleStatuses.has(recording.status));
-
   const disabledReason = [
     !hasOperationalRole ? "Akses hanya untuk admin/operator." : "",
-    isOffAir ? "Tidak ada program penyiar terjadwal untuk direkam." : "",
+    !isRecordableSlot ? "Program ini bukan slot penyiar SBL terjadwal, jadi tidak direkam." : "",
     !gatewayOnline ? "Studio Gateway offline." : "",
     !radioBossOnline ? "RadioBOSS offline." : "",
-    !rule.recordingEnabled && !rule.allowManualOverride ? "Rule program belum mengizinkan rekaman/manual override." : ""
+    rule && !rule.allowManualOverride ? "Rule program belum mengizinkan stop manual." : ""
   ].filter(Boolean)[0] ?? "";
 
   async function runAction(action: () => Promise<string>, successMessage: string) {
@@ -146,28 +139,8 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
     }
   }
 
-  function handleStart() {
-    const resolvedAnnouncer = resolveAnnouncerFromSlot(currentSlot.announcer);
-    const plannedWindow = buildPlannedRecordingWindow(currentSlot.time);
-    void runAction(
-      () => createStartRecordingCommand({
-        programId,
-        scheduleId,
-        programName: currentSlot.title,
-        announcerId: resolvedAnnouncer?.id ?? currentSlot.announcer,
-        announcerName: resolvedAnnouncer?.fullName ?? currentSlot.announcer,
-        announcerAirName: resolvedAnnouncer?.airName ?? currentSlot.announcer,
-        plannedStartAt: plannedWindow.plannedStartAt,
-        plannedEndAt: plannedWindow.plannedEndAt,
-        source: "manual_operator",
-        ...getRequester(session)
-      }),
-      "Command mulai rekaman dibuat."
-    );
-  }
-
   function handleStop() {
-    const recordingId = recording?.id ?? status?.activeRecordingId;
+    const recordingId = activeRecordingId;
     if (!recordingId) return;
     if (!window.confirm("Stop rekaman program ini? Command akan dikirim ke Studio Gateway.")) return;
 
@@ -177,24 +150,6 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
         ...getRequester(session)
       }),
       "Command stop rekaman dibuat."
-    );
-  }
-
-  function handleSkip() {
-    const reason = window.prompt("Alasan aman untuk menandai tidak perlu direkam:", "manual_operator_skip");
-    if (!reason) return;
-    const plannedWindow = buildPlannedRecordingWindow(currentSlot.time);
-
-    void runAction(
-      () => createMarkRecordingSkippedCommand({
-        recordingId: recording?.id ?? null,
-        programId,
-        scheduleId,
-        plannedStartAt: plannedWindow.plannedStartAt,
-        reason,
-        ...getRequester(session)
-      }),
-      "Command skip rekaman dibuat."
     );
   }
 
@@ -213,12 +168,19 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
       <section className="radioboss-page-hero">
         <div>
           <p className="eyebrow">Integrasi RadioBOSS</p>
-          <h1>Recording Control Panel</h1>
-          <p>Mulai, stop, skip, dan retry rekaman secara aman melalui Firestore command queue.</p>
+          <h1>Kontrol Rekaman Siaran</h1>
+          <p>Pantau auto recording berbasis absensi penyiar. Intervensi manual hanya dipakai saat diperlukan.</p>
         </div>
-        <span className="radioboss-hero-icon" aria-hidden="true">
-          <RadioTower size={24} />
-        </span>
+        {canManageRecordingSettings && onNavigate ? (
+          <button type="button" className="radioboss-secondary-action" onClick={() => onNavigate("recordingRules")}>
+            <Settings2 size={17} />
+            Pengaturan Rekaman
+          </button>
+        ) : (
+          <span className="radioboss-hero-icon" aria-hidden="true">
+            <RadioTower size={24} />
+          </span>
+        )}
       </section>
 
       {message && <div className="radioboss-page-message">{message}</div>}
@@ -228,20 +190,17 @@ export default function RecordingControlPage({ session }: RecordingControlPagePr
         scheduleId={scheduleId}
         recording={recording}
         rule={rule}
+        recordable={isRecordableSlot}
         status={status}
         heartbeat={heartbeat}
       />
 
       <RecordingManualActions
-        canStart={canStart}
         canStop={canStop}
-        canSkip={canSkip}
         retryCommand={retryCommand}
         busy={busy}
         disabledReason={disabledReason}
-        onStart={handleStart}
         onStop={handleStop}
-        onSkip={handleSkip}
         onRetry={handleRetry}
       />
     </main>

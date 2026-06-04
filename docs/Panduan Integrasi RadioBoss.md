@@ -949,7 +949,7 @@ Gateway otomatis memulai/stop rekaman berdasarkan:
 
 Jadwal aktif
 Rule program
-Absensi valid
+Absensi masuk/pulang penyiar terjadwal
 Status RadioBOSS online
 Status Gateway aktif
 N.2 Loop
@@ -976,9 +976,10 @@ async function evaluateAutoRecording() {
       continue;
     }
 
+    const attendance = await findAttendanceForScheduledAnnouncer(schedule);
+
     if (rule.requireAttendance) {
-      const attendance = await findValidAttendance(schedule);
-      if (!attendance) {
+      if (!isValidAttendanceForRecordingStart(attendance)) {
         await markWaitingAttendance(schedule);
         continue;
       }
@@ -994,7 +995,8 @@ async function evaluateAutoRecording() {
     }
   }
 
-  await stopOverdueRecordings(now);
+  await stopRecordingsFromAttendanceCheckout(now);
+  await stopOverdueRecordingsAsFallback(now);
 }
 N.3 Kondisi start
 
@@ -1002,9 +1004,9 @@ Start otomatis hanya jika:
 
 recordingEnabled = true
 autoStart = true
-Waktu sekarang berada dalam window:
-programStart - startGraceMinutes
-sampai programStart + startGraceMinutes
+Jadwal adalah program utama dengan penyiar SBL yang dikenali.
+Check-in penyiar terjadwal ditemukan.
+Waktu check-in berada pada tanggal lokal yang sama dan masih dalam batas startGraceMinutes dari programStart.
 Jika requireAttendance = true, absensi valid ditemukan.
 Tidak ada recording aktif untuk schedule itu.
 RadioBOSS online.
@@ -1014,11 +1016,13 @@ N.4 Kondisi stop
 Stop otomatis jika:
 
 Recording status recording.
-Waktu sekarang melewati:
-programEnd + stopGraceMinutes
-Atau melewati:
-programStart + durasi program + maxOverrunMinutes
+Penyiar terjadwal melakukan check-out pada record absensi yang memulai/menjaga recording.
 Buat command STOP_RECORDING.
+
+Fallback stop tetap wajib jika penyiar lupa check-out:
+
+Waktu sekarang melewati programEnd + stopGraceMinutes.
+Atau melewati programStart + durasi program + maxOverrunMinutes.
 N.5 Absensi valid
 
 Gateway membaca absensi dari collection aplikasi Radio SBL yang sudah ada.
@@ -1038,8 +1042,29 @@ type NormalizedAttendance = {
 
 Valid jika:
 
-status === "present" || status === "late"
-validationStatus === "valid"
+Untuk schema aplikasi Radio SBL saat ini, `attendanceRecords` belum memiliki field `validationStatus`.
+Gateway harus memakai adapter `attendanceReader.ts` dan tidak membaca kontrak contoh ini secara literal.
+
+Mapping aman untuk Radio SBL:
+
+```txt
+Valid untuk start recording:
+- record.userId cocok dengan UID/WhatsApp/airName/displayName penyiar terjadwal.
+- record.checkInAt berada pada tanggal lokal yang sama dengan jadwal.
+- record.status termasuk: "present", "late", atau "valid".
+- record.checkOutAt belum terisi.
+- record.status tidak termasuk: "rejected", "sick", "leave".
+- Untuk status "outside_radius" atau "needs_review", jangan auto start kecuali admin/operator mengizinkan manual override.
+```
+
+Catatan penting:
+
+```txt
+- `checkOutAt` menandakan tugas/absensi penyiar selesai, tetapi tidak boleh langsung menjadi trigger STOP_RECORDING.
+- Stop otomatis tetap berdasarkan programEnd + stopGraceMinutes atau maxOverrunMinutes.
+- Jika recording sudah berjalan, perubahan `checkOutAt` tidak boleh mengubah dokumen attendanceRecords atau menghapus bukti absen.
+- Jika Gateway ingin menampilkan "penyiar sudah pulang", tampilkan sebagai status informasi saja, bukan keputusan tunggal untuk stop recording.
+```
 
 Jika aplikasi memakai field berbeda, mapping di attendanceReader.ts, jangan ubah semua struktur absensi lama secara kasar.
 
@@ -1158,8 +1183,14 @@ Hasil: ready lalu recording.
 Skenario 4:
 
 Recording berjalan.
-Program selesai + stopGraceMinutes.
+Penyiar absen pulang.
 Hasil: command STOP_RECORDING dibuat, status completed.
+
+Skenario 4B:
+
+Penyiar lupa absen pulang.
+Program selesai + stopGraceMinutes atau melewati maxOverrunMinutes.
+Hasil: command STOP_RECORDING dibuat sebagai fallback, status completed.
 
 Skenario 5:
 

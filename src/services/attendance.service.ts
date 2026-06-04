@@ -82,6 +82,36 @@ function getSafeLocalStorage(): Storage | null {
   }
 }
 
+function toAttendanceDate(value: AttendanceRecord["checkInAt"] | AttendanceRecord["checkOutAt"]): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "object") {
+    if ("toDate" in value && typeof value.toDate === "function") {
+      return value.toDate();
+    }
+    if ("seconds" in value && typeof value.seconds === "number") {
+      return new Date(value.seconds * 1000);
+    }
+  }
+
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isSameLocalDay(left: Date, right: Date): boolean {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function mergeAttendanceRecords(records: AttendanceRecord[]): AttendanceRecord[] {
+  return Array.from(new Map(records.map((record) => [record.id, record])).values());
+}
+
 function readLocalAttendanceRecords(): AttendanceRecord[] {
   const storage = getSafeLocalStorage();
   if (!storage) {
@@ -593,16 +623,19 @@ export function listAttendanceRecords(): Promise<AttendanceRecord[]> {
   );
 }
 
-export function listMyAttendanceRecords(userId: string): Promise<AttendanceRecord[]> {
+export async function listMyAttendanceRecords(userId: string): Promise<AttendanceRecord[]> {
+  const localRecords = listLocalAttendanceRecords().filter((record) => record.userId === userId);
+
   if (shouldUseLocalFallback()) {
-    return Promise.resolve(
-      listLocalAttendanceRecords().filter((record) => record.userId === userId)
-    );
+    return localRecords;
   }
 
-  return queryDocuments<AttendanceRecord>("attendanceRecords", "userId", "==", userId).catch(() =>
-    listLocalAttendanceRecords().filter((record) => record.userId === userId)
-  );
+  try {
+    const remoteRecords = await queryDocuments<AttendanceRecord>("attendanceRecords", "userId", "==", userId);
+    return mergeAttendanceRecords([...localRecords, ...remoteRecords]);
+  } catch {
+    return localRecords;
+  }
 }
 
 export function subscribeAttendanceRecords(
@@ -645,28 +678,25 @@ export async function updateAttendanceStatus(
 export async function getTodayAttendance(userId: string): Promise<AttendanceRecord | null> {
   const records = await listMyAttendanceRecords(userId);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
-  // Cari absen hari ini
-  const todayRecord = records.find(r => {
-    const checkInDate = new Date(r.checkInAt as string | number | Date);
-    checkInDate.setHours(0, 0, 0, 0);
-    return checkInDate.getTime() === today.getTime();
-  });
+  const todayRecords = records
+    .map((record) => ({ record, checkInDate: toAttendanceDate(record.checkInAt) }))
+    .filter((item): item is { record: AttendanceRecord; checkInDate: Date } =>
+      Boolean(item.checkInDate && isSameLocalDay(item.checkInDate, today))
+    )
+    .sort((a, b) => b.checkInDate.getTime() - a.checkInDate.getTime());
 
-  return todayRecord || null;
+  return todayRecords.find((item) => !item.record.checkOutAt)?.record || todayRecords[0]?.record || null;
 }
 
 export async function checkOut(recordId: string): Promise<void> {
+  const checkOutAt = new Date().toISOString();
+
   if (shouldUseLocalFallback()) {
-    const records = readLocalAttendanceRecords();
-    const index = records.findIndex(r => r.id === recordId);
-    if (index !== -1) {
-      records[index].checkOutAt = new Date().toISOString();
-      getSafeLocalStorage()?.setItem(ATTENDANCE_CACHE_KEY, JSON.stringify(records));
-    }
+    updateLocalAttendanceRecord(recordId, { checkOutAt });
     return Promise.resolve();
   }
 
-  return updateDocument("attendanceRecords", recordId, { checkOutAt: new Date().toISOString() });
+  await updateDocument("attendanceRecords", recordId, { checkOutAt });
+  updateLocalAttendanceRecord(recordId, { checkOutAt });
 }

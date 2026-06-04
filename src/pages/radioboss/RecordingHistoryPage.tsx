@@ -14,16 +14,20 @@ export default function RecordingHistoryPage() {
 
   useEffect(() => subscribeRecordingHistory(filters, setRecordings), [filters]);
 
-  const completedCount = recordings.filter((recording) => recording.status === "completed").length;
-  const failedCount = recordings.filter((recording) => recording.status === "failed").length;
+  const finishedCount = recordings.filter((recording) => recording.status === "completed" || recording.status === "stopped").length;
+  const attentionCount = recordings.filter((recording) => (
+    recording.status === "failed" ||
+    recording.status === "gateway_offline" ||
+    recording.status === "radioboss_offline"
+  )).length;
 
   return (
     <main className="radioboss-page">
       <section className="radioboss-page-hero">
         <div>
           <p className="eyebrow">Integrasi RadioBOSS</p>
-          <h1>Recording History</h1>
-          <p>Lihat riwayat rekaman program dari Studio Gateway. Path file ditampilkan sebagai teks lokal PC studio.</p>
+          <h1>Riwayat Rekaman</h1>
+          <p>Audit hasil rekaman program penyiar dari Studio Gateway, termasuk file, durasi, dan catatan aman.</p>
         </div>
         <span className="radioboss-hero-icon" aria-hidden="true">
           <Archive size={24} />
@@ -38,20 +42,20 @@ export default function RecordingHistoryPage() {
         </article>
         <article>
           <FileAudio size={18} />
-          <span>Selesai</span>
-          <strong>{completedCount}</strong>
+          <span>Rekaman selesai</span>
+          <strong>{finishedCount}</strong>
         </article>
         <article>
           <FileAudio size={18} />
-          <span>Gagal</span>
-          <strong>{failedCount}</strong>
+          <span>Perlu perhatian</span>
+          <strong>{attentionCount}</strong>
         </article>
       </section>
 
       <article className="radioboss-page-card">
         <div className="radioboss-card-head">
           <strong>Filter riwayat</strong>
-          <small>Tanggal, program, penyiar, status, dan gateway.</small>
+          <small>Tanggal, program, penyiar, dan status.</small>
         </div>
         <RecordingHistoryFilters filters={filters} onChange={setFilters} />
       </article>

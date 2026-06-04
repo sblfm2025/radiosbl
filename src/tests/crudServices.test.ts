@@ -12,7 +12,7 @@ describe("official CRUD service fallbacks", () => {
   it("lists official announcers without Firebase env", async () => {
     const announcers = await listAnnouncers();
 
-    expect(announcers).toHaveLength(7);
+    expect(announcers).toHaveLength(8);
     expect(announcers.find((announcer) => announcer.id === "miah")).toMatchObject({
       fullName: "Salmiah",
       airName: "Miah"

@@ -33,27 +33,27 @@ const toggleOptions: Array<{
   {
     key: "recordingEnabled",
     label: "Aktifkan rekaman program",
-    description: "Jika mati, program ini tidak akan direkam otomatis."
+    description: "Hanya aktifkan untuk program siaran yang punya penyiar terjadwal."
   },
   {
     key: "requireAttendance",
     label: "Wajib penyiar absen",
-    description: "Gateway menunggu absensi penyiar sebelum mulai rekaman."
+    description: "Gateway mulai rekaman hanya setelah penyiar jadwal ini absen masuk."
   },
   {
     key: "autoStart",
-    label: "Mulai otomatis",
-    description: "Rekaman dimulai sendiri saat jadwal program masuk."
+    label: "Mulai saat absen masuk",
+    description: "Check-in penyiar menjadi pemicu start recording jika masih dalam batas jadwal."
   },
   {
     key: "autoStop",
-    label: "Berhenti otomatis",
-    description: "Rekaman dihentikan sendiri saat jadwal program selesai."
+    label: "Berhenti saat absen pulang",
+    description: "Check-out penyiar menjadi pemicu stop recording, dengan batas molor sebagai pengaman."
   },
   {
     key: "allowManualOverride",
-    label: "Izinkan kontrol manual",
-    description: "Operator tetap bisa start/stop manual saat dibutuhkan."
+    label: "Izinkan stop manual",
+    description: "Operator bisa menghentikan rekaman dari panel kontrol saat dibutuhkan."
   }
 ];
 
@@ -191,8 +191,8 @@ export function ProgramRecordingRuleForm({
           <strong>{rule.recordingEnabled ? "Rekaman otomatis siap diatur" : "Rekaman otomatis masih nonaktif"}</strong>
           <p>
             {rule.recordingEnabled
-              ? `${rule.programName} akan ${rule.autoStart ? "mulai otomatis" : "menunggu start manual"}${rule.requireAttendance ? " setelah penyiar absen" : " tanpa syarat absensi"} dan ${rule.autoStop ? "berhenti otomatis" : "berhenti manual"}.`
-              : "Aktifkan rekaman program jika program ini memang perlu direkam oleh Studio Gateway."}
+              ? `${rule.programName} akan ${rule.autoStart ? "mulai saat penyiar absen masuk" : "tidak memulai otomatis"}${rule.requireAttendance ? " dan wajib cocok dengan penyiar terjadwal" : " tanpa syarat absensi"}; ${rule.autoStop ? "berhenti saat penyiar absen pulang" : "berhenti manual"}.`
+              : "Aktifkan hanya untuk program siaran berpemandu penyiar. Autoplaylist dan sisipan tanpa penyiar tidak perlu rule rekaman."}
           </p>
         </div>
       </section>
@@ -204,7 +204,7 @@ export function ProgramRecordingRuleForm({
           <option value="schedule">Satu slot jadwal tertentu</option>
         </select>
         <small className="radioboss-field-help">
-          Pilih semua jadwal jika aturan ini berlaku untuk seluruh program dengan nama yang sama.
+          Pilih slot tertentu jika program yang sama punya penyiar berbeda pada hari/jam lain.
         </small>
       </label>
 
@@ -227,7 +227,7 @@ export function ProgramRecordingRuleForm({
             <option key={program} value={program}>{program}</option>
           ))}
         </select>
-        <small className="radioboss-field-help">Nama program akan dipakai untuk folder dan identitas rekaman.</small>
+          <small className="radioboss-field-help">Pilihan hanya menampilkan program jadwal utama dengan penyiar SBL.</small>
       </label>
 
       <div className="radioboss-toggle-grid">
@@ -248,24 +248,24 @@ export function ProgramRecordingRuleForm({
 
       <div className="radioboss-form-grid">
         <label>
-          <span>Toleransi mulai</span>
+          <span>Batas tunggu absen masuk</span>
           <input
             type="number"
             min="0"
             value={rule.startGraceMinutes}
             onChange={(event) => updateRule({ startGraceMinutes: toNumber(event.target.value, 15) })}
           />
-          <small className="radioboss-field-help">Menit setelah jadwal mulai. Contoh 15: masih boleh mulai otomatis sampai 15 menit terlambat.</small>
+          <small className="radioboss-field-help">Menit dari jadwal mulai. Jika penyiar absen setelah batas ini, Gateway menunggu intervensi operator.</small>
         </label>
         <label>
-          <span>Toleransi berhenti</span>
+          <span>Pengaman stop setelah jadwal</span>
           <input
             type="number"
             min="0"
             value={rule.stopGraceMinutes}
             onChange={(event) => updateRule({ stopGraceMinutes: toNumber(event.target.value, 10) })}
           />
-          <small className="radioboss-field-help">Menit tambahan setelah jadwal selesai sebelum stop otomatis dianggap perlu.</small>
+          <small className="radioboss-field-help">Fallback jika penyiar lupa absen pulang. Normalnya stop terjadi saat check-out.</small>
         </label>
         <label>
           <span>Batas rekaman molor</span>
@@ -275,7 +275,7 @@ export function ProgramRecordingRuleForm({
             value={rule.maxOverrunMinutes}
             onChange={(event) => updateRule({ maxOverrunMinutes: toNumber(event.target.value, 30) })}
           />
-          <small className="radioboss-field-help">Pengaman agar rekaman tidak berjalan terlalu lama jika ada masalah.</small>
+          <small className="radioboss-field-help">Batas keras agar rekaman tidak terus berjalan jika check-out atau stop command bermasalah.</small>
         </label>
         <label>
           <span>Nama folder rekaman</span>

@@ -39,9 +39,9 @@ describe("announcer resolver", () => {
 
   it("calculates announcer workload from weekly slots", () => {
     expect(getAnnouncerWorkload("Wiwik")).toMatchObject({
-      slotCount: 5,
-      totalHours: 10,
-      days: ["Senin", "Selasa", "Rabu", "Sabtu", "Minggu"]
+      slotCount: 4,
+      totalHours: 8,
+      days: ["Senin", "Selasa", "Sabtu", "Minggu"]
     });
   });
 });

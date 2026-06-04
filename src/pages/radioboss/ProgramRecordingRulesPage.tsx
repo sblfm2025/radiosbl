@@ -11,6 +11,7 @@ import {
   subscribeProgramRecordingRules,
   upsertProgramRecordingRule
 } from "../../services/radioboss/recordingRules.service";
+import { isRecordableBroadcastSlot } from "../../services/radioboss/recordingAutomation.service";
 import { getScheduleSlotId } from "../../services/scheduleSlot.service";
 
 type ProgramRecordingRulesPageProps = {
@@ -19,11 +20,9 @@ type ProgramRecordingRulesPageProps = {
 };
 
 function getPrograms(data: DashboardSnapshot): string[] {
-  const names = [
-    ...data.weeklySchedule.map((slot) => slot.program),
-    ...data.insertPrograms.map((slot) => slot.program),
-    ...data.programs.map((program) => program.title)
-  ];
+  const names = data.weeklySchedule
+    .filter(isRecordableBroadcastSlot)
+    .map((slot) => slot.program);
 
   return Array.from(new Set(names.filter(Boolean))).sort();
 }
@@ -31,6 +30,7 @@ function getPrograms(data: DashboardSnapshot): string[] {
 function getScheduleOptions(data: DashboardSnapshot) {
   return data.weeklySchedule
     .filter((slot) => Boolean(slot.program && slot.time && slot.day))
+    .filter(isRecordableBroadcastSlot)
     .map((slot) => ({
       id: getScheduleSlotId(slot),
       label: `${slot.day}, ${slot.time.replace(/ WITA/g, "")} - ${slot.program}`,
@@ -46,17 +46,45 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
   const [message, setMessage] = useState("");
   const programs = useMemo(() => getPrograms(data), [data]);
   const scheduleOptions = useMemo(() => getScheduleOptions(data), [data]);
-  const enabledCount = rules.filter((rule) => rule.recordingEnabled).length;
-  const autoStartCount = rules.filter((rule) => rule.recordingEnabled && rule.autoStart).length;
+  const recordableProgramNames = useMemo(() => new Set(programs), [programs]);
+  const recordableScheduleIds = useMemo(
+    () => new Set(scheduleOptions.map((option) => option.id)),
+    [scheduleOptions]
+  );
+  const visibleRules = useMemo(
+    () => rules.filter((rule) => (
+      rule.scheduleId
+        ? recordableScheduleIds.has(rule.scheduleId)
+        : recordableProgramNames.has(rule.programName)
+    )),
+    [recordableProgramNames, recordableScheduleIds, rules]
+  );
+  const enabledCount = visibleRules.filter((rule) => rule.recordingEnabled).length;
+  const autoStartCount = visibleRules.filter((rule) => rule.recordingEnabled && rule.autoStart).length;
 
   useEffect(() => subscribeProgramRecordingRules(setRules), []);
 
   useEffect(() => {
-    if (selectedRule || rules.length === 0) return;
+    if (visibleRules.length === 0) {
+      setSelectedRule(null);
+      return;
+    }
 
-    const firstProgramRule = rules.find((rule) => rule.programName === programs[0] && !rule.scheduleId);
-    setSelectedRule(firstProgramRule ?? rules[0]);
-  }, [programs, rules, selectedRule]);
+    if (selectedRule) {
+      if (!selectedRule.id && recordableProgramNames.has(selectedRule.programName)) {
+        return;
+      }
+      const stillVisible = visibleRules.some((rule) => (
+        rule.id === selectedRule.id ||
+        (rule.scheduleId && rule.scheduleId === selectedRule.scheduleId) ||
+        (!rule.scheduleId && rule.programName === selectedRule.programName)
+      ));
+      if (stillVisible) return;
+    }
+
+    const firstProgramRule = visibleRules.find((rule) => rule.programName === programs[0] && !rule.scheduleId);
+    setSelectedRule(firstProgramRule ?? visibleRules[0]);
+  }, [programs, recordableProgramNames, selectedRule, visibleRules]);
 
   async function handleSubmit(rule: ProgramRecordingRule) {
     setSaving(true);
@@ -85,12 +113,12 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
       <section className="radioboss-page-hero">
         <div>
           <p className="eyebrow">Integrasi RadioBOSS</p>
-          <h1>Aturan Rekaman Program</h1>
-          <p>Tentukan program mana yang direkam otomatis, kapan mulai, kapan berhenti, dan apakah wajib menunggu absensi penyiar.</p>
+          <h1>Pengaturan Rekaman Lanjutan</h1>
+          <p>Opsional untuk admin. Rekaman harian tetap otomatis dari absen masuk dan berhenti dari absen pulang.</p>
         </div>
         <button type="button" className="radioboss-secondary-action" onClick={handleCreateDefault}>
           <RadioTower size={17} />
-          Aturan baru
+          Rule khusus
         </button>
       </section>
 
@@ -118,12 +146,12 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
         <article className="radioboss-page-card">
           <div className="radioboss-card-head">
             <strong>Pengaturan rekaman</strong>
-            <small>Untuk penggunaan harian, aktifkan rekaman otomatis hanya pada program yang memang perlu diarsipkan.</small>
+            <small>Dipakai hanya jika ada program yang perlu dikecualikan, folder diubah, atau format file disesuaikan.</small>
           </div>
           <ProgramRecordingRuleForm
             programs={programs}
             scheduleOptions={scheduleOptions}
-            existingRules={rules}
+            existingRules={visibleRules}
             selectedRule={selectedRule}
             saving={saving}
             onSubmit={handleSubmit}
@@ -133,9 +161,9 @@ export default function ProgramRecordingRulesPage({ data, session }: ProgramReco
         <article className="radioboss-page-card">
           <div className="radioboss-card-head">
             <strong>Aturan tersimpan</strong>
-            <small>Pilih aturan untuk melihat atau mengubah pengaturannya.</small>
+            <small>Daftar ini hanya menampilkan slot penyiar yang bisa direkam.</small>
           </div>
-          <ProgramRecordingRuleList rules={rules} onSelect={setSelectedRule} />
+          <ProgramRecordingRuleList rules={visibleRules} onSelect={setSelectedRule} />
         </article>
       </section>
     </main>

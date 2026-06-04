@@ -3,6 +3,8 @@ import {
   buildAttendanceRecordDraft,
   checkIn,
   checkInWithSelfie,
+  checkOut,
+  getTodayAttendance,
   listLocalAttendanceRecords,
   listAttendanceRecords
 } from "../services/attendance.service";
@@ -137,6 +139,97 @@ describe("attendance payload", () => {
       selfieUploadError: "Arsip bukti selfie belum dikonfigurasi, bukti masih berupa metadata sementara."
     });
     await expect(listAttendanceRecords()).resolves.toHaveLength(1);
+  });
+
+  it("detects today's attendance from Firestore Timestamp-like values", async () => {
+    const storage = createMemoryStorage();
+    vi.stubGlobal("window", { localStorage: storage });
+    const today = new Date();
+    today.setHours(8, 15, 0, 0);
+
+    storage.setItem("radio-sbl-attendance-records", JSON.stringify([
+      {
+        id: "timestamp-attendance-user-4",
+        userId: "user-4",
+        checkInAt: { seconds: Math.floor(today.getTime() / 1000) },
+        latitude: officeCenter.latitude,
+        longitude: officeCenter.longitude,
+        selfieDriveFileId: "manual_entry",
+        status: "present"
+      }
+    ]));
+
+    await expect(getTodayAttendance("user-4")).resolves.toMatchObject({
+      id: "timestamp-attendance-user-4",
+      userId: "user-4"
+    });
+  });
+
+  it("prioritizes the latest open attendance record for checkout", async () => {
+    const storage = createMemoryStorage();
+    vi.stubGlobal("window", { localStorage: storage });
+    const today = new Date();
+    const early = new Date(today);
+    early.setHours(8, 0, 0, 0);
+    const later = new Date(today);
+    later.setHours(14, 0, 0, 0);
+
+    storage.setItem("radio-sbl-attendance-records", JSON.stringify([
+      {
+        id: "closed-record",
+        userId: "user-5",
+        checkInAt: later.toISOString(),
+        checkOutAt: later.toISOString(),
+        latitude: officeCenter.latitude,
+        longitude: officeCenter.longitude,
+        selfieDriveFileId: "manual_entry",
+        status: "present"
+      },
+      {
+        id: "open-record",
+        userId: "user-5",
+        checkInAt: early.toISOString(),
+        latitude: officeCenter.latitude,
+        longitude: officeCenter.longitude,
+        selfieDriveFileId: "manual_entry",
+        status: "present"
+      }
+    ]));
+
+    await expect(getTodayAttendance("user-5")).resolves.toMatchObject({
+      id: "open-record"
+    });
+  });
+
+  it("keeps local checkout cache in sync", async () => {
+    const storage = createMemoryStorage();
+    vi.stubGlobal("window", { localStorage: storage });
+    const today = new Date();
+    today.setHours(9, 0, 0, 0);
+
+    storage.setItem("radio-sbl-attendance-records", JSON.stringify([
+      {
+        id: "checkout-record",
+        userId: "user-6",
+        checkInAt: today.toISOString(),
+        latitude: officeCenter.latitude,
+        longitude: officeCenter.longitude,
+        selfieDriveFileId: "manual_entry",
+        status: "present"
+      }
+    ]));
+
+    await checkOut("checkout-record");
+
+    expect(listLocalAttendanceRecords()[0]).toMatchObject({
+      id: "checkout-record",
+      userId: "user-6"
+    });
+    expect(listLocalAttendanceRecords()[0].checkOutAt).toEqual(expect.any(String));
+    await expect(getTodayAttendance("user-6")).resolves.toMatchObject({
+      id: "checkout-record",
+      checkOutAt: expect.any(String)
+    });
   });
 
   it("posts browser files to configured Google Drive upload endpoint", async () => {

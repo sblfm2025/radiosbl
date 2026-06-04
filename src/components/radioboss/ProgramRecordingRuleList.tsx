@@ -25,7 +25,7 @@ export function ProgramRecordingRuleList({ rules, onSelect }: ProgramRecordingRu
           <span>
             <strong>{rule.programName}</strong>
             <small>
-              {rule.scheduleId ? "Slot tertentu" : "Semua jadwal program"} - {rule.recordingEnabled ? "Recording aktif" : "Recording nonaktif"} - {rule.autoStart ? "auto start" : "manual"} - {rule.format}
+              {rule.scheduleId ? "Slot tertentu" : "Semua jadwal program"} - {rule.recordingEnabled ? "Recording aktif" : "Recording nonaktif"} - {rule.autoStart ? "start dari absen masuk" : "start otomatis nonaktif"} - {rule.autoStop ? "stop dari absen pulang" : "stop manual"} - {rule.format}
             </small>
           </span>
           <em>{rule.scheduleId || rule.folderSlug}</em>

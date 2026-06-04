@@ -692,7 +692,7 @@ export default function App() {
           />
         ) : null;
       case "recordingControl":
-        return <RecordingControlPage session={session} />;
+        return <RecordingControlPage session={session} onNavigate={navigateToPage} />;
       case "recordingRules":
         return <ProgramRecordingRulesPage data={dashboardData} session={session} />;
       case "recordingHistory":

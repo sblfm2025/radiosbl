@@ -19,7 +19,7 @@ export const DEFAULT_RECORDING_RULE: Omit<
 > = {
   recordingEnabled: false,
   requireAttendance: true,
-  autoStart: false,
+  autoStart: true,
   autoStop: true,
   allowManualOverride: true,
   startGraceMinutes: 15,

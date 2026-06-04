@@ -27,7 +27,7 @@ const menuGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "RadioBOSS",
-    items: ["recordingControl", "recordingRules", "recordingHistory"]
+    items: ["recordingControl", "recordingHistory", "recordingRules"]
   },
   {
     label: "Siaran",
@@ -309,8 +309,8 @@ function getSearchText(item: NavItem, groupLabel: string): string {
     profile: "profil akun password preferensi",
     tutorial: "tutorial panduan bantuan faq help troubleshooting",
     pedoman: "pedoman media siber aturan kebijakan privasi",
-    recordingControl: "radioboss kontrol rekaman manual command queue start stop skip retry",
-    recordingRules: "radioboss rekaman rules auto recording program gateway",
+    recordingControl: "radioboss monitoring rekaman stop manual command queue retry",
+    recordingRules: "radioboss pengaturan lanjutan rekaman rules auto recording program gateway",
     recordingHistory: "radioboss rekaman history file path gateway arsip"
   };
 
@@ -396,9 +396,9 @@ function getMenuDescription(key: PageKey): string {
     case "pedoman":
       return "Aturan dan kebijakan privasi";
     case "recordingRules":
-      return "Aturan rekaman program";
+      return "Pengaturan lanjutan";
     case "recordingControl":
-      return "Start/stop rekaman";
+      return "Monitor dan stop manual";
     case "recordingHistory":
       return "Riwayat file rekaman";
     default:

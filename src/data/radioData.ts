@@ -95,7 +95,7 @@ export const primaryNav: NavItem[] = [
   { key: "broadcastLog", label: "Log Siaran", icon: ClipboardCheck, requiredPermission: "schedule:read" },
   { key: "handover", label: "Handover Shift", icon: ArrowLeftRight, requiredPermission: "schedule:read" },
   { key: "recordingControl", label: "Kontrol Rekaman", icon: CircleDot, requiredPermission: "radioboss:manage" },
-  { key: "recordingRules", label: "Aturan Rekaman", icon: SlidersHorizontal, requiredPermission: "schedule:manage" },
+  { key: "recordingRules", label: "Pengaturan Rekaman Lanjutan", icon: SlidersHorizontal, requiredPermission: "schedule:manage" },
   { key: "recordingHistory", label: "Riwayat Rekaman", icon: History, requiredPermission: "radioboss:manage" },
   { key: "tutorial", label: "Tutorial", icon: BookOpen },
   { key: "pedoman", label: "Pedoman Media", icon: FileText }

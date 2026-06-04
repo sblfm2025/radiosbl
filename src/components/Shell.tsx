@@ -38,7 +38,7 @@ const sidebarGroups: Array<{ label: string; items: PageKey[] }> = [
   },
   {
     label: "RadioBOSS",
-    items: ["recordingControl", "recordingRules", "recordingHistory"]
+    items: ["recordingControl", "recordingHistory", "recordingRules"]
   },
   {
     label: "Siaran",

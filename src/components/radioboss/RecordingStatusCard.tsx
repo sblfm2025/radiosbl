@@ -13,6 +13,7 @@ type RecordingStatusCardProps = {
   scheduleId: string;
   recording: ProgramRecording | null;
   rule: ProgramRecordingRule | null;
+  recordable: boolean;
   status: RadioBossStatus | null;
   heartbeat?: RadioBossGatewayHeartbeat | null;
 };
@@ -32,6 +33,7 @@ export function RecordingStatusCard({
   scheduleId,
   recording,
   rule,
+  recordable,
   status,
   heartbeat
 }: RecordingStatusCardProps) {
@@ -43,7 +45,11 @@ export function RecordingStatusCard({
     <section className="radioboss-page-card recording-status-card">
       <div className="radioboss-card-head">
         <strong>Status rekaman program aktif</strong>
-        <small>Kontrol manual tetap melalui Firestore command queue.</small>
+        <small>
+          {recordable
+            ? "Start mengikuti absen masuk dan stop mengikuti absen pulang penyiar."
+            : "Autoplaylist dan slot tanpa penyiar tidak dibuatkan rekaman otomatis."}
+        </small>
       </div>
 
       <div className="recording-status-grid">
@@ -56,20 +62,30 @@ export function RecordingStatusCard({
         <article>
           <Mic2 size={17} />
           <span>Penyiar</span>
-          <strong>{currentSlot.announcer}</strong>
-          <small>Schedule ID: {scheduleId}</small>
+          <strong>{recordable ? currentSlot.announcer : "Tidak ada penyiar aktif"}</strong>
+          <small>{recordable ? `Schedule ID: ${scheduleId}` : "Program berjalan sebagai playlist otomatis"}</small>
         </article>
         <article>
           <RadioTower size={17} />
           <span>Rule</span>
-          <strong>{rule?.recordingEnabled ? "Recording enabled" : "Recording disabled"}</strong>
-          <small>{rule?.allowManualOverride ? "Manual override boleh" : "Manual override tidak aktif"}</small>
+          <strong>
+            {!recordable
+              ? "Tidak tersedia"
+              : rule?.recordingEnabled ? "Recording enabled" : "Recording disabled"}
+          </strong>
+          <small>
+            {!recordable
+              ? "Hanya program berpemandu penyiar yang punya aturan rekaman"
+              : rule?.recordingEnabled
+              ? `${rule.autoStart ? "Start dari absen masuk" : "Start otomatis nonaktif"} - ${rule.autoStop ? "stop dari absen pulang" : "stop manual"}`
+              : "Tidak direkam otomatis"}
+          </small>
         </article>
         <article>
           <Activity size={17} />
           <span>Rekaman</span>
           <strong>{recordingLabel}</strong>
-          <small>{recording?.fileName || "File belum dibuat Gateway"}</small>
+          <small>{recording?.fileName || (recordable ? "File belum dibuat Gateway" : "Gateway tidak membuat file untuk autoplaylist")}</small>
         </article>
       </div>
 

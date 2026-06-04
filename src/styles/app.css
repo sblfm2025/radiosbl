@@ -7295,7 +7295,7 @@ textarea:focus {
 }
 
 .radioboss-history-filters {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .radioboss-rule-form label,
@@ -7494,7 +7494,7 @@ textarea:focus {
 
 .radioboss-table {
   width: 100%;
-  min-width: 1060px;
+  min-width: 860px;
   border-collapse: collapse;
 }
 
@@ -7525,7 +7525,14 @@ textarea:focus {
   min-width: 220px;
 }
 
-.radioboss-file-cell small {
+.radioboss-stack-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.radioboss-file-cell small,
+.radioboss-stack-cell small {
   color: #64748b;
   overflow-wrap: anywhere;
   line-height: 1.35;
@@ -7596,7 +7603,7 @@ textarea:focus {
 
 .recording-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
 }
 
@@ -7619,10 +7626,24 @@ textarea:focus {
   background: #dc2626;
 }
 
+.recording-action-grid button.secondary {
+  color: #1677ed;
+  background: rgba(22, 119, 237, 0.1);
+}
+
 .recording-action-grid button:disabled {
   cursor: not-allowed;
   color: #94a3b8;
   background: #e2e8f0;
+}
+
+.recording-action-empty {
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .recording-retry-note {

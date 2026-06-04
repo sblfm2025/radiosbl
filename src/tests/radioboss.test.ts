@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { getRadiobossCommandOccurrenceKey } from "../services/radioboss/radiobossCommands.service";
-import { getRecordingRuleDocumentId } from "../services/radioboss/recordingRules.service";
+import {
+  DEFAULT_RECORDING_RULE,
+  getRecordingRuleDocumentId
+} from "../services/radioboss/recordingRules.service";
+import {
+  isAttendanceValidForRecordingStart,
+  isRecordableBroadcastSlot,
+  shouldStartRecordingFromAttendance,
+  shouldStopRecordingFromAttendanceCheckout
+} from "../services/radioboss/recordingAutomation.service";
 import {
   getGatewayHeartbeatTime,
   resolveGatewayOnline,
@@ -60,6 +69,76 @@ describe("RadioBOSS integration helpers", () => {
     expect(getRecordingRuleDocumentId({ ...baseRule, scheduleId: "rabu-1600-1800-halo-bumi-lasinrang" })).toBe(
       "rabu-1600-1800-halo-bumi-lasinrang"
     );
+  });
+
+  it("defaults recording automation to attendance based start and stop", () => {
+    expect(DEFAULT_RECORDING_RULE).toMatchObject({
+      recordingEnabled: false,
+      requireAttendance: true,
+      autoStart: true,
+      autoStop: true,
+      allowManualOverride: true
+    });
+  });
+
+  it("only treats scheduled announcer programs as recordable slots", () => {
+    expect(isRecordableBroadcastSlot({ program: "Aga Kareba", announcer: "Amar" })).toBe(true);
+    expect(isRecordableBroadcastSlot({ program: "Playlist Otomatis Radio SBL", announcer: "Radio Suara Bumi Lasinrang" })).toBe(false);
+    expect(isRecordableBroadcastSlot({ program: "Info Terkini", announcer: "Operator Studio" })).toBe(false);
+  });
+
+  it("starts recording from a valid active attendance record", () => {
+    const attendance = {
+      id: "attendance-1",
+      userId: "user-1",
+      checkInAt: "2026-06-03T08:00:00.000Z",
+      latitude: -3.8,
+      longitude: 119.6,
+      selfieDriveFileId: "drive-file",
+      status: "present"
+    } as const;
+
+    expect(isAttendanceValidForRecordingStart(attendance)).toBe(true);
+    expect(
+      shouldStartRecordingFromAttendance({
+        rule: { recordingEnabled: true, requireAttendance: true, autoStart: true },
+        attendance,
+        hasActiveRecording: false
+      })
+    ).toBe(true);
+    expect(
+      shouldStartRecordingFromAttendance({
+        rule: { recordingEnabled: true, requireAttendance: true, autoStart: true },
+        attendance: { ...attendance, checkOutAt: "2026-06-03T09:00:00.000Z" },
+        hasActiveRecording: false
+      })
+    ).toBe(false);
+  });
+
+  it("stops recording from announcer checkout while keeping manual stop possible", () => {
+    expect(
+      shouldStopRecordingFromAttendanceCheckout({
+        rule: { autoStop: true },
+        attendance: {
+          id: "attendance-2",
+          userId: "user-1",
+          checkInAt: "2026-06-03T08:00:00.000Z",
+          checkOutAt: "2026-06-03T09:58:00.000Z",
+          latitude: -3.8,
+          longitude: 119.6,
+          selfieDriveFileId: "drive-file",
+          status: "present"
+        },
+        recording: { status: "recording" }
+      })
+    ).toBe(true);
+    expect(
+      shouldStopRecordingFromAttendanceCheckout({
+        rule: { autoStop: true },
+        attendance: null,
+        recording: { status: "recording" }
+      })
+    ).toBe(false);
   });
 
   it("scopes recording command dedupe keys to a schedule occurrence date", () => {

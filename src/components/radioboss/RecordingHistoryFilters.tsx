@@ -23,6 +23,23 @@ const statuses: Array<RecordingStatus | "all"> = [
   "radioboss_offline"
 ];
 
+const statusLabels: Record<RecordingStatus | "all", string> = {
+  all: "Semua",
+  waiting_schedule: "Menunggu jadwal",
+  waiting_attendance: "Menunggu absensi",
+  ready: "Siap rekam",
+  recording: "Sedang direkam",
+  stopping: "Menghentikan",
+  stopped: "Berhenti",
+  completed: "Selesai",
+  failed: "Gagal",
+  skipped_no_attendance: "Tidak direkam: absensi",
+  skipped_disabled: "Tidak direkam: rule nonaktif",
+  manual_override: "Manual",
+  gateway_offline: "Gateway offline",
+  radioboss_offline: "RadioBOSS offline"
+};
+
 export function RecordingHistoryFilters({ filters, onChange }: RecordingHistoryFiltersProps) {
   return (
     <section className="radioboss-history-filters" aria-label="Filter riwayat rekaman">
@@ -42,13 +59,9 @@ export function RecordingHistoryFilters({ filters, onChange }: RecordingHistoryF
         <span>Status</span>
         <select value={filters.status ?? "all"} onChange={(event) => onChange({ ...filters, status: event.target.value as RecordingStatus | "all" })}>
           {statuses.map((status) => (
-            <option key={status} value={status}>{status === "all" ? "Semua" : status}</option>
+            <option key={status} value={status}>{statusLabels[status]}</option>
           ))}
         </select>
-      </label>
-      <label>
-        <span>Gateway</span>
-        <input value={filters.gateway ?? ""} onChange={(event) => onChange({ ...filters, gateway: event.target.value })} placeholder="studio-main" />
       </label>
     </section>
   );
