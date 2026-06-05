@@ -55,6 +55,36 @@ RECORDING_GOOGLE_APPLICATION_CREDENTIALS=./service-account-recording.json
 
 Catatan: konfigurasi Firebase Web di atas memang akan dipakai frontend dan bukan pengganti service account. Gateway yang berjalan di PC Studio tetap perlu file service account untuk menulis server-side.
 
+## Security Rules Project Terpisah
+
+Karena project `overlaysbl` dan `radio-sbl-overlay` adalah Firebase project berbeda, sesi login/Auth dari project utama `radiosbl` tidak otomatis berlaku di project tersebut. Untuk itu rules project terpisah dibuat khusus per fungsi, bukan memakai role `users` dari project utama.
+
+File rules yang dipakai:
+
+- `firestore.gateway.rules` untuk project `overlaysbl`.
+- `firestore.recording.rules` untuk project `radio-sbl-overlay`.
+- `firebase.gateway.json` untuk deploy rules gateway/request.
+- `firebase.recording.json` untuk deploy rules recording.
+
+Deploy rules:
+
+```bash
+firebase deploy --config firebase.gateway.json --only firestore:rules --project overlaysbl --non-interactive
+firebase deploy --config firebase.recording.json --only firestore:rules --project radio-sbl-overlay --non-interactive
+```
+
+Status deploy terakhir:
+
+- `overlaysbl`: ruleset `projects/overlaysbl/rulesets/496fa02d-1a73-4ffe-bb43-112fb394a81b`.
+- `radio-sbl-overlay`: ruleset `projects/radio-sbl-overlay/rulesets/4f9d45e3-afcc-4607-983e-7191169d6523`.
+
+Catatan keamanan:
+
+- Rules secondary sengaja hanya membuka koleksi yang diperlukan fitur RadioBOSS.
+- Penulisan gateway/server tetap lewat Firebase Admin SDK sehingga bypass rules.
+- Frontend dapat membaca status/request/recording dari project terpisah tanpa perlu Auth project kedua.
+- Rules ini praktis untuk free tier dan pemisahan kuota, tetapi bukan pengganti sistem Auth lintas project. Jika nanti ingin lebih ketat, opsi lanjutannya adalah custom token Auth di project kedua/ketiga atau proxy server.
+
 ### 1. Firebase Utama: `radiosbl`
 
 Tetap dipakai untuk aplikasi utama:
@@ -213,7 +243,12 @@ Turunkan interval hanya jika kuota aman.
   - heartbeat analytics diperlambat.
   - query analytics dan absensi dibatasi.
 - `studio-gateway` sudah dipush dengan default lebih hemat.
-- PC Studio perlu memakai `.env` hemat sampai project kedua siap.
+- App utama sudah diarahkan membaca/menulis fitur RadioBOSS ke Firebase terpisah:
+  - request/status/command/song request ke `overlaysbl`.
+  - recording/rules ke `radio-sbl-overlay`.
+- `studio-gateway` sudah mendukung Firebase recording terpisah.
+- Security rules untuk `overlaysbl` dan `radio-sbl-overlay` sudah disiapkan dan dideploy.
+- PC Studio perlu `git pull`, `npm install` jika dependency berubah, `npm run build`, dan update `.env` dengan service account project terpisah.
 
 ## Catatan Lanjutan
 
