@@ -516,7 +516,6 @@ export default function App() {
 
     const unsubscribe = subscribeAttendanceRecords(setAttendanceRecords);
 
-    void listAttendanceRecords().then(setAttendanceRecords);
     void listUserProfiles().then(setUserProfiles);
 
     return () => {

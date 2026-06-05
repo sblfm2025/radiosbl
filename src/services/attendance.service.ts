@@ -5,6 +5,7 @@ import type {
 } from "../types/domain";
 import type { FaceRecognitionResult, FaceSpoofCheckResult } from "./faceRecognition.service";
 import { createDocument, listDocuments, queryDocuments, subscribeDocuments, updateDocument } from "./firestore.service";
+import { limit, orderBy } from "firebase/firestore";
 import { isWithinRadius, distanceInMeters, type GeoPoint } from "../utils/geolocation";
 import { shouldUseLocalFallback } from "../lib/env";
 import { moduleFileRules, validateFile, type UploadCandidate } from "../utils/fileValidation";
@@ -14,6 +15,7 @@ const ATTENDANCE_CACHE_KEY = "radio-sbl-attendance-records";
 const ATTENDANCE_PENDING_SYNC_KEY = "radio-sbl-attendance-pending-sync";
 const MAX_LOCAL_ATTENDANCE = 50;
 const MAX_PENDING_ATTENDANCE = 20;
+const ATTENDANCE_READ_LIMIT = 300;
 const PENDING_SELFIE_UPLOAD_ID = "pending_upload";
 export const ATTENDANCE_SELFIE_UPLOAD_EVENT = "radio-sbl-attendance-selfie-upload";
 
@@ -618,9 +620,10 @@ export function listAttendanceRecords(): Promise<AttendanceRecord[]> {
     return Promise.resolve(listLocalAttendanceRecords());
   }
 
-  return listDocuments<AttendanceRecord>("attendanceRecords").catch(() =>
-    listLocalAttendanceRecords()
-  );
+  return listDocuments<AttendanceRecord>("attendanceRecords", [
+    orderBy("checkInAt", "desc"),
+    limit(ATTENDANCE_READ_LIMIT)
+  ]).catch(() => listLocalAttendanceRecords());
 }
 
 export async function listMyAttendanceRecords(userId: string): Promise<AttendanceRecord[]> {
@@ -650,7 +653,8 @@ export function subscribeAttendanceRecords(
     return subscribeDocuments<AttendanceRecord>(
       "attendanceRecords",
       onChange,
-      () => onChange(listLocalAttendanceRecords())
+      () => onChange(listLocalAttendanceRecords()),
+      [orderBy("checkInAt", "desc"), limit(ATTENDANCE_READ_LIMIT)]
     );
   } catch {
     onChange(listLocalAttendanceRecords());

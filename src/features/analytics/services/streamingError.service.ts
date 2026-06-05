@@ -5,9 +5,10 @@ import {
   listDocuments,
   subscribeDocuments
 } from "../../../services/firestore.service";
-import { orderBy, type Unsubscribe } from "firebase/firestore";
+import { orderBy, limit, type Unsubscribe } from "firebase/firestore";
 
 const ERRORS_LOCAL_KEY = "radiosbl_streaming_errors";
+const STREAMING_ERRORS_READ_LIMIT = 100;
 
 function timestampToMs(value: unknown): number {
   if (!value) return 0;
@@ -117,7 +118,8 @@ export async function listStreamingErrors(): Promise<ListenerStreamingError[]> {
 
   try {
     const docs = await listDocuments<ListenerStreamingError>("listenerStreamingErrors", [
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
+      limit(STREAMING_ERRORS_READ_LIMIT)
     ]);
     return sortStreamingErrors(docs);
   } catch {
@@ -146,7 +148,7 @@ export function subscribeStreamingErrors(
       () => {
         onNext(sortStreamingErrors(readLocalErrors()));
       },
-      [orderBy("createdAt", "desc")]
+      [orderBy("createdAt", "desc"), limit(STREAMING_ERRORS_READ_LIMIT)]
     );
   } catch {
     const checkAndTrigger = () => {

@@ -10,7 +10,7 @@ type UseStreamingHeartbeatProps = {
 export function useStreamingHeartbeat({
   sessionId,
   isPlaying,
-  intervalMs = 15 * 1000
+  intervalMs = 3 * 60 * 1000
 }: UseStreamingHeartbeatProps) {
   const intervalRef = useRef<number | null>(null);
   const lastActiveSessionRef = useRef<string | null>(null);
@@ -27,11 +27,6 @@ export function useStreamingHeartbeat({
       }
       return;
     }
-
-    void trackStreamHeartbeat({
-      sessionId,
-      additionalSeconds: 0
-    });
 
     intervalRef.current = window.setInterval(() => {
       const activeSession = lastActiveSessionRef.current;

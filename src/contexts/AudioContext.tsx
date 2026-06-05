@@ -14,6 +14,7 @@ import { AudioContext, type PlayerStatusType } from "./audioContextState";
 import { trackStreamingError } from "../features/analytics/services/streamingError.service";
 import { readLocalSessions } from "../features/analytics/services/listenerAnalytics.service";
 import { getDeviceInfo } from "../features/analytics/utils/deviceInfo";
+import { featureFlags } from "../config/featureFlags";
 
 export function AudioProvider({ children, streamUrl, frequency, programTitle, announcer }: { children: ReactNode, streamUrl: string, frequency: string, programTitle: string, announcer: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -81,34 +82,36 @@ export function AudioProvider({ children, streamUrl, frequency, programTitle, an
       setPlaying(false);
       setPlayerStatus("error");
 
-      // Track streaming error secara fail-safe
-      try {
-        const mappedEvent =
-          code === 2
-            ? "network_error"
-            : code === 3 || code === 4
-              ? "media_error"
-              : "unknown";
+      // Track streaming error hanya saat analytics pendengar diaktifkan.
+      if (featureFlags.listenerAnalytics) {
+        try {
+          const mappedEvent =
+            code === 2
+              ? "network_error"
+              : code === 3 || code === 4
+                ? "media_error"
+                : "unknown";
 
-        const device = getDeviceInfo();
+          const device = getDeviceInfo();
 
-        const errorKey = `${mappedEvent}:${reason}:${device.browser}:${device.os}:${programTitle || "Siaran Live"}`;
-        const now = Date.now();
-        const last = lastErrorLogRef.current;
-        if (!last || last.key !== errorKey || now - last.at > 30_000) {
-          lastErrorLogRef.current = { key: errorKey, at: now };
-          void trackStreamingError({
-            sessionId: getLatestActiveSessionId(),
-            event: mappedEvent,
-            message: reason,
-            programTitle: programTitle || "Siaran Live",
-            deviceType: device.type,
-            browser: device.browser,
-            os: device.os
-          });
+          const errorKey = `${mappedEvent}:${reason}:${device.browser}:${device.os}:${programTitle || "Siaran Live"}`;
+          const now = Date.now();
+          const last = lastErrorLogRef.current;
+          if (!last || last.key !== errorKey || now - last.at > 30_000) {
+            lastErrorLogRef.current = { key: errorKey, at: now };
+            void trackStreamingError({
+              sessionId: getLatestActiveSessionId(),
+              event: mappedEvent,
+              message: reason,
+              programTitle: programTitle || "Siaran Live",
+              deviceType: device.type,
+              browser: device.browser,
+              os: device.os
+            });
+          }
+        } catch (err) {
+          console.warn("Gagal merekam log error streaming:", err);
         }
-      } catch (err) {
-        console.warn("Gagal merekam log error streaming:", err);
       }
     };
 

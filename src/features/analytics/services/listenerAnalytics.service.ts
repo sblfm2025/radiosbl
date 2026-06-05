@@ -6,11 +6,13 @@ import {
   subscribeDocuments,
   upsertDocument
 } from "../../../services/firestore.service";
-import { where, orderBy, type Unsubscribe } from "firebase/firestore";
+import { where, orderBy, limit, type Unsubscribe } from "firebase/firestore";
 
 const SESSIONS_LOCAL_KEY = "radiosbl_listener_sessions";
 const SESSIONS_LOCAL_UPDATE_EVENT = "radiosbl:listener-sessions-updated";
 const ACTIVE_SESSION_WINDOW_MS = 5 * 60 * 1000;
+const ACTIVE_SESSIONS_READ_LIMIT = 200;
+const HISTORICAL_SESSIONS_READ_LIMIT = 500;
 type JsonLike = null | boolean | number | string | JsonLike[] | { [key: string]: JsonLike };
 
 function getActiveSessionLimitIso(): string {
@@ -360,7 +362,7 @@ export function subscribeActiveSessions(
       () => {
         onNext(filterActiveSessions(readLocalSessions()));
       },
-      [where("status", "==", "active")]
+      [where("status", "==", "active"), limit(ACTIVE_SESSIONS_READ_LIMIT)]
     );
   } catch {
     const checkAndTrigger = () => {
@@ -378,7 +380,8 @@ export async function listAllSessions(): Promise<ListenerAnalyticsSession[]> {
 
   try {
     return await listDocuments<ListenerAnalyticsSession>("listenerAnalyticsSessions", [
-      orderBy("startedAt", "desc")
+      orderBy("startedAt", "desc"),
+      limit(HISTORICAL_SESSIONS_READ_LIMIT)
     ]);
   } catch {
     return readLocalSessions();
