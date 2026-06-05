@@ -6,6 +6,18 @@ type EnvKey =
   | "VITE_FIREBASE_APP_ID"
   | "VITE_FIREBASE_MESSAGING_SENDER_ID"
   | "VITE_FIREBASE_MEASUREMENT_ID"
+  | "VITE_GATEWAY_FIREBASE_API_KEY"
+  | "VITE_GATEWAY_FIREBASE_AUTH_DOMAIN"
+  | "VITE_GATEWAY_FIREBASE_PROJECT_ID"
+  | "VITE_GATEWAY_FIREBASE_STORAGE_BUCKET"
+  | "VITE_GATEWAY_FIREBASE_APP_ID"
+  | "VITE_GATEWAY_FIREBASE_MESSAGING_SENDER_ID"
+  | "VITE_RECORDING_FIREBASE_API_KEY"
+  | "VITE_RECORDING_FIREBASE_AUTH_DOMAIN"
+  | "VITE_RECORDING_FIREBASE_PROJECT_ID"
+  | "VITE_RECORDING_FIREBASE_STORAGE_BUCKET"
+  | "VITE_RECORDING_FIREBASE_APP_ID"
+  | "VITE_RECORDING_FIREBASE_MESSAGING_SENDER_ID"
   | "VITE_GEMINI_PROXY_ENDPOINT"
   | "VITE_WHATSAPP_PROXY_ENDPOINT"
   | "VITE_PINRANG_BERKABAR_FEED_URL"
@@ -28,8 +40,42 @@ export function hasFirebaseConfig(): boolean {
   );
 }
 
+export function hasGatewayFirebaseConfig(): boolean {
+  if (import.meta.env.MODE === "test") {
+    return false;
+  }
+
+  return Boolean(
+    getEnv("VITE_GATEWAY_FIREBASE_API_KEY") &&
+      getEnv("VITE_GATEWAY_FIREBASE_AUTH_DOMAIN") &&
+      getEnv("VITE_GATEWAY_FIREBASE_PROJECT_ID") &&
+      getEnv("VITE_GATEWAY_FIREBASE_APP_ID")
+  );
+}
+
+export function hasRecordingFirebaseConfig(): boolean {
+  if (import.meta.env.MODE === "test") {
+    return false;
+  }
+
+  return Boolean(
+    getEnv("VITE_RECORDING_FIREBASE_API_KEY") &&
+      getEnv("VITE_RECORDING_FIREBASE_AUTH_DOMAIN") &&
+      getEnv("VITE_RECORDING_FIREBASE_PROJECT_ID") &&
+      getEnv("VITE_RECORDING_FIREBASE_APP_ID")
+  );
+}
+
 export function shouldUseLocalFallback(): boolean {
   return import.meta.env.MODE === "test" || !hasFirebaseConfig();
+}
+
+export function shouldUseGatewayLocalFallback(): boolean {
+  return import.meta.env.MODE === "test" || !hasGatewayFirebaseConfig();
+}
+
+export function shouldUseRecordingLocalFallback(): boolean {
+  return import.meta.env.MODE === "test" || !hasRecordingFirebaseConfig();
 }
 
 export const featureFlags = {

@@ -9,8 +9,8 @@ import {
   where,
   type Unsubscribe
 } from "firebase/firestore";
-import { getFirebaseFirestore } from "../../lib/firebase";
-import { shouldUseLocalFallback } from "../../lib/env";
+import { getRecordingFirestore } from "../../lib/firebase";
+import { shouldUseRecordingLocalFallback } from "../../lib/env";
 import type { ProgramRecording, RecordingStatus } from "../../types/domain";
 import { toDate } from "./radiobossStatus.service";
 
@@ -66,14 +66,14 @@ export function subscribeActiveProgramRecording(
   scheduleId: string,
   callback: (recording: ProgramRecording | null) => void
 ): Unsubscribe {
-  if (shouldUseLocalFallback() || !scheduleId) {
+  if (shouldUseRecordingLocalFallback() || !scheduleId) {
     callback(null);
     return () => undefined;
   }
 
   try {
     return onSnapshot(
-      query(collection(getFirebaseFirestore(), "programRecordings"), where("scheduleId", "==", scheduleId)),
+      query(collection(getRecordingFirestore(), "programRecordings"), where("scheduleId", "==", scheduleId)),
       (snapshot) => {
         const active = snapshot.docs
           .map((item) => {
@@ -98,14 +98,14 @@ export function subscribeRecordingHistory(
   filters: RecordingHistoryFilters,
   callback: (recordings: ProgramRecording[]) => void
 ): Unsubscribe {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseRecordingLocalFallback()) {
     callback([]);
     return () => undefined;
   }
 
   try {
     return onSnapshot(
-      query(collection(getFirebaseFirestore(), "programRecordings"), orderBy("plannedStartAt", "desc")),
+      query(collection(getRecordingFirestore(), "programRecordings"), orderBy("plannedStartAt", "desc")),
       (snapshot) => {
         const recordings = snapshot.docs.map((item) => {
           const data = item.data() as ProgramRecording;
@@ -122,7 +122,7 @@ export function subscribeRecordingHistory(
 }
 
 export async function markRecordingSkipped(recordingId: string, reason: string): Promise<void> {
-  await updateDoc(doc(getFirebaseFirestore(), "programRecordings", recordingId), {
+  await updateDoc(doc(getRecordingFirestore(), "programRecordings", recordingId), {
     status: "manual_override",
     errorMessageSafe: reason,
     updatedAt: serverTimestamp()

@@ -7,8 +7,8 @@ import {
   where,
   type Unsubscribe
 } from "firebase/firestore";
-import { getFirebaseFirestore } from "../../lib/firebase";
-import { shouldUseLocalFallback } from "../../lib/env";
+import { getGatewayFirestore } from "../../lib/firebase";
+import { shouldUseGatewayLocalFallback } from "../../lib/env";
 import type { RadiobossCommand, RadiobossCommandStatus, RadiobossCommandType } from "../../types/domain";
 
 type Requester = {
@@ -32,7 +32,7 @@ export function getRadiobossCommandOccurrenceKey(scheduleId: string, plannedStar
 }
 
 function assertFirestoreAvailable() {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     throw new Error("Command RadioBOSS membutuhkan koneksi Firebase/Firestore aktif.");
   }
 }
@@ -80,7 +80,7 @@ function buildCommandPayload({
 
 async function createRadiobossCommand(input: Parameters<typeof buildCommandPayload>[0]): Promise<string> {
   assertFirestoreAvailable();
-  const ref = await addDoc(collection(getFirebaseFirestore(), "radiobossCommands"), buildCommandPayload(input));
+  const ref = await addDoc(collection(getGatewayFirestore(), "radiobossCommands"), buildCommandPayload(input));
   return ref.id;
 }
 
@@ -218,7 +218,7 @@ export function subscribeRecentRadiobossCommands(
   callback: (commands: RadiobossCommand[]) => void,
   statuses: RadiobossCommandStatus[] = ["pending", "retryable", "failed"]
 ): Unsubscribe {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     callback([]);
     return () => undefined;
   }
@@ -226,7 +226,7 @@ export function subscribeRecentRadiobossCommands(
   try {
     return onSnapshot(
       query(
-        collection(getFirebaseFirestore(), "radiobossCommands"),
+        collection(getGatewayFirestore(), "radiobossCommands"),
         where("status", "in", statuses)
       ),
       (snapshot) => {

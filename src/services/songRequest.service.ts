@@ -1,12 +1,19 @@
 import { stationInfo, type AnnouncerProfile } from "../data/radioData";
-import { shouldUseLocalFallback } from "../lib/env";
+import { getGatewayFirestore } from "../lib/firebase";
+import { shouldUseGatewayLocalFallback } from "../lib/env";
 import type { SongRequest } from "../types/domain";
 import {
-  createDocument,
-  listDocuments,
-  subscribeDocuments,
-  updateDocument
-} from "./firestore.service";
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc
+} from "firebase/firestore";
 import {
   buildWhatsAppDeepLink,
   sendWhatsAppNotification
@@ -14,6 +21,7 @@ import {
 
 const SONG_REQUESTS_KEY = "radio-sbl-song-requests";
 const MAX_LOCAL_REQUESTS = 25;
+const SONG_REQUESTS_READ_LIMIT = 100;
 
 export type SongRequestInput = {
   requesterName: string;
@@ -183,7 +191,7 @@ export function listLocalSongRequests(): SongRequest[] {
 }
 
 export async function submitSongRequest(input: SongRequestInput): Promise<SongRequest> {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     return saveSongRequest(input);
   }
 
@@ -195,10 +203,11 @@ export async function submitSongRequest(input: SongRequestInput): Promise<SongRe
   let id = request.id;
 
   try {
-    id = await createDocument<Omit<SongRequest, "id">>(
-      "songRequests",
-      toFirestoreSongRequest(request)
-    );
+    const ref = await addDoc(collection(getGatewayFirestore(), "songRequests"), {
+      ...toFirestoreSongRequest(request),
+      createdAt: serverTimestamp()
+    });
+    id = ref.id;
   } catch {
     writeSongRequests([request, ...readSongRequests()]);
   }
@@ -221,12 +230,19 @@ export async function submitSongRequest(input: SongRequestInput): Promise<SongRe
 }
 
 export async function listSongRequests(): Promise<SongRequest[]> {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     return listLocalSongRequests();
   }
 
   try {
-    return await listDocuments<SongRequest>("songRequests");
+    const snapshot = await getDocs(
+      query(
+        collection(getGatewayFirestore(), "songRequests"),
+        orderBy("createdAt", "desc"),
+        limit(SONG_REQUESTS_READ_LIMIT)
+      )
+    );
+    return snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<SongRequest, "id">) }));
   } catch {
     return listLocalSongRequests();
   }
@@ -235,15 +251,21 @@ export async function listSongRequests(): Promise<SongRequest[]> {
 export function subscribeSongRequests(
   onChange: (requests: SongRequest[]) => void
 ): () => void {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     onChange(listLocalSongRequests());
     return () => undefined;
   }
 
   try {
-    return subscribeDocuments<SongRequest>(
-      "songRequests",
-      onChange,
+    return onSnapshot(
+      query(
+        collection(getGatewayFirestore(), "songRequests"),
+        orderBy("createdAt", "desc"),
+        limit(SONG_REQUESTS_READ_LIMIT)
+      ),
+      (snapshot) => {
+        onChange(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<SongRequest, "id">) })));
+      },
       () => onChange(listLocalSongRequests())
     );
   } catch {
@@ -263,12 +285,15 @@ export async function updateSongRequestStatus(
     updatedAt: new Date().toISOString()
   };
 
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     return updateLocalSongRequest(request.id, updatedPatch) ?? { ...request, ...updatedPatch };
   }
 
   try {
-    await updateDocument<Partial<SongRequest>>("songRequests", request.id, updatedPatch);
+    await updateDoc(doc(getGatewayFirestore(), "songRequests", request.id), {
+      ...updatedPatch,
+      updatedAt: serverTimestamp()
+    });
     return {
       ...request,
       ...updatedPatch

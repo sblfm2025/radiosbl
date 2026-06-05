@@ -1,6 +1,6 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { getFirebaseFirestore } from "../../lib/firebase";
-import { shouldUseLocalFallback } from "../../lib/env";
+import { getGatewayFirestore } from "../../lib/firebase";
+import { shouldUseGatewayLocalFallback } from "../../lib/env";
 import type { TimestampLike } from "../../types/domain";
 
 export type RadioBossStatus = {
@@ -137,14 +137,14 @@ function subscribeSingleton<T>(
   documentId: string,
   callback: (value: T | null) => void
 ): Unsubscribe {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseGatewayLocalFallback()) {
     callback(null);
     return () => undefined;
   }
 
   try {
     return onSnapshot(
-      doc(getFirebaseFirestore(), collectionName, documentId),
+      doc(getGatewayFirestore(), collectionName, documentId),
       (snapshot) => callback(snapshot.exists() ? (snapshot.data() as T) : null),
       () => callback(null)
     );

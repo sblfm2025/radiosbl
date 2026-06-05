@@ -1,6 +1,6 @@
 import { orderBy, query, collection, getDocs, limit } from "firebase/firestore";
-import { getFirebaseFirestore } from "../../lib/firebase";
-import { shouldUseLocalFallback } from "../../lib/env";
+import { getGatewayFirestore } from "../../lib/firebase";
+import { shouldUseGatewayLocalFallback } from "../../lib/env";
 import type { AuthSession } from "../auth.service";
 import type { MusicLibraryIndexTrack, SongRequest } from "../../types/domain";
 import { updateSongRequestStatus } from "../songRequest.service";
@@ -33,10 +33,10 @@ function scoreTrack(request: SongRequest, track: MusicLibraryIndexTrack): number
 }
 
 export async function findLibraryMatches(request: SongRequest): Promise<MusicLibraryIndexTrack[]> {
-  if (shouldUseLocalFallback()) return [];
+  if (shouldUseGatewayLocalFallback()) return [];
 
   const snapshot = await getDocs(
-    query(collection(getFirebaseFirestore(), "musicLibraryIndex"), orderBy("title"), limit(200))
+    query(collection(getGatewayFirestore(), "musicLibraryIndex"), orderBy("title"), limit(200))
   );
 
   return snapshot.docs

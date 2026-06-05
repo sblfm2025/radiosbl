@@ -9,8 +9,8 @@ import {
   setDoc,
   type Unsubscribe
 } from "firebase/firestore";
-import { getFirebaseFirestore } from "../../lib/firebase";
-import { shouldUseLocalFallback } from "../../lib/env";
+import { getRecordingFirestore } from "../../lib/firebase";
+import { shouldUseRecordingLocalFallback } from "../../lib/env";
 import type { ProgramRecordingRule } from "../../types/domain";
 
 export const DEFAULT_RECORDING_RULE: Omit<
@@ -65,9 +65,9 @@ function stripUndefinedFields<T extends Record<string, unknown>>(value: T): T {
 }
 
 export async function getProgramRecordingRule(programId: string): Promise<ProgramRecordingRule | null> {
-  if (shouldUseLocalFallback()) return null;
+  if (shouldUseRecordingLocalFallback()) return null;
 
-  const snapshot = await getDoc(doc(getFirebaseFirestore(), "programRecordingRules", programId));
+  const snapshot = await getDoc(doc(getRecordingFirestore(), "programRecordingRules", programId));
   if (!snapshot.exists()) return null;
 
   return {
@@ -83,7 +83,7 @@ export async function upsertProgramRecordingRule(
 ): Promise<void> {
   const ruleData = stripUndefinedFields({ ...data });
   delete ruleData.id;
-  const ruleRef = doc(getFirebaseFirestore(), "programRecordingRules", ruleId);
+  const ruleRef = doc(getRecordingFirestore(), "programRecordingRules", ruleId);
   const existing = await getDoc(ruleRef);
   const payload = stripUndefinedFields({
     ...(!existing.exists() ? {
@@ -106,14 +106,14 @@ export async function upsertProgramRecordingRule(
 export function subscribeProgramRecordingRules(
   callback: (rules: ProgramRecordingRule[]) => void
 ): Unsubscribe {
-  if (shouldUseLocalFallback()) {
+  if (shouldUseRecordingLocalFallback()) {
     callback([]);
     return () => undefined;
   }
 
   try {
     return onSnapshot(
-      query(collection(getFirebaseFirestore(), "programRecordingRules"), orderBy("programName")),
+      query(collection(getRecordingFirestore(), "programRecordingRules"), orderBy("programName")),
       (snapshot) => {
         callback(
           snapshot.docs.map((item) => ({
