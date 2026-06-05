@@ -11,6 +11,50 @@ Dokumen ini menyimpan rencana lanjutan agar Radio SBL tetap memakai paket gratis
 
 ## Pembagian Project yang Disarankan
 
+## Project yang Sudah Disiapkan
+
+### Project Request RadioBoss
+
+Project ini dipakai untuk request lagu, command RadioBoss, status gateway, dan data gateway yang sering berubah.
+
+```env
+VITE_GATEWAY_FIREBASE_API_KEY=AIzaSyCY7-rKolzbkV-fCdFvTyDSLbOuhnUvD38
+VITE_GATEWAY_FIREBASE_AUTH_DOMAIN=overlaysbl.firebaseapp.com
+VITE_GATEWAY_FIREBASE_PROJECT_ID=overlaysbl
+VITE_GATEWAY_FIREBASE_STORAGE_BUCKET=overlaysbl.firebasestorage.app
+VITE_GATEWAY_FIREBASE_APP_ID=1:319351353032:web:69bdd648c3c187d706fffd
+VITE_GATEWAY_FIREBASE_MESSAGING_SENDER_ID=319351353032
+```
+
+Untuk `studio-gateway`, project ini membutuhkan service account sendiri:
+
+```env
+FIREBASE_PROJECT_ID=overlaysbl
+GOOGLE_APPLICATION_CREDENTIALS=./service-account-gateway-request.json
+```
+
+### Project Rekam Siaran RadioBoss
+
+Project ini dipakai jika fitur auto recording dan riwayat rekaman ingin dipisahkan total dari request lagu.
+
+```env
+VITE_RECORDING_FIREBASE_API_KEY=AIzaSyAlLrzVLZyVRjdi3HGbwsEyvgUAOY4qRfY
+VITE_RECORDING_FIREBASE_AUTH_DOMAIN=radio-sbl-overlay.firebaseapp.com
+VITE_RECORDING_FIREBASE_PROJECT_ID=radio-sbl-overlay
+VITE_RECORDING_FIREBASE_STORAGE_BUCKET=radio-sbl-overlay.firebasestorage.app
+VITE_RECORDING_FIREBASE_APP_ID=1:1012850098092:web:1ee49e340bec2720228409
+VITE_RECORDING_FIREBASE_MESSAGING_SENDER_ID=1012850098092
+```
+
+Untuk `studio-gateway`, project ini membutuhkan service account sendiri:
+
+```env
+RECORDING_FIREBASE_PROJECT_ID=radio-sbl-overlay
+RECORDING_GOOGLE_APPLICATION_CREDENTIALS=./service-account-recording.json
+```
+
+Catatan: konfigurasi Firebase Web di atas memang akan dipakai frontend dan bukan pengganti service account. Gateway yang berjalan di PC Studio tetap perlu file service account untuk menulis server-side.
+
 ### 1. Firebase Utama: `radiosbl`
 
 Tetap dipakai untuk aplikasi utama:
