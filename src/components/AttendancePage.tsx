@@ -43,6 +43,49 @@ function isNetworkOrOfflineMessage(message: string): boolean {
   );
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeoutId));
+  });
+}
+
+function buildAiFallback(displayName: string, reason: string) {
+  return {
+    isValid: true,
+    reason: "",
+    description: reason,
+    greeting: `Absensi tersimpan Kak ${displayName}. Analisis otomatis akan ditinjau bila diperlukan.`
+  };
+}
+
+function buildFaceFallback(error: string): FaceRecognitionResult {
+  return {
+    faceRecognitionUsed: false,
+    faceMatchStatus: "unavailable",
+    faceRecognitionMode: "observe_only",
+    faceRecognitionVersion: "v1",
+    faceRecognitionError: error,
+    faceEnrollmentStatus: "not_enrolled",
+    faceReferenceCount: 0,
+    faceModelVersion: "1.0"
+  };
+}
+
+function buildSpoofFallback(error: string): FaceSpoofCheckResult {
+  return {
+    faceSpoofCheckUsed: false,
+    faceSpoofCheckStatus: "unavailable",
+    faceSpoofCheckError: error
+  };
+}
+
 function getAttendanceTypeLabel(type: AttendanceType | AttendanceRecord["status"]): string {
   switch (type) {
     case "sick":
@@ -444,10 +487,20 @@ export function AttendancePage({
     try {
       setChecking(true);
       setFileError("");
-      await ensureAttendanceUserProfile(session);
+      await withTimeout(
+        ensureAttendanceUserProfile(session),
+        6_000,
+        "Sinkronisasi profil terlalu lama."
+      ).catch(() => undefined);
 
       const spoofResult = firstFrameFile
-        ? await analyzeFaceSpoofMovement(firstFrameFile, selfieFile)
+        ? await withTimeout(
+            analyzeFaceSpoofMovement(firstFrameFile, selfieFile),
+            8_000,
+            "Cek gerakan wajah terlalu lama."
+          ).catch((error) =>
+            buildSpoofFallback(error instanceof Error ? error.message : "SPOOF_CHECK_TIMEOUT")
+          )
         : {
             faceSpoofCheckUsed: false,
             faceSpoofCheckStatus: "unavailable" as const,
@@ -466,7 +519,11 @@ export function AttendancePage({
         session?.user.airName ||
         session?.user.announcerNames?.[0] ||
         findAnnouncerProfile(displayName)?.airName;
-      const existingTodayRecord = await getTodayAttendance(userId).catch(() => null);
+      const existingTodayRecord = await withTimeout(
+        getTodayAttendance(userId),
+        8_000,
+        "Cek absensi hari ini terlalu lama."
+      ).catch(() => null);
 
       if (existingTodayRecord) {
         setTodayRecord(existingTodayRecord);
@@ -479,16 +536,18 @@ export function AttendancePage({
         return;
       }
 
-      const aiResult = await analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType)
+      const aiResult = await withTimeout(
+        analyzeAttendancePhoto(selfieFile, airName || displayName, attendanceType),
+        12_000,
+        "Analisis AI terlalu lama."
+      )
         .catch((error) => {
           const message = error instanceof Error ? error.message : String(error);
           if (navigator.onLine === false || isNetworkOrOfflineMessage(message)) {
-            return {
-              isValid: true,
-              reason: "",
-              description: "Analisis AI ditunda karena perangkat sedang offline.",
-              greeting: `Absensi tersimpan Kak ${displayName}. Sistem akan sinkron saat koneksi kembali.`
-            };
+            return buildAiFallback(displayName, "Analisis AI ditunda karena perangkat sedang offline.");
+          }
+          if (message.toLowerCase().includes("terlalu lama")) {
+            return buildAiFallback(displayName, "Analisis AI melewati batas waktu, absensi tetap dicatat untuk ditinjau admin.");
           }
           throw error;
         });
@@ -502,7 +561,13 @@ export function AttendancePage({
       }
 
       // Step 3: Schedule Sync & Delay Logic
-      const faceResult = await analyzeAttendanceFace(selfieFile, userId);
+      const faceResult = await withTimeout(
+        analyzeAttendanceFace(selfieFile, userId),
+        8_000,
+        "Pencocokan wajah terlalu lama."
+      ).catch((error) =>
+        buildFaceFallback(error instanceof Error ? error.message : "FACE_RECOGNITION_TIMEOUT")
+      );
       setFaceRecognition(faceResult);
 
       const dist = distanceInMeters(currentPosition, officeCenter);
