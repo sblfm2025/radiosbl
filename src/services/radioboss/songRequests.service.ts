@@ -6,6 +6,9 @@ import type { MusicLibraryIndexTrack, SongRequest } from "../../types/domain";
 import { updateSongRequestStatus } from "../songRequest.service";
 import { createAddTrackToQueueCommand } from "./radiobossCommands.service";
 
+export const REQUEST_NOTE_TRACK_ID = "sbl-request-note";
+export const REQUEST_NOTE_FILE_PATH = "E:\\_SBL_REQUEST_NOTE.mp3";
+
 function normalize(value = ""): string {
   return value
     .toLowerCase()
@@ -100,25 +103,26 @@ export async function sendSongRequestToRadioBoss(
   request: SongRequest,
   session: AuthSession | null
 ): Promise<SongRequest> {
-  const filePath = request.matchedFilePath;
-  const trackId = request.matchedTrackId;
-
-  if (!filePath || !trackId) {
-    throw new Error("Request belum punya file library yang valid.");
-  }
-
-  await createAddTrackToQueueCommand({
+  const commandId = await createAddTrackToQueueCommand({
     requestId: request.id,
-    trackId,
-    filePath,
+    trackId: REQUEST_NOTE_TRACK_ID,
+    filePath: REQUEST_NOTE_FILE_PATH,
     title: request.title,
     artist: request.artist,
     requesterName: request.requesterName,
+    message: request.rawMessage || request.message || request.dedication || request.notificationText,
+    requestMessage: request.rawMessage || request.message || request.dedication || "",
+    notificationText: request.notificationText,
     requestedBy: session?.user.id ?? "unknown",
     requestedByName: session?.user.displayName || session?.user.email || "Operator Radio SBL"
   });
 
   return updateSongRequestStatus(request, "sent_to_radioboss", {
+    matchStatus: "matched",
+    matchedTrackId: REQUEST_NOTE_TRACK_ID,
+    matchedFilePath: REQUEST_NOTE_FILE_PATH,
+    confidence: 100,
+    radioBossCommandId: commandId,
     sentToRadioBossAt: new Date().toISOString()
   });
 }

@@ -208,8 +208,9 @@ export async function submitSongRequest(input: SongRequestInput): Promise<SongRe
       createdAt: serverTimestamp()
     });
     id = ref.id;
-  } catch {
-    writeSongRequests([request, ...readSongRequests()]);
+  } catch (error) {
+    console.warn("[songRequest.service] Gagal menyimpan songRequest ke gateway.", error);
+    throw error;
   }
 
   const savedRequest = {
@@ -243,8 +244,9 @@ export async function listSongRequests(): Promise<SongRequest[]> {
       )
     );
     return snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<SongRequest, "id">) }));
-  } catch {
-    return listLocalSongRequests();
+  } catch (error) {
+    console.warn("[songRequest.service] Gagal membaca songRequests dari gateway.", error);
+    return [];
   }
 }
 
@@ -266,10 +268,14 @@ export function subscribeSongRequests(
       (snapshot) => {
         onChange(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<SongRequest, "id">) })));
       },
-      () => onChange(listLocalSongRequests())
+      (error) => {
+        console.warn("[songRequest.service] Subscribe songRequests gateway gagal.", error);
+        onChange([]);
+      }
     );
-  } catch {
-    onChange(listLocalSongRequests());
+  } catch (error) {
+    console.warn("[songRequest.service] Subscribe songRequests gateway gagal dimulai.", error);
+    onChange([]);
     return () => undefined;
   }
 }
@@ -298,7 +304,8 @@ export async function updateSongRequestStatus(
       ...request,
       ...updatedPatch
     };
-  } catch {
-    return updateLocalSongRequest(request.id, updatedPatch) ?? { ...request, ...updatedPatch };
+  } catch (error) {
+    console.warn("[songRequest.service] Gagal update songRequest di gateway.", error);
+    throw error;
   }
 }

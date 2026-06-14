@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Radio, Clock, RefreshCw, MessageCircle, Inbox, CheckCircle2, Send } from "lucide-react";
 import type { SongRequest } from "../types/domain";
+import type { AuthSession } from "../services/auth.service";
 import {
   listSongRequests,
   subscribeSongRequests
 } from "../services/songRequest.service";
+import { sendSongRequestToRadioBoss } from "../services/radioboss/songRequests.service";
 
 type RequestGroup = "received" | "sending" | "delivered" | "archive";
 
@@ -91,15 +93,57 @@ function formatRequestTime(value: SongRequest["createdAt"]): string {
   return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function SongRequestsPage() {
+type SongRequestsPageProps = {
+  session: AuthSession | null;
+};
+
+export function SongRequestsPage({ session }: SongRequestsPageProps) {
   const [requests, setRequests] = useState<SongRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState("");
 
   async function loadRequests() {
     setLoading(true);
     const nextRequests = await listSongRequests();
     setRequests(nextRequests);
     setLoading(false);
+  }
+
+  async function syncRequestsToGateway() {
+    if (syncing) return;
+
+    setSyncing(true);
+    setSyncNotice("");
+
+    const candidates = requests.filter((request) =>
+      ["new", "notified", "pending_review", "matched", "needs_review"].includes(request.status)
+    );
+
+    if (candidates.length === 0) {
+      setSyncNotice("Tidak ada request baru yang perlu dikirim ke gateway.");
+      setSyncing(false);
+      return;
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const request of candidates) {
+      try {
+        await sendSongRequestToRadioBoss(request, session);
+        sent += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    await loadRequests();
+    setSyncNotice([
+      sent > 0 ? `${sent} command RadioBOSS dibuat.` : "",
+      failed > 0 ? `${failed} request gagal diproses.` : ""
+    ].filter(Boolean).join(" "));
+    setSyncing(false);
   }
 
   useEffect(() => {
@@ -226,11 +270,20 @@ export function SongRequestsPage() {
             <strong>{activeRequestCount > 0 ? "Antrean aktif" : "Menunggu request"}</strong>
             <small>{latestRequestLabel}</small>
           </div>
-          <button type="button" onClick={loadRequests}>
-            <RefreshCw size={16} className={loading ? "spin" : ""} />
-            Sinkronkan
-          </button>
+          <div className="song-request-live-actions">
+            <button type="button" onClick={loadRequests}>
+              <RefreshCw size={16} className={loading ? "spin" : ""} />
+              Sinkronkan
+            </button>
+            <button type="button" onClick={syncRequestsToGateway} disabled={syncing}>
+              <Send size={16} className={syncing ? "spin" : ""} />
+              {syncing ? "Memproses..." : "Kirim ke Gateway"}
+            </button>
+          </div>
         </section>
+        {syncNotice && (
+          <p className="song-request-sync-notice" role="status">{syncNotice}</p>
+        )}
 
         <section className="song-request-summary" aria-label="Ringkasan request lagu">
           <article>

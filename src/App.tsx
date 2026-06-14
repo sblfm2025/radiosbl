@@ -641,7 +641,7 @@ export default function App() {
       case "coverage":
         return <CoveragePage />;
       case "requests":
-        return <SongRequestsPage />;
+        return <SongRequestsPage session={session} />;
       case "studioInbox":
         return <StudioInboxPage session={session} />;
       case "podcast":

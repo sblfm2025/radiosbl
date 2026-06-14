@@ -12389,7 +12389,7 @@ textarea:focus {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
 }
 
-.song-request-live-strip>div {
+.song-request-live-strip>div:first-child {
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -12397,7 +12397,7 @@ textarea:focus {
   align-items: center;
 }
 
-.song-request-live-strip>div>span {
+.song-request-live-strip>div:first-child>span {
   width: 10px;
   height: 10px;
   grid-row: span 2;
@@ -12406,7 +12406,7 @@ textarea:focus {
   box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.12);
 }
 
-.song-request-live-strip>div>span.is-live {
+.song-request-live-strip>div:first-child>span.is-live {
   background: var(--coral);
   box-shadow: 0 0 0 6px rgba(255, 87, 87, 0.11);
   animation: pulse 1.8s ease-in-out infinite;
@@ -12432,6 +12432,13 @@ textarea:focus {
   font-weight: 750;
 }
 
+.song-request-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .song-request-live-strip button {
   min-height: 38px;
   display: inline-flex;
@@ -12445,6 +12452,18 @@ textarea:focus {
   color: var(--blue-dark);
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.song-request-live-strip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.song-request-sync-notice {
+  margin: -4px 4px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .song-request-summary {
@@ -17830,6 +17849,10 @@ textarea:focus {
   .song-request-live-strip button {
     width: 100%;
     border-radius: 14px;
+  }
+
+  .song-request-live-actions {
+    width: 100%;
   }
 
   .song-request-summary article {

@@ -195,6 +195,9 @@ export async function createAddTrackToQueueCommand({
   title,
   artist,
   requesterName,
+  message,
+  requestMessage,
+  notificationText,
   requestedBy,
   requestedByName
 }: BaseCommandInput & {
@@ -204,10 +207,13 @@ export async function createAddTrackToQueueCommand({
   title?: string;
   artist?: string;
   requesterName?: string;
+  message?: string;
+  requestMessage?: string;
+  notificationText?: string;
 }): Promise<string> {
   return createRadiobossCommand({
     type: "ADD_TRACK_TO_QUEUE",
-    payload: { requestId, trackId, filePath, title, artist, requesterName },
+    payload: { requestId, trackId, filePath, title, artist, requesterName, message, requestMessage, notificationText },
     requestedBy,
     requestedByName,
     dedupeKey: `ADD_TRACK_TO_QUEUE_${requestId}`
